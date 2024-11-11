@@ -45,8 +45,8 @@ func (mc *MySQLCollector) Connect() (bool, error) {
 }
 
 func (mc *MySQLCollector) isPerformanceSchemaEnabled() (bool, error) {
-	var performanceSchemaEnabled string
-	err := mc.db.QueryRow("SHOW GLOBAL VARIABLES LIKE 'performance_schema';").Scan(&performanceSchemaEnabled)
+	var variableName, performanceSchemaEnabled string
+	err := mc.db.QueryRow("SHOW GLOBAL VARIABLES LIKE 'performance_schema';").Scan(&variableName, &performanceSchemaEnabled)
 	if err != nil {
 		return false, fmt.Errorf("failed to check Performance Schema status: %w", err)
 	}
