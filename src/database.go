@@ -17,15 +17,15 @@ type database struct {
 	source *sql.DB
 }
 
-func openDB(dsn string) (dataSource, error) {
+func openDB(dsn string) (database, dataSource, error) {
 	source, err := sql.Open("mysql", dsn)
 	if err != nil {
-		return nil, fmt.Errorf("error opening %s: %v", dsn, err)
+		return database{}, nil, fmt.Errorf("error opening %s: %v", dsn, err)
 	}
 	db := database{
 		source: source,
 	}
-	return &db, nil
+	return db, &db, nil
 }
 
 func (db *database) close() {

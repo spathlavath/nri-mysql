@@ -15,6 +15,7 @@ import (
 	"github.com/newrelic/infra-integrations-sdk/v3/data/metric"
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
+	"github.com/newrelic/nri-mysql/src/queryperformancedetails"
 )
 
 const (
@@ -110,12 +111,26 @@ func main() {
 
 	log.SetupLogging(args.Verbose)
 
-	e, err := createNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
-	fatalIfErr(err)
-
-	db, err := openDB(generateDSN(args))
+	// Initialize MySQL connection
+	dbInstance, db, err := openDB(generateDSN(args))
 	fatalIfErr(err)
 	defer db.close()
+
+	// New functionality
+	collector := queryperformancedetails.NewMySQLCollector(dbInstance.source)
+	performanceSchemaEnabled, err := collector.Connect()
+	fatalIfErr(err)
+
+	// Make decisions based on performanceSchemaEnabled
+	if performanceSchemaEnabled {
+		fmt.Println("Performance Schema is enabled.")
+	} else {
+		fmt.Println("Performance Schema is not enabled.")
+	}
+
+	// Existing functionality
+	e, err := createNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
+	fatalIfErr(err)
 
 	rawInventory, rawMetrics, err := getRawData(db)
 	fatalIfErr(err)
