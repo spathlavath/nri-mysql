@@ -140,11 +140,12 @@ func (mc *MySQLCollector) checkEssentialInstruments() error {
 	}()
 
 	for rows.Next() {
-		var name, enabled, timed string
+		var name, enabled string
+		var timed sql.NullString
 		if err := rows.Scan(&name, &enabled, &timed); err != nil {
 			return fmt.Errorf("failed to scan instrument row: %w", err)
 		}
-		if enabled != "YES" || timed != "YES" {
+		if enabled != "YES" || (timed.Valid && timed.String != "YES") {
 			log.Error("Essential instrument %s is not fully enabled. To enable it, run: UPDATE performance_schema.setup_instruments SET ENABLED = 'YES', TIMED = 'YES' WHERE NAME = '%s';", name, name)
 			return fmt.Errorf("essential instrument %s is not fully enabled", name)
 		}

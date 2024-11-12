@@ -1,6 +1,7 @@
 package queryperformancedetails
 
 import (
+	"database/sql"
 	"fmt"
 	"testing"
 
@@ -229,6 +230,15 @@ func TestMySQLCollector_checkEssentialInstruments(t *testing.T) {
 		err := collector.checkEssentialInstruments()
 		assert.Error(t, err)
 	})
+
+	t.Run("Instrument TIMED is NULL", func(t *testing.T) {
+		mock.ExpectQuery("SELECT NAME, ENABLED, TIMED FROM performance_schema.setup_instruments WHERE .+;").
+			WillReturnRows(sqlmock.NewRows([]string{"NAME", "ENABLED", "TIMED"}).
+				AddRow("statement/sql/select", "YES", sql.NullString{String: "", Valid: false}))
+
+		err := collector.checkEssentialInstruments()
+		assert.NoError(t, err)
+	})
 }
 
 func TestMySQLCollector_logEnablePerformanceSchemaInstructions(t *testing.T) {
@@ -240,7 +250,7 @@ func TestMySQLCollector_logEnablePerformanceSchemaInstructions(t *testing.T) {
 
 	t.Run("MySQL 5.6", func(t *testing.T) {
 		mock.ExpectQuery("SELECT VERSION();").
-			WillReturnRows(sqlmock.NewRows([]string{"VERSION()"}).AddRow("5.6.50"))
+			WillReturnRows(sqlmock.NewRows([]string{"VERSION()"}).AddRow("5.6.45"))
 
 		collector.logEnablePerformanceSchemaInstructions()
 	})
@@ -254,7 +264,7 @@ func TestMySQLCollector_logEnablePerformanceSchemaInstructions(t *testing.T) {
 
 	t.Run("MySQL 8.0", func(t *testing.T) {
 		mock.ExpectQuery("SELECT VERSION();").
-			WillReturnRows(sqlmock.NewRows([]string{"VERSION()"}).AddRow("8.0.23"))
+			WillReturnRows(sqlmock.NewRows([]string{"VERSION()"}).AddRow("8.0.21"))
 
 		collector.logEnablePerformanceSchemaInstructions()
 	})
