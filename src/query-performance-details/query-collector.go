@@ -27,6 +27,13 @@ func collectPerformanceSchemaMetrics(db dataSource) ([]QueryMetrics, error) {
             DATE_FORMAT(UTC_TIMESTAMP(), '%Y-%m-%dT%H:%i:%sZ') AS collection_timestamp
         FROM performance_schema.events_statements_summary_by_digest
         WHERE LAST_SEEN >= UTC_TIMESTAMP() - INTERVAL 30 SECOND
+            AND SCHEMA_NAME NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
+            AND DIGEST_TEXT NOT LIKE '%SET %'
+            AND DIGEST_TEXT NOT LIKE '%SHOW %'
+            AND DIGEST_TEXT NOT LIKE '%INFORMATION_SCHEMA%'
+            AND DIGEST_TEXT NOT LIKE '%PERFORMANCE_SCHEMA%'
+            AND DIGEST_TEXT NOT LIKE '%mysql%'
+            AND DIGEST_TEXT NOT LIKE 'EXPLAIN %'
         ORDER BY avg_elapsed_time_ms DESC;
     `
 
