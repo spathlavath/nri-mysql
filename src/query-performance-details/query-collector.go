@@ -32,11 +32,8 @@ func collectPerformanceSchemaMetrics(db dataSource) ([]QueryMetrics, error) {
             AND DIGEST_TEXT NOT LIKE '%SHOW %'
             AND DIGEST_TEXT NOT LIKE '%INFORMATION_SCHEMA%'
             AND DIGEST_TEXT NOT LIKE '%PERFORMANCE_SCHEMA%'
-            AND DIGEST_TEXT NOT LIKE '%performance_schema%'
             AND DIGEST_TEXT NOT LIKE '%mysql%'
             AND DIGEST_TEXT NOT LIKE 'EXPLAIN %'
-            AND DIGEST_TEXT NOT LIKE 'SELECT NAME, ENABLED FROM performance_schema.setup_consumers %'
-            AND DIGEST_TEXT NOT LIKE 'SELECT NAME, ENABLED, TIMED FROM performance_schema.setup_instruments %'
         ORDER BY avg_elapsed_time_ms DESC;
     `
 
