@@ -12,6 +12,7 @@ import (
 
 type QueryMetrics struct {
 	QueryID             string         `json:"query_id" db:"query_id"`
+	ThreadID            int64          `json:"thread_id" db:"thread_id"`
 	QueryText           sql.NullString `json:"query_text" db:"query_text"`
 	DatabaseName        sql.NullString `json:"database_name" db:"database_name"`
 	SchemaName          string         `json:"schema_name" db:"schema_name"`

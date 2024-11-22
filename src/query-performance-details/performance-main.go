@@ -58,6 +58,18 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 		}
 		fmt.Println("Metrics collected successfully for wait event query metrics.", rawMetrics3)
 
+		// Convert rawMetrics4 to []BlockingSession
+		WaitEvents := make([]WaitEvent, len(rawMetrics3))
+		for i, metric := range rawMetrics3 {
+			WaitEvents[i] = WaitEvent{
+				QueryID:  metric.QueryID.String,
+				ThreadID: metric.ThreadID.Int64,
+			}
+		}
+
+		correlatedSessions := correlateWaitEvents(rawMetrics, WaitEvents)
+		fmt.Println("Correlated blocking sessions:", correlatedSessions)
+
 		// Data ingestion logic for rawMetrics3
 		populateWaitEventMetrics(e, args, rawMetrics3)
 		// End of Wait Event Metrics

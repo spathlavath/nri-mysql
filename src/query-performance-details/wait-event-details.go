@@ -13,6 +13,7 @@ import (
 type WaitEventQueryMetrics struct {
 	TotalWaitTimeMs     float64        `json:"total_wait_time_ms" db:"total_wait_time_ms"`
 	QueryID             sql.NullString `json:"query_id" db:"query_id"`
+	ThreadID            sql.NullInt64  `json:"thread_id" db:"thread_id"`
 	QueryText           sql.NullString `json:"query_text" db:"query_text"`
 	DatabaseName        sql.NullString `json:"database_name" db:"database_name"`
 	WaitCategory        string         `json:"wait_category" db:"wait_category"`
@@ -21,8 +22,50 @@ type WaitEventQueryMetrics struct {
 	WaitEventName       string         `json:"wait_event_name" db:"wait_event_name"`
 	WaitingTasksCount   uint64         `json:"waiting_tasks_count" db:"waiting_tasks_count"`
 }
+type WaitEvent struct {
+	QueryID  string
+	ThreadID int64
+	// other fields...
+}
 
-// Commenting out the unused function
+func correlateWaitEvents(queries []QueryMetrics, waitEvents []WaitEvent) map[string][]WaitEvent {
+	correlatedEvents := make(map[string][]WaitEvent)
+
+	if len(queries) == 0 || len(waitEvents) == 0 {
+		log.Warn("Correlation cannot be performed: queries or waitEvents is empty.")
+		return correlatedEvents
+	}
+
+	// Create a map for fast lookups of queries by query_id
+	queryMap := make(map[string]QueryMetrics)
+	for _, query := range queries {
+		queryMap[query.QueryID] = query
+	}
+
+	// Correlate wait events by query_id
+	for _, event := range waitEvents {
+		if event.QueryID != "" {
+			if _, exists := queryMap[event.QueryID]; exists {
+				correlatedEvents[event.QueryID] = append(correlatedEvents[event.QueryID], event)
+				continue
+			}
+		}
+
+		// Fallback to thread_id if query_id is unavailable
+		if event.ThreadID != 0 {
+			for _, query := range queries {
+				if query.ThreadID == event.ThreadID {
+					correlatedEvents[query.QueryID] = append(correlatedEvents[query.QueryID], event)
+					log.Warn("Warning: Correlation based on thread_id for event with ThreadID: %d", event.ThreadID)
+					break
+				}
+			}
+		}
+	}
+
+	return correlatedEvents
+}
+
 func collectWaitEventQueryMetrics(db dataSource) ([]WaitEventQueryMetrics, error) {
 	metrics, err := collectWaitEventMetrics(db)
 	if err != nil {
@@ -35,42 +78,72 @@ func collectWaitEventQueryMetrics(db dataSource) ([]WaitEventQueryMetrics, error
 func collectWaitEventMetrics(db dataSource) ([]WaitEventQueryMetrics, error) {
 	query := `
 		SELECT
-            LEFT(UPPER(SHA2(eshl.SQL_TEXT, 256)), 16) AS query_id,
-            ewhl.OBJECT_INSTANCE_BEGIN AS instance_id,
-            eshl.CURRENT_SCHEMA AS database_name,
-            ewhl.EVENT_NAME AS wait_event_name,
-            CASE
-                WHEN ewhl.EVENT_NAME LIKE 'wait/io/file/innodb/%' THEN 'InnoDB File IO'
-                WHEN ewhl.EVENT_NAME LIKE 'wait/io/file/sql/%' THEN 'SQL File IO'
-                WHEN ewhl.EVENT_NAME LIKE 'wait/io/socket/%' THEN 'Network IO'
-                WHEN ewhl.EVENT_NAME LIKE 'wait/synch/cond/%' THEN 'Condition Wait'
-                WHEN ewhl.EVENT_NAME LIKE 'wait/synch/mutex/%' THEN 'Mutex'
-                WHEN ewhl.EVENT_NAME LIKE 'wait/lock/table/%' THEN 'Table Lock'
-                WHEN ewhl.EVENT_NAME LIKE 'wait/lock/metadata/%' THEN 'Metadata Lock'
-                WHEN ewhl.EVENT_NAME LIKE 'wait/lock/transaction/%' THEN 'Transaction Lock'
-                ELSE 'Other'
-            END AS wait_category,
-                ROUND(SUM(ewhl.TIMER_WAIT) / 1000000000000, 3) AS total_wait_time_ms,
-                SUM(ewsg.COUNT_STAR) AS waiting_tasks_count,
-                eshl.SQL_TEXT AS query_text,
-                DATE_FORMAT(UTC_TIMESTAMP(), '%Y-%m-%dT%H:%i:%sZ') AS collection_timestamp
-            FROM performance_schema.events_waits_history_long ewhl
-            JOIN performance_schema.events_statements_history_long eshl 
-            ON
-                ewhl.THREAD_ID = eshl.THREAD_ID
-            JOIN
-                 performance_schema.events_waits_summary_global_by_event_name ewsg 
-            ON
-                ewhl.EVENT_NAME = ewsg.EVENT_NAME
-            GROUP BY
-                query_id,
-                instance_id,
-                wait_event_name,
-                wait_category,
-                database_name,
-                eshl.SQL_TEXT
-            ORDER BY total_wait_time_ms DESC
-            LIMIT 10;
+			DIGEST AS query_id,
+			wait_data.instance_id,
+			schema_data.database_name,
+			wait_data.wait_event_name,
+			CASE
+				WHEN wait_data.wait_event_name LIKE 'wait/io/file/innodb/%' THEN 'InnoDB File IO'
+				WHEN wait_data.wait_event_name LIKE 'wait/io/file/sql/%' THEN 'SQL File IO'
+				WHEN wait_data.wait_event_name LIKE 'wait/io/socket/%' THEN 'Network IO'
+				WHEN wait_data.wait_event_name LIKE 'wait/synch/cond/%' THEN 'Condition Wait'
+				WHEN wait_data.wait_event_name LIKE 'wait/synch/mutex/%' THEN 'Mutex'
+				WHEN wait_data.wait_event_name LIKE 'wait/lock/table/%' THEN 'Table Lock'
+				WHEN wait_data.wait_event_name LIKE 'wait/lock/metadata/%' THEN 'Metadata Lock'
+				WHEN wait_data.wait_event_name LIKE 'wait/lock/transaction/%' THEN 'Transaction Lock'
+				ELSE 'Other'
+			END AS wait_category,
+			ROUND(SUM(wait_data.TIMER_WAIT) / 1000000000000, 3) AS total_wait_time_ms,
+			SUM(wait_data.COUNT_STAR) AS waiting_tasks_count,
+			schema_data.query_text,
+			DATE_FORMAT(UTC_TIMESTAMP(), '%Y-%m-%dT%H:%i:%sZ') AS collection_timestamp
+		FROM (
+			-- Historical wait data
+			SELECT 
+				THREAD_ID,
+				OBJECT_INSTANCE_BEGIN AS instance_id,
+				EVENT_NAME AS wait_event_name,
+				TIMER_WAIT,
+				1 AS COUNT_STAR
+			FROM performance_schema.events_waits_history_long
+			UNION ALL
+			-- Current wait data
+			SELECT 
+				THREAD_ID,
+				OBJECT_INSTANCE_BEGIN AS instance_id,
+				EVENT_NAME AS wait_event_name,
+				TIMER_WAIT,
+				1 AS COUNT_STAR
+			FROM performance_schema.events_waits_current
+		) AS wait_data
+		JOIN (
+			-- Historical queries
+			SELECT 
+				THREAD_ID,
+				DIGEST,
+				CURRENT_SCHEMA AS database_name,
+				SQL_TEXT AS query_text
+			FROM performance_schema.events_statements_history_long
+			UNION ALL
+			-- Current queries
+			SELECT 
+				THREAD_ID,
+				DIGEST,
+				CURRENT_SCHEMA AS database_name,
+				SQL_TEXT AS query_text
+			FROM performance_schema.events_statements_current
+		) AS schema_data
+		ON wait_data.THREAD_ID = schema_data.THREAD_ID
+		GROUP BY
+			query_id,
+			wait_data.instance_id,
+			wait_data.wait_event_name,
+			wait_category,
+			schema_data.database_name,
+			schema_data.query_text
+		ORDER BY 
+			total_wait_time_ms DESC
+		LIMIT 10;
 	`
 
 	rows, err := db.QueryxContext(context.Background(), query)
