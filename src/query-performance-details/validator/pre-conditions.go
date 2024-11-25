@@ -1,15 +1,17 @@
-package query_performance_details
+package validator
 
 import (
 	"database/sql"
 	"fmt"
+	common_utils "github.com/newrelic/nri-mysql/src/query-performance-details/common-utils"
+	"github.com/newrelic/nri-mysql/src/query-performance-details/performance-database"
 	"strconv"
 	"strings"
 
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 )
 
-func validatePreconditions(db dataSource) bool {
+func ValidatePreconditions(db performance_database.DataSource) bool {
 
 	performanceSchemaEnabled, errPerformanceEnabled := isPerformanceSchemaEnabled(db)
 	if errPerformanceEnabled != nil {
@@ -37,9 +39,9 @@ func validatePreconditions(db dataSource) bool {
 	return true
 }
 
-func isPerformanceSchemaEnabled(db dataSource) (bool, error) {
+func isPerformanceSchemaEnabled(db performance_database.DataSource) (bool, error) {
 	var variableName, performanceSchemaEnabled string
-	rows, err := db.queryX("SHOW GLOBAL VARIABLES LIKE 'performance_schema';")
+	rows, err := db.QueryX("SHOW GLOBAL VARIABLES LIKE 'performance_schema';")
 
 	if !rows.Next() {
 		log.Error("No rows found")
@@ -47,7 +49,7 @@ func isPerformanceSchemaEnabled(db dataSource) (bool, error) {
 	}
 
 	if errScanning := rows.Scan(&variableName, &performanceSchemaEnabled); err != nil {
-		fatalIfErr(errScanning)
+		common_utils.FatalIfErr(errScanning)
 	}
 
 	if err != nil {
@@ -56,7 +58,7 @@ func isPerformanceSchemaEnabled(db dataSource) (bool, error) {
 	return performanceSchemaEnabled == "ON", nil
 }
 
-func checkEssentialConsumers(db dataSource) error {
+func checkEssentialConsumers(db performance_database.DataSource) error {
 	consumers := []string{
 		"events_waits_current",
 		"events_waits_history_long",
@@ -78,7 +80,7 @@ func checkEssentialConsumers(db dataSource) error {
 	}
 	query += ");"
 
-	rows, err := db.queryX(query)
+	rows, err := db.QueryX(query)
 	if err != nil {
 		return fmt.Errorf("failed to check essential consumers: %w", err)
 	}
@@ -106,7 +108,7 @@ func checkEssentialConsumers(db dataSource) error {
 	return nil
 }
 
-func checkEssentialInstruments(db dataSource) error {
+func checkEssentialInstruments(db performance_database.DataSource) error {
 	instruments := []string{
 		// Add other essential instruments here
 		"wait/%",
@@ -123,7 +125,7 @@ func checkEssentialInstruments(db dataSource) error {
 	query += strings.Join(instrumentConditions, " OR ")
 	query += ";"
 
-	rows, err := db.queryX(query)
+	rows, err := db.QueryX(query)
 	if err != nil {
 		return fmt.Errorf("failed to check essential instruments: %w", err)
 	}
@@ -152,7 +154,7 @@ func checkEssentialInstruments(db dataSource) error {
 	return nil
 }
 
-func logEnablePerformanceSchemaInstructions(db dataSource) {
+func logEnablePerformanceSchemaInstructions(db performance_database.DataSource) {
 	version, err := getMySQLVersion(db)
 	if err != nil {
 		log.Error("Failed to get MySQL version: %v", err)
@@ -188,9 +190,9 @@ func logEnablePerformanceSchemaInstructions(db dataSource) {
 
 }
 
-func getMySQLVersion(db dataSource) (string, error) {
+func getMySQLVersion(db performance_database.DataSource) (string, error) {
 	query := "SELECT VERSION();"
-	rows, err := db.queryX(query)
+	rows, err := db.QueryX(query)
 	if err != nil {
 		return "", fmt.Errorf("failed to execute version query: %w", err)
 	}

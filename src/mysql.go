@@ -118,12 +118,9 @@ func main() {
 		)
 		populateMetrics(ms, rawMetrics)
 	}
-	fmt.Println("heyyyyasasasas")
 	// New functionality
 	if args.EnableQueryPerformanceMonitoring {
-		fmt.Println("heyyyy")
 		query_performance_details.PopulateQueryPerformanceMetrics(args, e)
-
 	}
 
 	fatalIfErr(i.Publish())
