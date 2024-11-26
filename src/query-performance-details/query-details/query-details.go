@@ -21,7 +21,7 @@ func PopulateSlowQueryMetrics(e *integration.Entity, db performancedatabase.Data
 		log.Error("Failed to collect query metrics: %v", err)
 		return nil
 	}
-	ingestSlowQueryMetrics(e, rawMetrics, args)
+	setSlowQueryMetrics(e, rawMetrics, args)
 	return queryIdList
 }
 
@@ -57,7 +57,7 @@ func collectPerformanceSchemaMetrics(db performancedatabase.DataSource) ([]perfo
 	return metrics, qIdList, nil
 }
 
-func ingestSlowQueryMetrics(e *integration.Entity, metrics []performancedatamodel.QueryMetrics, args arguments.ArgumentList) error {
+func setSlowQueryMetrics(e *integration.Entity, metrics []performancedatamodel.QueryMetrics, args arguments.ArgumentList) error {
 	for _, metricObject := range metrics {
 		ms := common_utils.CreateMetricSet(e, "MysqlSlowQueriesSample", args)
 		if ms == nil {
@@ -112,11 +112,11 @@ func PopulateIndividualQueryDetails(db performancedatabase.DataSource, queryIdLi
 
 	queryList := append(append(currentQueryMetrics, recentQueryList...), extensiveQuery...)
 
-	ingestIndividualQueryMetrics(e, args, queryList)
+	setIndividualQueryMetrics(e, args, queryList)
 	return queryList, nil
 }
 
-func ingestIndividualQueryMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []performancedatamodel.QueryPlanMetrics) error {
+func setIndividualQueryMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []performancedatamodel.QueryPlanMetrics) error {
 	for _, metricObject := range metrics {
 
 		// Create a new metric set for each row

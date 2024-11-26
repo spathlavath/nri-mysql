@@ -99,11 +99,11 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 	if len(events) == 0 {
 		return []map[string]interface{}{}, nil
 	}
-	ingestExecutionPlanMetrics(e, args, events)
+	setExecutionPlanMetrics(e, args, events)
 	return events, nil
 }
 
-func ingestExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []map[string]interface{}) error {
+func setExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []map[string]interface{}) error {
 	for _, metricObject := range metrics {
 		// Create a new metric set for each row
 		ms := common_utils.CreateMetricSet(e, "MysqlQueryPlan", args)

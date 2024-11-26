@@ -35,11 +35,11 @@ func PopulateWaitEventMetrics(db performance_database.DataSource, e *integration
 		log.Error("Error iterating over query metrics rows: %v", err)
 		return nil, err
 	}
-	ingestWaitEventMetrics(e, args, metrics)
+	setWaitEventMetrics(e, args, metrics)
 	return metrics, nil
 }
 
-func ingestWaitEventMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []performance_data_model.WaitEventQueryMetrics) error {
+func setWaitEventMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []performance_data_model.WaitEventQueryMetrics) error {
 	for _, metricData := range metrics {
 		// Create a new metric set for each row
 		ms := common_utils.CreateMetricSet(e, "MysqlWaitEvents", args)

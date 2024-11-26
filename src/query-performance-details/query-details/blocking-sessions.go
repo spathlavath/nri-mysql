@@ -12,7 +12,7 @@ import (
 	query_performance_details "github.com/newrelic/nri-mysql/src/query-performance-details/queries"
 )
 
-func PopulateBlockingSessionMetrics(db performance_database.DataSource) ([]performance_data_model.BlockingSessionMetrics, error) {
+func PopulateBlockingSessionMetrics(db performance_database.DataSource, e *integration.Entity, args arguments.ArgumentList) ([]performance_data_model.BlockingSessionMetrics, error) {
 	query := query_performance_details.Blocking_session_query
 	rows, err := db.QueryxContext(context.Background(), query)
 	if err != nil {
@@ -35,10 +35,11 @@ func PopulateBlockingSessionMetrics(db performance_database.DataSource) ([]perfo
 		return nil, err
 	}
 
+	setBlockingQueryMetrics(metrics, e, args)
 	return metrics, nil
 }
 
-func ingestBlockingQueryMetrics(metrics []performance_data_model.BlockingSessionMetrics, e *integration.Entity, args arguments.ArgumentList) error {
+func setBlockingQueryMetrics(metrics []performance_data_model.BlockingSessionMetrics, e *integration.Entity, args arguments.ArgumentList) error {
 	for _, metricData := range metrics {
 		// Create a new metric set for each row
 		ms := common_utils.CreateMetricSet(e, "MysqlBlocking", args)
