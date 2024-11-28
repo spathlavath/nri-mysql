@@ -25,7 +25,7 @@ const (
             END AS statement_type,
             DATE_FORMAT(UTC_TIMESTAMP(), '%Y-%m-%dT%H:%i:%sZ') AS collection_timestamp
         FROM performance_schema.events_statements_summary_by_digest
-        WHERE LAST_SEEN >= UTC_TIMESTAMP() - INTERVAL 30 SECOND
+        WHERE LAST_SEEN >= UTC_TIMESTAMP() - INTERVAL ? SECOND
 			AND SCHEMA_NAME NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
             AND DIGEST_TEXT NOT LIKE '%SET %'
             AND DIGEST_TEXT NOT LIKE '%SHOW %'
@@ -53,6 +53,7 @@ const (
             AND SQL_TEXT NOT LIKE 'EXPLAIN %%'
             AND SQL_TEXT NOT LIKE '%%PERFORMANCE_SCHEMA%%'
             AND SQL_TEXT NOT LIKE '%%INFORMATION_SCHEMA%%'
+			AND TIMER_WAIT / 1000000 > ?
 		ORDER BY TIMER_WAIT DESC;
 	`
 	ExtensiveQuery = `
@@ -71,6 +72,7 @@ const (
             AND SQL_TEXT NOT LIKE 'EXPLAIN %%'
             AND SQL_TEXT NOT LIKE '%%PERFORMANCE_SCHEMA%%'
             AND SQL_TEXT NOT LIKE '%%INFORMATION_SCHEMA%%'
+			AND TIMER_WAIT / 1000000 > ?
 		ORDER BY TIMER_WAIT DESC;
 	`
 	CurrentRunningQueriesSearch = `
@@ -81,14 +83,15 @@ const (
 		FROM performance_schema.events_statements_current
 		WHERE DIGEST IN (%s)
 			AND CURRENT_SCHEMA NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
-            AND SQL_TEXT NOT LIKE '%%SET %%'
-            AND SQL_TEXT NOT LIKE '%%SHOW %%'
-            AND SQL_TEXT NOT LIKE '%%INFORMATION_SCHEMA%%'
-            AND SQL_TEXT NOT LIKE '%%PERFORMANCE_SCHEMA%%'
-            AND SQL_TEXT NOT LIKE '%%mysql%%'
-            AND SQL_TEXT NOT LIKE 'EXPLAIN %%'
-            AND SQL_TEXT NOT LIKE '%%PERFORMANCE_SCHEMA%%'
-            AND SQL_TEXT NOT LIKE '%%INFORMATION_SCHEMA%%'
+			AND SQL_TEXT NOT LIKE '%%SET %%'
+			AND SQL_TEXT NOT LIKE '%%SHOW %%'
+			AND SQL_TEXT NOT LIKE '%%INFORMATION_SCHEMA%%'
+			AND SQL_TEXT NOT LIKE '%%PERFORMANCE_SCHEMA%%'
+			AND SQL_TEXT NOT LIKE '%%mysql%%'
+			AND SQL_TEXT NOT LIKE 'EXPLAIN %%'
+			AND SQL_TEXT NOT LIKE '%%PERFORMANCE_SCHEMA%%'
+			AND SQL_TEXT NOT LIKE '%%INFORMATION_SCHEMA%%'
+			AND TIMER_WAIT / 1000000 > ?
 		ORDER BY TIMER_WAIT DESC;
 	`
 

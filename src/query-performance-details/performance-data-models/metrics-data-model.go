@@ -2,6 +2,18 @@ package performance_data_models
 
 import "database/sql"
 
+type Thresholds struct {
+	IntervalSec   int `default:"60"`
+	ElapsedTimeMs int `default:"1000"`
+}
+
+type PerformanceMonitoringConfig struct {
+	QueryPerformanceMonitoring struct {
+		Enable     bool       `yaml:"enable"`
+		Thresholds Thresholds `yaml:"thresholds"`
+	} `yaml:"query_performance_monitoring"`
+}
+
 type QueryMetrics struct {
 	QueryID             string         `json:"query_id" db:"query_id"`
 	QueryText           sql.NullString `json:"query_text" db:"query_text"`

@@ -1,0 +1,6 @@
+# config.yml
+query_performance_monitoring:
+  enable: true
+  thresholds:
+    interval_sec: 100
+    elapsed_time_ms: 200

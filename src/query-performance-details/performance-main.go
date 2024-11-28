@@ -2,30 +2,32 @@ package query_performance_details
 
 import (
 	"fmt"
+
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	arguments "github.com/newrelic/nri-mysql/src/args"
 	common_utils "github.com/newrelic/nri-mysql/src/query-performance-details/common-utils"
-	"github.com/newrelic/nri-mysql/src/query-performance-details/performance-database"
+	performancedatamodel "github.com/newrelic/nri-mysql/src/query-performance-details/performance-data-models"
+	performance_database "github.com/newrelic/nri-mysql/src/query-performance-details/performance-database"
 	query_details "github.com/newrelic/nri-mysql/src/query-performance-details/query-details"
-	"github.com/newrelic/nri-mysql/src/query-performance-details/validator"
 	log "github.com/sirupsen/logrus"
 )
 
 // main
-func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration.Entity) {
+func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration.Entity, thresholds performancedatamodel.Thresholds) {
 	dsn := performance_database.GenerateDSN(args)
 	db, err := performance_database.OpenDB(dsn)
 	common_utils.FatalIfErr(err)
 	defer db.Close()
-	isPreConditionsPassed := validator.ValidatePreconditions(db)
+
+	isPreConditionsPassed := validatePreconditions(db)
 	if !isPreConditionsPassed {
 		log.Error("Preconditions failed. Exiting.")
 		return
 	}
 
-	queryIdList := query_details.PopulateSlowQueryMetrics(e, db, args)
+	queryIdList := query_details.PopulateSlowQueryMetrics(e, db, args, thresholds.IntervalSec)
 
-	individualQueryDetails, individualQueryDetailsErr := query_details.PopulateIndividualQueryDetails(db, queryIdList, e, args)
+	individualQueryDetails, individualQueryDetailsErr := query_details.PopulateIndividualQueryDetails(db, queryIdList, e, args, thresholds.ElapsedTimeMs)
 	if individualQueryDetailsErr != nil {
 		log.Errorf("Error populating individual query details: %v", individualQueryDetailsErr)
 		return

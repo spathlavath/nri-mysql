@@ -18,6 +18,7 @@ import (
 
 	arguments "github.com/newrelic/nri-mysql/src/args"
 	query_performance_details "github.com/newrelic/nri-mysql/src/query-performance-details"
+	performancedatamodel "github.com/newrelic/nri-mysql/src/query-performance-details/performance-data-models"
 )
 
 const (
@@ -77,6 +78,11 @@ func createNodeEntity(
 }
 
 func main() {
+	config, err := query_performance_details.LoadConfig("config.yml")
+	if err != nil {
+		log.Error("Failed to load config: %v", err)
+	}
+
 	i, err := integration.New(integrationName, integrationVersion, integration.Args(&args))
 	fatalIfErr(err)
 
@@ -118,9 +124,23 @@ func main() {
 		)
 		populateMetrics(ms, rawMetrics)
 	}
+
 	// New functionality
-	if args.EnableQueryPerformanceMonitoring {
-		query_performance_details.PopulateQueryPerformanceMetrics(args, e)
+	// if args.EnableQueryPerformanceMonitoring {
+	// 	query_performance_details.PopulateQueryPerformanceMetrics(args, e)
+
+	// }
+	if config.QueryPerformanceMonitoring.Enable {
+		fmt.Println("Query Performance Monitoring is enabled")
+		fmt.Printf("Interval Time Threshold: %d ms\n", config.QueryPerformanceMonitoring.Thresholds.IntervalSec)
+		fmt.Printf("Elapsed Time Threshold: %d ms\n", config.QueryPerformanceMonitoring.Thresholds.ElapsedTimeMs)
+
+		// Enable query performance monitoring with the specified thresholds
+		thresholds := performancedatamodel.Thresholds{
+			IntervalSec:   config.QueryPerformanceMonitoring.Thresholds.IntervalSec,
+			ElapsedTimeMs: config.QueryPerformanceMonitoring.Thresholds.ElapsedTimeMs,
+		}
+		query_performance_details.PopulateQueryPerformanceMetrics(args, e, thresholds)
 	}
 
 	fatalIfErr(i.Publish())
