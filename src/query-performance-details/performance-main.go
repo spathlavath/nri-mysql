@@ -9,6 +9,7 @@ import (
 	performancedatamodel "github.com/newrelic/nri-mysql/src/query-performance-details/performance-data-models"
 	performance_database "github.com/newrelic/nri-mysql/src/query-performance-details/performance-database"
 	query_details "github.com/newrelic/nri-mysql/src/query-performance-details/query-details"
+	"github.com/newrelic/nri-mysql/src/query-performance-details/validator"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -19,7 +20,7 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 	common_utils.FatalIfErr(err)
 	defer db.Close()
 
-	isPreConditionsPassed := validatePreconditions(db)
+	isPreConditionsPassed := validator.ValidatePreconditions(db)
 	if !isPreConditionsPassed {
 		log.Error("Preconditions failed. Exiting.")
 		return
