@@ -55,19 +55,25 @@ type WaitEventQueryMetrics struct {
 	InstanceID          string         `json:"instance_id" db:"instance_id"`
 	WaitEventName       string         `json:"wait_event_name" db:"wait_event_name"`
 	WaitEventCount      uint64         `json:"wait_event_count" db:"wait_event_count"`
+	AvgWaitTimeMs       float64        `json:"avg_wait_time_ms" db:"avg_wait_time_ms"`
 }
 
 type BlockingSessionMetrics struct {
 	BlockedTxnID     sql.NullString `json:"blocked_txn_id" db:"blocked_txn_id"`
+	BlockedPID       sql.NullString `json:"blocked_pid" db:"blocked_pid"`
 	BlockedThreadID  sql.NullInt64  `json:"blocked_thread_id" db:"blocked_thread_id"`
+	BlockedQueryID   sql.NullString `json:"blocked_query_id" db:"blocked_query_id"`
+	BlockedQuery     sql.NullString `json:"blocked_query" db:"blocked_query"`
+	BlockedStatus    sql.NullString `json:"blocked_status" db:"blocked_status"`
 	BlockedUser      sql.NullString `json:"blocked_user" db:"blocked_user"`
 	BlockedHost      sql.NullString `json:"blocked_host" db:"blocked_host"`
-	BlockedDB        sql.NullString `json:"blocked_db" db:"blocked_db"`
+	BlockedDB        sql.NullString `json:"database_name" db:"database_name"`
 	BlockingTxnID    sql.NullString `json:"blocking_txn_id" db:"blocking_txn_id"`
+	BlockingPID      sql.NullString `json:"blocking_pid" db:"blocking_pid"`
 	BlockingThreadID sql.NullInt64  `json:"blocking_thread_id" db:"blocking_thread_id"`
 	BlockingUser     sql.NullString `json:"blocking_user" db:"blocking_user"`
 	BlockingHost     sql.NullString `json:"blocking_host" db:"blocking_host"`
-	BlockingDB       sql.NullString `json:"blocking_db" db:"blocking_db"`
-	BlockedQuery     sql.NullString `json:"blocked_query" db:"blocked_query"`
+	BlockingQueryID  sql.NullString `json:"blocking_query_id" db:"blocking_query_id"`
 	BlockingQuery    sql.NullString `json:"blocking_query" db:"blocking_query"`
+	BlockingStatus   sql.NullString `json:"blocking_status" db:"blocking_status"`
 }
