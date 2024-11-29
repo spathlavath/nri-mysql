@@ -44,7 +44,11 @@ const (
 		SELECT
 			DIGEST AS query_id,
 			DIGEST_TEXT AS query_text,
-			SQL_TEXT AS query_sample_text
+			SQL_TEXT AS query_sample_text,
+			EVENT_ID AS event_id,
+			TIMER_WAIT AS timer_wait,
+			ROWS_SENT AS rows_sent,
+			ROWS_EXAMINED AS rows_examined
 		FROM performance_schema.events_statements_current
 		WHERE DIGEST IN (%s)
 			AND CURRENT_SCHEMA NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
@@ -65,7 +69,11 @@ const (
 		SELECT
 			DIGEST AS query_id,
 			DIGEST_TEXT AS query_text,
-			SQL_TEXT AS query_sample_text
+			SQL_TEXT AS query_sample_text,
+			EVENT_ID AS event_id,
+			TIMER_WAIT AS timer_wait,
+			ROWS_SENT AS rows_sent,
+			ROWS_EXAMINED AS rows_examined
 		FROM performance_schema.events_statements_history
 		WHERE DIGEST IN (%s)
 			AND CURRENT_SCHEMA NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
@@ -86,7 +94,11 @@ const (
 		SELECT
 			DIGEST AS query_id,
 			DIGEST_TEXT AS query_text,
-			SQL_TEXT AS query_sample_text
+			SQL_TEXT AS query_sample_text,
+			EVENT_ID AS event_id,
+			TIMER_WAIT AS timer_wait,
+			ROWS_SENT AS rows_sent,
+			ROWS_EXAMINED AS rows_examined
 		FROM performance_schema.events_statements_history_long
 		WHERE DIGEST IN (%s)
 			AND CURRENT_SCHEMA NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
