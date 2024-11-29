@@ -21,6 +21,10 @@ type QueryPlanMetrics struct {
 	QueryID             string `json:"query_id" db:"query_id"`
 	AnonymizedQueryText string `json:"query_text" db:"query_text"`
 	QueryText           string `json:"query_sample_text" db:"query_sample_text"`
+	EventID             uint64 `json:"event_id" db:"event_id"`
+	TimerWait           int64  `json:"timer_wait" db:"timer_wait"`
+	RowsSent            int64  `json:"rows_sent" db:"rows_sent"`
+	RowsExamined        int64  `json:"rows_examined" db:"rows_examined"`
 }
 
 type ExecutionPlan struct {

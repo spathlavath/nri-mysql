@@ -25,54 +25,21 @@ const (
             END AS statement_type,
             DATE_FORMAT(UTC_TIMESTAMP(), '%Y-%m-%dT%H:%i:%sZ') AS collection_timestamp
         FROM performance_schema.events_statements_summary_by_digest
-        WHERE LAST_SEEN >= UTC_TIMESTAMP() - INTERVAL 30 SECOND
+        WHERE LAST_SEEN >= UTC_TIMESTAMP() - INTERVAL ? SECOND
 			AND SCHEMA_NAME NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
-            AND DIGEST_TEXT NOT LIKE '%SET %'
-            AND DIGEST_TEXT NOT LIKE '%SHOW %'
-            AND DIGEST_TEXT NOT LIKE '%INFORMATION_SCHEMA%'
-            AND DIGEST_TEXT NOT LIKE '%PERFORMANCE_SCHEMA%'
-            AND DIGEST_TEXT NOT LIKE '%mysql%'
-            AND DIGEST_TEXT NOT LIKE 'EXPLAIN %'
+            AND QUERY_SAMPLE_TEXT NOT LIKE '%SET %'
+            AND QUERY_SAMPLE_TEXT NOT LIKE '%SHOW %'
+            AND QUERY_SAMPLE_TEXT NOT LIKE '%INFORMATION_SCHEMA%'
+            AND QUERY_SAMPLE_TEXT NOT LIKE '%PERFORMANCE_SCHEMA%'
+            AND QUERY_SAMPLE_TEXT NOT LIKE '%mysql%'
+            AND QUERY_SAMPLE_TEXT NOT LIKE 'EXPLAIN %'
+			AND QUERY_SAMPLE_TEXT NOT LIKE '%DIGEST%'
+			AND QUERY_SAMPLE_TEXT NOT LIKE '%DIGEST_TEXT%'
+			AND QUERY_SAMPLE_TEXT NOT LIKE 'EXPLAIN %'
             AND QUERY_SAMPLE_TEXT NOT LIKE '%PERFORMANCE_SCHEMA%'
             AND QUERY_SAMPLE_TEXT NOT LIKE '%INFORMATION_SCHEMA%'
         ORDER BY avg_elapsed_time_ms DESC;
     `
-	QueryPlanMetricsQuery = `
-		SELECT
-			DIGEST AS query_id,
-			DIGEST_TEXT AS query_text,
-			SQL_TEXT AS query_sample_text
-		FROM performance_schema.events_statements_history
-		WHERE DIGEST IN (%s)
-			AND CURRENT_SCHEMA NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
-            AND SQL_TEXT NOT LIKE '%%SET %%'
-            AND SQL_TEXT NOT LIKE '%%SHOW %%'
-            AND SQL_TEXT NOT LIKE '%%INFORMATION_SCHEMA%%'
-            AND SQL_TEXT NOT LIKE '%%PERFORMANCE_SCHEMA%%'
-            AND SQL_TEXT NOT LIKE '%%mysql%%'
-            AND SQL_TEXT NOT LIKE 'EXPLAIN %%'
-            AND SQL_TEXT NOT LIKE '%%PERFORMANCE_SCHEMA%%'
-            AND SQL_TEXT NOT LIKE '%%INFORMATION_SCHEMA%%'
-		ORDER BY TIMER_WAIT DESC;
-	`
-	ExtensiveQuery = `
-		SELECT
-			DIGEST AS query_id,
-			DIGEST_TEXT AS query_text,
-			SQL_TEXT AS query_sample_text
-		FROM performance_schema.events_statements_history_long
-		WHERE DIGEST IN (%s)
-			AND CURRENT_SCHEMA NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
-            AND SQL_TEXT NOT LIKE '%%SET %%'
-            AND SQL_TEXT NOT LIKE '%%SHOW %%'
-            AND SQL_TEXT NOT LIKE '%%INFORMATION_SCHEMA%%'
-            AND SQL_TEXT NOT LIKE '%%PERFORMANCE_SCHEMA%%'
-            AND SQL_TEXT NOT LIKE '%%mysql%%'
-            AND SQL_TEXT NOT LIKE 'EXPLAIN %%'
-            AND SQL_TEXT NOT LIKE '%%PERFORMANCE_SCHEMA%%'
-            AND SQL_TEXT NOT LIKE '%%INFORMATION_SCHEMA%%'
-		ORDER BY TIMER_WAIT DESC;
-	`
 	CurrentRunningQueriesSearch = `
 		SELECT
 			DIGEST AS query_id,
@@ -86,12 +53,56 @@ const (
             AND SQL_TEXT NOT LIKE '%%INFORMATION_SCHEMA%%'
             AND SQL_TEXT NOT LIKE '%%PERFORMANCE_SCHEMA%%'
             AND SQL_TEXT NOT LIKE '%%mysql%%'
+			AND SQL_TEXT NOT LIKE '%%DIGEST%%'
+			AND SQL_TEXT NOT LIKE '%%DIGEST_TEXT%%'
             AND SQL_TEXT NOT LIKE 'EXPLAIN %%'
             AND SQL_TEXT NOT LIKE '%%PERFORMANCE_SCHEMA%%'
             AND SQL_TEXT NOT LIKE '%%INFORMATION_SCHEMA%%'
+			AND TIMER_WAIT / 1000000 > ?
 		ORDER BY TIMER_WAIT DESC;
 	`
-
+	RecentQueriesSearch = `
+		SELECT
+			DIGEST AS query_id,
+			DIGEST_TEXT AS query_text,
+			SQL_TEXT AS query_sample_text
+		FROM performance_schema.events_statements_history
+		WHERE DIGEST IN (%s)
+			AND CURRENT_SCHEMA NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
+            AND SQL_TEXT NOT LIKE '%%SET %%'
+            AND SQL_TEXT NOT LIKE '%%SHOW %%'
+            AND SQL_TEXT NOT LIKE '%%INFORMATION_SCHEMA%%'
+            AND SQL_TEXT NOT LIKE '%%PERFORMANCE_SCHEMA%%'
+            AND SQL_TEXT NOT LIKE '%%mysql%%'
+			AND SQL_TEXT NOT LIKE '%%DIGEST%%'
+			AND SQL_TEXT NOT LIKE '%%DIGEST_TEXT%%'
+            AND SQL_TEXT NOT LIKE 'EXPLAIN %%'
+            AND SQL_TEXT NOT LIKE '%%PERFORMANCE_SCHEMA%%'
+            AND SQL_TEXT NOT LIKE '%%INFORMATION_SCHEMA%%'
+			AND TIMER_WAIT / 1000000 > ?
+		ORDER BY TIMER_WAIT DESC;
+	`
+	PastQueriesQuery = `
+		SELECT
+			DIGEST AS query_id,
+			DIGEST_TEXT AS query_text,
+			SQL_TEXT AS query_sample_text
+		FROM performance_schema.events_statements_history_long
+		WHERE DIGEST IN (%s)
+			AND CURRENT_SCHEMA NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
+            AND SQL_TEXT NOT LIKE '%%SET %%'
+            AND SQL_TEXT NOT LIKE '%%SHOW %%'
+            AND SQL_TEXT NOT LIKE '%%INFORMATION_SCHEMA%%'
+            AND SQL_TEXT NOT LIKE '%%PERFORMANCE_SCHEMA%%'
+            AND SQL_TEXT NOT LIKE '%%mysql%%'
+			AND SQL_TEXT NOT LIKE '%%DIGEST%%'
+			AND SQL_TEXT NOT LIKE '%%DIGEST_TEXT%%'
+            AND SQL_TEXT NOT LIKE 'EXPLAIN %%'
+            AND SQL_TEXT NOT LIKE '%%PERFORMANCE_SCHEMA%%'
+            AND SQL_TEXT NOT LIKE '%%INFORMATION_SCHEMA%%'
+			AND TIMER_WAIT / 1000000 > ?
+		ORDER BY TIMER_WAIT DESC;
+	`
 	Wait_event_query = `
 		SELECT
 			DIGEST AS query_id,
@@ -110,7 +121,8 @@ const (
 				ELSE 'Other'
 			END AS wait_category,
 			ROUND(SUM(wait_data.TIMER_WAIT) / 1000000000000, 3) AS total_wait_time_ms,
-			SUM(wait_data.COUNT_STAR) AS waiting_tasks_count,
+			SUM(wait_data.COUNT_STAR) AS wait_event_count,
+			ROUND((SUM(wait_data.TIMER_WAIT) / 1000000000000) / SUM(wait_data.COUNT_STAR), 3) AS avg_wait_time_ms,
 			schema_data.query_text,
 			DATE_FORMAT(UTC_TIMESTAMP(), '%Y-%m-%dT%H:%i:%sZ') AS collection_timestamp
 		FROM (
@@ -160,16 +172,22 @@ const (
 		SELECT 
                       r.trx_id AS blocked_txn_id,
                       r.trx_mysql_thread_id AS blocked_thread_id,
+					  wt.PROCESSLIST_ID AS blocked_pid,
                       wt.PROCESSLIST_USER AS blocked_user,
                       wt.PROCESSLIST_HOST AS blocked_host,
-                      wt.PROCESSLIST_DB AS blocked_db,
+                      wt.PROCESSLIST_DB AS database_name,
+					  wt.PROCESSLIST_STATE AS blocked_status,
                       b.trx_id AS blocking_txn_id,
                       b.trx_mysql_thread_id AS blocking_thread_id,
+					  bt.PROCESSLIST_ID AS blocking_pid,
                       bt.PROCESSLIST_USER AS blocking_user,
                       bt.PROCESSLIST_HOST AS blocking_host,
                       bt.PROCESSLIST_DB AS blocking_db,
                       es_waiting.DIGEST_TEXT AS blocked_query,
-                      es_blocking.DIGEST_TEXT AS blocking_query
+                      es_blocking.DIGEST_TEXT AS blocking_query,
+					  es_waiting.DIGEST AS blocked_query_id,
+                      es_blocking.DIGEST AS blocking_query_id,
+    				  bt.PROCESSLIST_STATE AS blocking_status
                   FROM 
                       performance_schema.data_lock_waits w
                   JOIN 

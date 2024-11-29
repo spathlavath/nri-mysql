@@ -3,20 +3,21 @@ package query_details
 import (
 	"context"
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/newrelic/infra-integrations-sdk/v3/data/metric"
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	arguments "github.com/newrelic/nri-mysql/src/args"
-	"github.com/newrelic/nri-mysql/src/query-performance-details/common-utils"
+	common_utils "github.com/newrelic/nri-mysql/src/query-performance-details/common-utils"
 	performancedatamodel "github.com/newrelic/nri-mysql/src/query-performance-details/performance-data-models"
 	performancedatabase "github.com/newrelic/nri-mysql/src/query-performance-details/performance-database"
 	queries "github.com/newrelic/nri-mysql/src/query-performance-details/queries"
-	"strings"
-	"time"
 )
 
 func PopulateSlowQueryMetrics(e *integration.Entity, db performancedatabase.DataSource, args arguments.ArgumentList) []string {
-	rawMetrics, queryIdList, err := collectPerformanceSchemaMetrics(db)
+	rawMetrics, queryIdList, err := collectPerformanceSchemaMetrics(db, args.SlowQueryInterval)
 	if err != nil {
 		log.Error("Failed to collect query metrics: %v", err)
 		return nil
@@ -25,11 +26,11 @@ func PopulateSlowQueryMetrics(e *integration.Entity, db performancedatabase.Data
 	return queryIdList
 }
 
-func collectPerformanceSchemaMetrics(db performancedatabase.DataSource) ([]performancedatamodel.QueryMetrics, []string, error) {
+func collectPerformanceSchemaMetrics(db performancedatabase.DataSource, slowQueryInterval int) ([]performancedatamodel.QueryMetrics, []string, error) {
 	query := queries.Slow_queries
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	rows, err := db.QueryxContext(ctx, query)
+	rows, err := db.QueryxContext(ctx, query, slowQueryInterval)
 	if err != nil {
 		log.Error("Failed to collect query metrics from Performance Schema: %v", err)
 		return nil, []string{}, err
@@ -92,25 +93,25 @@ func setSlowQueryMetrics(e *integration.Entity, metrics []performancedatamodel.Q
 }
 
 func PopulateIndividualQueryDetails(db performancedatabase.DataSource, queryIdList []string, e *integration.Entity, args arguments.ArgumentList) ([]performancedatamodel.QueryPlanMetrics, error) {
-	currentQueryMetrics, currentQueryMetricsErr := currentQueryMetrics(db, queryIdList)
+	currentQueryMetrics, currentQueryMetricsErr := currentQueryMetrics(db, queryIdList, args.IndividualQueryThreshold)
 	if currentQueryMetricsErr != nil {
-		log.Error("Failed to collect query metrics: %v", currentQueryMetricsErr)
+		log.Error("Failed to collect current query metrics: %v", currentQueryMetricsErr)
 		return nil, currentQueryMetricsErr
 	}
 
-	recentQueryList, recentQueryErr := collectRecentQueryMetrics(db, queryIdList)
+	recentQueryList, recentQueryErr := recentQueryMetrics(db, queryIdList, args.IndividualQueryThreshold)
 	if recentQueryErr != nil {
-		log.Error("Failed to collect query metrics: %v", recentQueryErr)
+		log.Error("Failed to collect recent query metrics: %v", recentQueryErr)
 		return nil, recentQueryErr
 	}
 
-	extensiveQuery, extensiveQueryErr := extensiveQueryMetrics(db, queryIdList)
+	extensiveQueryList, extensiveQueryErr := extensiveQueryMetrics(db, queryIdList, args.IndividualQueryThreshold)
 	if extensiveQueryErr != nil {
-		log.Error("Failed to collect query metrics: %v", extensiveQueryErr)
+		log.Error("Failed to collect extensive query metrics: %v", extensiveQueryErr)
 		return nil, extensiveQueryErr
 	}
 
-	queryList := append(append(currentQueryMetrics, recentQueryList...), extensiveQuery...)
+	queryList := append(append(currentQueryMetrics, recentQueryList...), extensiveQueryList...)
 
 	setIndividualQueryMetrics(e, args, queryList)
 	return queryList, nil
@@ -127,8 +128,12 @@ func setIndividualQueryMetrics(e *integration.Entity, args arguments.ArgumentLis
 			MetricType metric.SourceType
 		}{
 
-			"query_id":   {metricObject.QueryID, metric.ATTRIBUTE},
-			"query_text": {metricObject.AnonymizedQueryText, metric.ATTRIBUTE},
+			"query_id":      {metricObject.QueryID, metric.ATTRIBUTE},
+			"query_text":    {metricObject.AnonymizedQueryText, metric.ATTRIBUTE},
+			"event_id":      {metricObject.EventID, metric.GAUGE},
+			"timer_wait":    {metricObject.TimerWait, metric.GAUGE},
+			"rows_sent":     {metricObject.RowsSent, metric.GAUGE},
+			"rows_examined": {metricObject.RowsExamined, metric.GAUGE},
 		}
 
 		for name, metric := range metricsMap {
@@ -142,9 +147,9 @@ func setIndividualQueryMetrics(e *integration.Entity, args arguments.ArgumentLis
 	return nil
 }
 
-func currentQueryMetrics(db performancedatabase.DataSource, QueryIDList []string) ([]performancedatamodel.QueryPlanMetrics, error) {
+func currentQueryMetrics(db performancedatabase.DataSource, QueryIDList []string, individualQueryThreshold int) ([]performancedatamodel.QueryPlanMetrics, error) {
 	// Check Performance Schema availability
-	metrics, err := collectCurrentQueryMetrics(db, QueryIDList)
+	metrics, err := collectCurrentQueryMetrics(db, QueryIDList, individualQueryThreshold)
 	if err != nil {
 		log.Error("Failed to collect query metrics: %v", err)
 		return nil, err
@@ -153,9 +158,9 @@ func currentQueryMetrics(db performancedatabase.DataSource, QueryIDList []string
 	return metrics, nil
 }
 
-func extensiveQueryMetrics(db performancedatabase.DataSource, QueryIDList []string) ([]performancedatamodel.QueryPlanMetrics, error) {
+func recentQueryMetrics(db performancedatabase.DataSource, QueryIDList []string, individualQueryThreshold int) ([]performancedatamodel.QueryPlanMetrics, error) {
 	// Check Performance Schema availability
-	metrics, err := collectExtensiveQueryMetrics(db, QueryIDList)
+	metrics, err := collectRecentQueryMetrics(db, QueryIDList, individualQueryThreshold)
 	if err != nil {
 		log.Error("Failed to collect query metrics: %v", err)
 		return nil, err
@@ -164,7 +169,18 @@ func extensiveQueryMetrics(db performancedatabase.DataSource, QueryIDList []stri
 	return metrics, nil
 }
 
-func collectCurrentQueryMetrics(db performancedatabase.DataSource, queryIDList []string) ([]performancedatamodel.QueryPlanMetrics, error) {
+func extensiveQueryMetrics(db performancedatabase.DataSource, QueryIDList []string, individualQueryThreshold int) ([]performancedatamodel.QueryPlanMetrics, error) {
+	// Check Performance Schema availability
+	metrics, err := collectExtensiveQueryMetrics(db, QueryIDList, individualQueryThreshold)
+	if err != nil {
+		log.Error("Failed to collect query metrics: %v", err)
+		return nil, err
+	}
+
+	return metrics, nil
+}
+
+func collectCurrentQueryMetrics(db performancedatabase.DataSource, queryIDList []string, individualQueryThreshold int) ([]performancedatamodel.QueryPlanMetrics, error) {
 	if len(queryIDList) == 0 {
 		log.Warn("queryIDList is empty")
 		return nil, nil
@@ -184,7 +200,8 @@ func collectCurrentQueryMetrics(db performancedatabase.DataSource, queryIDList [
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	rows, err := db.QueryxContext(ctx, query, args...)
+	updatedArgs := append(args, individualQueryThreshold)
+	rows, err := db.QueryxContext(ctx, query, updatedArgs...)
 	if err != nil {
 		log.Error("Failed to collect query metrics from Performance Schema: %v", err)
 		return nil, err
@@ -207,7 +224,7 @@ func collectCurrentQueryMetrics(db performancedatabase.DataSource, queryIDList [
 	return metrics, nil
 }
 
-func collectRecentQueryMetrics(db performancedatabase.DataSource, queryIDList []string) ([]performancedatamodel.QueryPlanMetrics, error) {
+func collectRecentQueryMetrics(db performancedatabase.DataSource, queryIDList []string, individualQueryThreshold int) ([]performancedatamodel.QueryPlanMetrics, error) {
 	if len(queryIDList) == 0 {
 		log.Warn("queryIDList is empty")
 		return nil, nil
@@ -217,14 +234,15 @@ func collectRecentQueryMetrics(db performancedatabase.DataSource, queryIDList []
 		placeholders[i] = "?"
 	}
 	inClause := strings.Join(placeholders, ", ")
-	query := fmt.Sprintf(queries.QueryPlanMetricsQuery, inClause)
+	query := fmt.Sprintf(queries.RecentQueriesSearch, inClause)
 	args := make([]interface{}, len(queryIDList))
 	for i, id := range queryIDList {
 		args[i] = id
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	rows, err := db.QueryxContext(ctx, query, args...)
+	updatedArgs := append(args, individualQueryThreshold)
+	rows, err := db.QueryxContext(ctx, query, updatedArgs...)
 	if err != nil {
 		log.Error("Failed to collect query metrics from Performance Schema: %v", err)
 		return nil, err
@@ -248,7 +266,7 @@ func collectRecentQueryMetrics(db performancedatabase.DataSource, queryIDList []
 	return metrics, nil
 }
 
-func collectExtensiveQueryMetrics(db performancedatabase.DataSource, queryIDList []string) ([]performancedatamodel.QueryPlanMetrics, error) {
+func collectExtensiveQueryMetrics(db performancedatabase.DataSource, queryIDList []string, individualQueryThreshold int) ([]performancedatamodel.QueryPlanMetrics, error) {
 	if len(queryIDList) == 0 {
 		log.Warn("queryIDList is empty")
 		return nil, nil
@@ -262,14 +280,15 @@ func collectExtensiveQueryMetrics(db performancedatabase.DataSource, queryIDList
 	// Joining the placeholders to form the IN clause
 	inClause := strings.Join(placeholders, ", ")
 
-	query := fmt.Sprintf(queries.ExtensiveQuery, inClause)
+	query := fmt.Sprintf(queries.PastQueriesQuery, inClause)
 	args := make([]interface{}, len(queryIDList))
 	for i, id := range queryIDList {
 		args[i] = id
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	rows, err := db.QueryxContext(ctx, query, args...)
+	updatedArgs := append(args, individualQueryThreshold)
+	rows, err := db.QueryxContext(ctx, query, updatedArgs...)
 	if err != nil {
 		log.Error("Failed to collect query metrics from Performance Schema: %v", err)
 		return nil, err
