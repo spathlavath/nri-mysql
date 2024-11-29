@@ -2,6 +2,7 @@ package query_details
 
 import (
 	"context"
+
 	"github.com/newrelic/infra-integrations-sdk/v3/data/metric"
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
@@ -56,7 +57,7 @@ func setWaitEventMetrics(e *integration.Entity, args arguments.ArgumentList, met
 			"collection_timestamp": {metricData.CollectionTimestamp, metric.ATTRIBUTE},
 			"instance_id":          {metricData.InstanceID, metric.ATTRIBUTE},
 			"wait_event_name":      {metricData.WaitEventName, metric.ATTRIBUTE},
-			"waiting_tasks_count":  {int(metricData.WaitingTasksCount), metric.GAUGE},
+			"wait_event_count":     {int(metricData.WaitEventCount), metric.GAUGE},
 		}
 		for name, metric := range metricsMap {
 			err := ms.SetMetric(name, metric.Value, metric.MetricType)

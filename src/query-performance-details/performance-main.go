@@ -2,10 +2,11 @@ package query_performance_details
 
 import (
 	"fmt"
+
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	arguments "github.com/newrelic/nri-mysql/src/args"
 	common_utils "github.com/newrelic/nri-mysql/src/query-performance-details/common-utils"
-	"github.com/newrelic/nri-mysql/src/query-performance-details/performance-database"
+	performance_database "github.com/newrelic/nri-mysql/src/query-performance-details/performance-database"
 	query_details "github.com/newrelic/nri-mysql/src/query-performance-details/query-details"
 	"github.com/newrelic/nri-mysql/src/query-performance-details/validator"
 	log "github.com/sirupsen/logrus"
@@ -22,7 +23,7 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 		log.Error("Preconditions failed. Exiting.")
 		return
 	}
-
+	fmt.Println("Preconditions passed. Proceeding with collecting query performance metrics.", args)
 	queryIdList := query_details.PopulateSlowQueryMetrics(e, db, args)
 
 	individualQueryDetails, individualQueryDetailsErr := query_details.PopulateIndividualQueryDetails(db, queryIdList, e, args)

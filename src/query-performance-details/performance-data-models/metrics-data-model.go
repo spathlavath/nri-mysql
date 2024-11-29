@@ -54,7 +54,7 @@ type WaitEventQueryMetrics struct {
 	CollectionTimestamp string         `json:"collection_timestamp" db:"collection_timestamp"`
 	InstanceID          string         `json:"instance_id" db:"instance_id"`
 	WaitEventName       string         `json:"wait_event_name" db:"wait_event_name"`
-	WaitingTasksCount   uint64         `json:"waiting_tasks_count" db:"waiting_tasks_count"`
+	WaitEventCount      uint64         `json:"wait_event_count" db:"wait_event_count"`
 }
 
 type BlockingSessionMetrics struct {
