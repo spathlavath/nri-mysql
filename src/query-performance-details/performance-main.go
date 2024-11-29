@@ -23,7 +23,7 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 		log.Error("Preconditions failed. Exiting.")
 		return
 	}
-	fmt.Println("Preconditions passed. Proceeding with collecting query performance metrics.", args)
+
 	queryIdList := query_details.PopulateSlowQueryMetrics(e, db, args)
 
 	individualQueryDetails, individualQueryDetailsErr := query_details.PopulateIndividualQueryDetails(db, queryIdList, e, args)

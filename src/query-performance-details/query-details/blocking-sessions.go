@@ -2,6 +2,7 @@ package query_details
 
 import (
 	"context"
+
 	"github.com/newrelic/infra-integrations-sdk/v3/data/metric"
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
@@ -48,17 +49,22 @@ func setBlockingQueryMetrics(metrics []performance_data_model.BlockingSessionMet
 			MetricType metric.SourceType
 		}{
 			"blocked_txn_id":     {common_utils.GetStringValue(metricData.BlockedTxnID), metric.ATTRIBUTE},
+			"blocked_pid":        {common_utils.GetStringValue(metricData.BlockedPID), metric.ATTRIBUTE},
 			"blocked_thread_id":  {common_utils.GetInt64Value(metricData.BlockedThreadID), metric.GAUGE},
+			"blocked_query_id":   {common_utils.GetStringValue(metricData.BlockedQueryID), metric.ATTRIBUTE},
+			"blocked_query":      {common_utils.GetStringValue(metricData.BlockedQuery), metric.ATTRIBUTE},
+			"blocked_status":     {common_utils.GetStringValue(metricData.BlockedQuery), metric.ATTRIBUTE},
 			"blocked_user":       {common_utils.GetStringValue(metricData.BlockedUser), metric.ATTRIBUTE},
 			"blocked_host":       {common_utils.GetStringValue(metricData.BlockedHost), metric.ATTRIBUTE},
-			"blocked_db":         {common_utils.GetStringValue(metricData.BlockedDB), metric.ATTRIBUTE},
+			"database_name":      {common_utils.GetStringValue(metricData.BlockedDB), metric.ATTRIBUTE},
 			"blocking_txn_id":    {common_utils.GetStringValue(metricData.BlockingTxnID), metric.ATTRIBUTE},
+			"blocking_pid":       {common_utils.GetStringValue(metricData.BlockingPID), metric.ATTRIBUTE},
 			"blocking_thread_id": {common_utils.GetInt64Value(metricData.BlockingThreadID), metric.GAUGE},
 			"blocking_user":      {common_utils.GetStringValue(metricData.BlockingUser), metric.ATTRIBUTE},
 			"blocking_host":      {common_utils.GetStringValue(metricData.BlockingHost), metric.ATTRIBUTE},
-			"blocking_db":        {common_utils.GetStringValue(metricData.BlockingDB), metric.ATTRIBUTE},
-			"blocked_query":      {common_utils.GetStringValue(metricData.BlockedQuery), metric.ATTRIBUTE},
+			"blocking_query_id":  {common_utils.GetStringValue(metricData.BlockingQueryID), metric.ATTRIBUTE},
 			"blocking_query":     {common_utils.GetStringValue(metricData.BlockingQuery), metric.ATTRIBUTE},
+			"blocking_status":    {common_utils.GetStringValue(metricData.BlockingQuery), metric.ATTRIBUTE},
 		}
 
 		for metricName, data := range metricsMap {

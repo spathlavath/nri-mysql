@@ -48,8 +48,6 @@ func setWaitEventMetrics(e *integration.Entity, args arguments.ArgumentList, met
 			Value      interface{}
 			MetricType metric.SourceType
 		}{
-
-			"total_wait_time_ms":   {metricData.TotalWaitTimeMs, metric.GAUGE},
 			"query_id":             {common_utils.GetStringValue(metricData.QueryID), metric.ATTRIBUTE},
 			"query_text":           {common_utils.GetStringValue(metricData.QueryText), metric.ATTRIBUTE},
 			"database_name":        {common_utils.GetStringValue(metricData.DatabaseName), metric.ATTRIBUTE},
@@ -58,6 +56,8 @@ func setWaitEventMetrics(e *integration.Entity, args arguments.ArgumentList, met
 			"instance_id":          {metricData.InstanceID, metric.ATTRIBUTE},
 			"wait_event_name":      {metricData.WaitEventName, metric.ATTRIBUTE},
 			"wait_event_count":     {int(metricData.WaitEventCount), metric.GAUGE},
+			"avg_wait_time_ms":     {metricData.AvgWaitTimeMs, metric.GAUGE},
+			"total_wait_time_ms":   {metricData.TotalWaitTimeMs, metric.GAUGE},
 		}
 		for name, metric := range metricsMap {
 			err := ms.SetMetric(name, metric.Value, metric.MetricType)
