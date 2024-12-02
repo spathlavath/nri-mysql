@@ -136,7 +136,7 @@ const (
 				WHEN wait_data.wait_event_name LIKE 'wait/lock/transaction/%' THEN 'Transaction Lock'
 				ELSE 'Other'
 			END AS wait_category,
-			ROUND(SUM(wait_data.TIMER_WAIT) / 1000000000000, 3) AS total_wait_time_ms,
+			ROUND(IFNULL(SUM(wait_data.TIMER_WAIT),0) / 1000000000000, 3) AS total_wait_time_ms,
 			SUM(ewsg.COUNT_STAR) AS wait_event_count,
 			ROUND((IFNULL(SUM(wait_data.TIMER_WAIT), 0) / 1000000000000) / IFNULL(SUM(ewsg.COUNT_STAR), 1), 3) AS avg_wait_time_ms,
 			schema_data.query_text,
