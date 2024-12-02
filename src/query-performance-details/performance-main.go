@@ -38,18 +38,18 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 		log.Errorf("Error populating execution plan details: %v", executionPlanMetricsErr)
 		return
 	}
-	fmt.Println("Execution plan details collected successfully.", executionPlanMetrics)
+	fmt.Println("Execution Plan details collected successfully.", executionPlanMetrics)
 
-	_, waitEventError := query_details.PopulateWaitEventMetrics(db, e, args)
+	waitEventMetrics, waitEventError := query_details.PopulateWaitEventMetrics(db, e, args)
 	if waitEventError != nil {
 		log.Errorf("Error populating wait event metrics: %v", waitEventError)
 		return
 	}
-
-	_, populateBlockingSessionMetricsError := query_details.PopulateBlockingSessionMetrics(db, e, args)
+	fmt.Println("Wait Event Metrics collected successfully.", waitEventMetrics)
+	blockingSessionMetrics, populateBlockingSessionMetricsError := query_details.PopulateBlockingSessionMetrics(db, e, args)
 	if populateBlockingSessionMetricsError != nil {
 		log.Errorf("Error populating blocking session metrics: %v", populateBlockingSessionMetricsError)
 		return
 	}
-
+	fmt.Println("Blocking Session Metrics collected successfully.", blockingSessionMetrics)
 }

@@ -107,7 +107,7 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 func setExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []map[string]interface{}) error {
 	for _, metricObject := range metrics {
 		// Create a new metric set for each row
-		ms := common_utils.CreateMetricSet(e, "MysqlQueryPlan", args)
+		ms := common_utils.CreateMetricSet(e, "MysqlQueryExecutionPlan", args)
 		metricsMap := map[string]struct {
 			Value      interface{}
 			MetricType metric.SourceType
