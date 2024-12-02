@@ -4,7 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
+
+	// "os"
 	"strconv"
 	"strings"
 	"time"
@@ -16,7 +17,7 @@ import (
 	common_utils "github.com/newrelic/nri-mysql/src/query-performance-details/common-utils"
 	performance_data_model "github.com/newrelic/nri-mysql/src/query-performance-details/performance-data-models"
 	performance_database "github.com/newrelic/nri-mysql/src/query-performance-details/performance-database"
-	"github.com/olekukonko/tablewriter"
+	// "github.com/olekukonko/tablewriter"
 )
 
 func PopulateExecutionPlans(db performance_database.DataSource, queries []performance_data_model.QueryPlanMetrics, e *integration.Entity, args arguments.ArgumentList) ([]map[string]interface{}, error) {
@@ -107,17 +108,27 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 	return events, nil
 }
 
+// TrimStringToLength trims a string to the specified length, handling multi-byte characters safely.
+func TrimStringToLength(s string, length int) string {
+	runes := []rune(s)
+	if len(runes) > length {
+		return string(runes[:length])
+	}
+	return s
+}
+
 func setExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []map[string]interface{}) error {
-	//ms := common_utils.CreateMetricSet(e, "MysqlQueryExecutionPlan", args)
+
 	for _, metricObject := range metrics {
 		// Create a new metric set for each row
 		ms := common_utils.CreateMetricSet(e, "MysqlQueryExecutionPlan", args)
+
 		metricsMap := map[string]struct {
 			Value      interface{}
 			MetricType metric.SourceType
 		}{
 			"query_id":       {common_utils.GetStringValueSafe(metricObject["query_id"]), metric.ATTRIBUTE},
-			"query_text":     {common_utils.GetStringValueSafe(metricObject["query_text"]), metric.ATTRIBUTE},
+			"query_text":     {TrimStringToLength(common_utils.GetStringValueSafe(metricObject["query_text"]), 20), metric.ATTRIBUTE},
 			"total_cost":     {common_utils.GetFloat64ValueSafe(metricObject["total_cost"]), metric.GAUGE},
 			"step_id":        {common_utils.GetInt64ValueSafe(metricObject["step_id"]), metric.GAUGE},
 			"Execution Step": {common_utils.GetStringValueSafe(metricObject["Execution Step"]), metric.ATTRIBUTE},
@@ -250,25 +261,25 @@ func extractTableMetrics(tableInfo map[string]interface{}, stepID int) ([]perfor
 	return tableMetrics, stepID
 }
 
-func formatAsTable(metrics []performance_data_model.TableMetrics) {
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"step_id", "Execution Step", "access_type", "rows_examined", "rows_produced", "filtered (%)", "read_cost", "eval_cost", "data_read", "extra_info"})
+// func formatAsTable(metrics []performance_data_model.TableMetrics) {
+// 	table := tablewriter.NewWriter(os.Stdout)
+// 	table.SetHeader([]string{"step_id", "Execution Step", "access_type", "rows_examined", "rows_produced", "filtered (%)", "read_cost", "eval_cost", "data_read", "extra_info"})
 
-	for _, metric := range metrics {
-		row := []string{
-			fmt.Sprintf("%d", metric.StepID),
-			metric.ExecutionStep,
-			metric.AccessType,
-			fmt.Sprintf("%d", metric.RowsExamined),
-			fmt.Sprintf("%d", metric.RowsProduced),
-			fmt.Sprintf("%.2f", metric.Filtered),
-			fmt.Sprintf("%.2f", metric.ReadCost),
-			fmt.Sprintf("%.2f", metric.EvalCost),
-			fmt.Sprintf("%.2f", metric.DataRead),
-			metric.ExtraInfo,
-		}
-		table.Append(row)
-	}
+// 	for _, metric := range metrics {
+// 		row := []string{
+// 			fmt.Sprintf("%d", metric.StepID),
+// 			metric.ExecutionStep,
+// 			metric.AccessType,
+// 			fmt.Sprintf("%d", metric.RowsExamined),
+// 			fmt.Sprintf("%d", metric.RowsProduced),
+// 			fmt.Sprintf("%.2f", metric.Filtered),
+// 			fmt.Sprintf("%.2f", metric.ReadCost),
+// 			fmt.Sprintf("%.2f", metric.EvalCost),
+// 			fmt.Sprintf("%.2f", metric.DataRead),
+// 			metric.ExtraInfo,
+// 		}
+// 		table.Append(row)
+// 	}
 
-	table.Render()
-}
+// 	table.Render()
+// }
