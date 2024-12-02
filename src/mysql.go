@@ -121,6 +121,7 @@ func main() {
 	// New functionality
 	if args.EnableQueryPerformanceMonitoring {
 		query_performance_details.PopulateQueryPerformanceMetrics(args, e)
+		fmt.Print("qqqqqqqq")
 	}
 
 	fatalIfErr(i.Publish())
