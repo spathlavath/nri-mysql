@@ -105,6 +105,7 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 		fmt.Println("Error setting execution plan metrics: ", planErr)
 		log.Error("Error setting value for: %v", planErr)
 	}
+	fmt.Println("events------", events)
 	return events, nil
 }
 
