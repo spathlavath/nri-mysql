@@ -33,12 +33,12 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 	}
 	fmt.Println("Individual Query details collected successfully.", individualQueryDetails)
 
-	executionPlanMetrics, executionPlanMetricsErr := query_details.PopulateExecutionPlans(db, individualQueryDetails, e, args)
+	_, executionPlanMetricsErr := query_details.PopulateExecutionPlans(db, individualQueryDetails, e, args)
 	if executionPlanMetricsErr != nil {
 		log.Errorf("Error populating execution plan details: %v", executionPlanMetricsErr)
 		return
 	}
-	fmt.Println("Execution Plan details collected successfully.", executionPlanMetrics)
+	// fmt.Println("Execution Plan details collected successfully.", executionPlanMetrics)
 
 	// waitEventMetrics, waitEventError := query_details.PopulateWaitEventMetrics(db, e, args)
 	// if waitEventError != nil {
