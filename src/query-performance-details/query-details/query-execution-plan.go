@@ -113,39 +113,42 @@ func setExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 	fmt.Println("long time no see")
 	// ms := common_utils.CreateMetricSet(e, "executionplan", args)
 	// ms.SetMetric("query_id", "hiii", metric.ATTRIBUTE)
-	for _, metricObject := range metrics {
-		// Create a new metric set for each row
-		ms := common_utils.CreateMetricSet(e, "MysqlQueryExecutionPlanV1", args)
-		metricsMap := map[string]struct {
-			Value      interface{}
-			MetricType metric.SourceType
-		}{
-			"query_id":       {common_utils.GetStringValueSafe(metricObject["query_id"]), metric.ATTRIBUTE},
-			"query_text":     {common_utils.GetStringValueSafe(metricObject["query_text"]), metric.ATTRIBUTE},
-			"total_cost":     {common_utils.GetFloat64ValueSafe(metricObject["total_cost"]), metric.GAUGE},
-			"step_id":        {common_utils.GetInt64ValueSafe(metricObject["step_id"]), metric.GAUGE},
-			"Execution Step": {common_utils.GetStringValueSafe(metricObject["Execution Step"]), metric.ATTRIBUTE},
-			"access_type":    {common_utils.GetStringValueSafe(metricObject["access_type"]), metric.ATTRIBUTE},
-			"rows_examined":  {common_utils.GetInt64ValueSafe(metricObject["rows_examined"]), metric.GAUGE},
-			"rows_produced":  {common_utils.GetInt64ValueSafe(metricObject["rows_produced"]), metric.GAUGE},
-			"filtered (%)":   {common_utils.GetFloat64ValueSafe(metricObject["filtered (%)"]), metric.GAUGE},
-			"read_cost":      {common_utils.GetFloat64ValueSafe(metricObject["read_cost"]), metric.GAUGE},
-			"eval_cost":      {common_utils.GetFloat64ValueSafe(metricObject["eval_cost"]), metric.GAUGE},
-			"data_read":      {common_utils.GetFloat64ValueSafe(metricObject["data_read"]), metric.GAUGE},
-			"extra_info":     {common_utils.GetStringValueSafe(metricObject["extra_info"]), metric.ATTRIBUTE},
-		}
+	ms2 := common_utils.CreateMetricSet(e, "MysqlQueryExecutionPlanV1", args)
+	ms2.SetMetric("query_id", "hiii", metric.ATTRIBUTE)
+	fmt.Printf("Hey")
+	// for _, metricObject := range metrics {
+	// 	// Create a new metric set for each row
+	// 	ms := common_utils.CreateMetricSet(e, "MysqlQueryExecutionPlanV1", args)
+	// 	metricsMap := map[string]struct {
+	// 		Value      interface{}
+	// 		MetricType metric.SourceType
+	// 	}{
+	// 		"query_id":       {common_utils.GetStringValueSafe(metricObject["query_id"]), metric.ATTRIBUTE},
+	// 		"query_text":     {common_utils.GetStringValueSafe(metricObject["query_text"]), metric.ATTRIBUTE},
+	// 		"total_cost":     {common_utils.GetFloat64ValueSafe(metricObject["total_cost"]), metric.GAUGE},
+	// 		"step_id":        {common_utils.GetInt64ValueSafe(metricObject["step_id"]), metric.GAUGE},
+	// 		"Execution Step": {common_utils.GetStringValueSafe(metricObject["Execution Step"]), metric.ATTRIBUTE},
+	// 		"access_type":    {common_utils.GetStringValueSafe(metricObject["access_type"]), metric.ATTRIBUTE},
+	// 		"rows_examined":  {common_utils.GetInt64ValueSafe(metricObject["rows_examined"]), metric.GAUGE},
+	// 		"rows_produced":  {common_utils.GetInt64ValueSafe(metricObject["rows_produced"]), metric.GAUGE},
+	// 		"filtered (%)":   {common_utils.GetFloat64ValueSafe(metricObject["filtered (%)"]), metric.GAUGE},
+	// 		"read_cost":      {common_utils.GetFloat64ValueSafe(metricObject["read_cost"]), metric.GAUGE},
+	// 		"eval_cost":      {common_utils.GetFloat64ValueSafe(metricObject["eval_cost"]), metric.GAUGE},
+	// 		"data_read":      {common_utils.GetFloat64ValueSafe(metricObject["data_read"]), metric.GAUGE},
+	// 		"extra_info":     {common_utils.GetStringValueSafe(metricObject["extra_info"]), metric.ATTRIBUTE},
+	// 	}
 
-		for name, metricData := range metricsMap {
-			err := ms.SetMetric(name, metricData.Value, metricData.MetricType)
-			if err != nil {
-				log.Error("Error setting value for %s: %v", name, err)
-				continue
-			}
-		}
+	// 	for name, metricData := range metricsMap {
+	// 		err := ms.SetMetric(name, metricData.Value, metricData.MetricType)
+	// 		if err != nil {
+	// 			// log.Error("Error setting value for %s: %v", name, err)
+	// 			continue
+	// 		}
+	// 	}
 
-		// Print the metric set for debugging
-		// common_utils.PrintMetricSet(ms)
-	}
+	// Print the metric set for debugging
+	// common_utils.PrintMetricSet(ms)
+	// }
 
 	return nil
 }
