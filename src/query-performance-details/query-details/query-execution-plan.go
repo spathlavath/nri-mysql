@@ -67,7 +67,6 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 		metrics := extractMetricsFromPlan(execPlan)
 
 		baseIngestionData := map[string]interface{}{
-			"eventType":  "MySQLExecutionPlan",
 			"query_id":   query.QueryID,
 			"query_text": query.AnonymizedQueryText,
 			"total_cost": metrics.TotalCost,
