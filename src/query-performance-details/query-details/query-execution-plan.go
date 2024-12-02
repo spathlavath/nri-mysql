@@ -4,22 +4,23 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/newrelic/infra-integrations-sdk/v3/data/metric"
-	"github.com/newrelic/infra-integrations-sdk/v3/integration"
-	"github.com/newrelic/infra-integrations-sdk/v3/log"
-	arguments "github.com/newrelic/nri-mysql/src/args"
-	"github.com/newrelic/nri-mysql/src/query-performance-details/common-utils"
-	performance_data_model "github.com/newrelic/nri-mysql/src/query-performance-details/performance-data-models"
-	performance_database "github.com/newrelic/nri-mysql/src/query-performance-details/performance-database"
-	"github.com/olekukonko/tablewriter"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/newrelic/infra-integrations-sdk/v3/data/metric"
+	"github.com/newrelic/infra-integrations-sdk/v3/integration"
+	"github.com/newrelic/infra-integrations-sdk/v3/log"
+	arguments "github.com/newrelic/nri-mysql/src/args"
+	common_utils "github.com/newrelic/nri-mysql/src/query-performance-details/common-utils"
+	performance_data_model "github.com/newrelic/nri-mysql/src/query-performance-details/performance-data-models"
+	performance_database "github.com/newrelic/nri-mysql/src/query-performance-details/performance-database"
+	"github.com/olekukonko/tablewriter"
 )
 
 func PopulateExecutionPlans(db performance_database.DataSource, queries []performance_data_model.QueryPlanMetrics, e *integration.Entity, args arguments.ArgumentList) ([]map[string]interface{}, error) {
-	supportedStatements := map[string]bool{"SELECT": true, "INSERT": true, "UPDATE": true, "DELETE": true}
+	supportedStatements := map[string]bool{"SELECT": true, "INSERT": true, "UPDATE": true, "DELETE": true, "WITH": true}
 	var events []map[string]interface{}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
