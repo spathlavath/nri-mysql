@@ -3,13 +3,14 @@ package common_utils
 import (
 	"database/sql"
 	"fmt"
+	"strconv"
+	"strings"
+
 	"github.com/newrelic/infra-integrations-sdk/v3/data/attribute"
 	"github.com/newrelic/infra-integrations-sdk/v3/data/metric"
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	arguments "github.com/newrelic/nri-mysql/src/args"
-	"strconv"
-	"strings"
 )
 
 func GetStringValue(ns sql.NullString) string {
@@ -20,7 +21,7 @@ func GetStringValue(ns sql.NullString) string {
 }
 
 func CreateMetricSet(e *integration.Entity, sampleName string, args arguments.ArgumentList) *metric.Set {
-	return metricSet(
+	return MetricSet(
 		e,
 		sampleName,
 		args.Hostname,
@@ -29,7 +30,7 @@ func CreateMetricSet(e *integration.Entity, sampleName string, args arguments.Ar
 	)
 }
 
-func metricSet(e *integration.Entity, eventType, hostname string, port int, remoteMonitoring bool) *metric.Set {
+func MetricSet(e *integration.Entity, eventType, hostname string, port int, remoteMonitoring bool) *metric.Set {
 	if remoteMonitoring {
 		return e.NewMetricSet(
 			eventType,
