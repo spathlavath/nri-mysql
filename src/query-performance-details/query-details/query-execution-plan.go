@@ -108,27 +108,17 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 	return events, nil
 }
 
-// TrimStringToLength trims a string to the specified length, handling multi-byte characters safely.
-func TrimStringToLength(s string, length int) string {
-	runes := []rune(s)
-	if len(runes) > length {
-		return string(runes[:length])
-	}
-	return s
-}
-
 func setExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []map[string]interface{}) error {
 
 	for _, metricObject := range metrics {
 		// Create a new metric set for each row
 		ms := common_utils.CreateMetricSet(e, "MysqlQueryExecutionPlan", args)
-
 		metricsMap := map[string]struct {
 			Value      interface{}
 			MetricType metric.SourceType
 		}{
 			"query_id":       {common_utils.GetStringValueSafe(metricObject["query_id"]), metric.ATTRIBUTE},
-			"query_text":     {TrimStringToLength(common_utils.GetStringValueSafe(metricObject["query_text"]), 20), metric.ATTRIBUTE},
+			"query_text":     {common_utils.GetStringValueSafe(metricObject["query_text"]), metric.ATTRIBUTE},
 			"total_cost":     {common_utils.GetFloat64ValueSafe(metricObject["total_cost"]), metric.GAUGE},
 			"step_id":        {common_utils.GetInt64ValueSafe(metricObject["step_id"]), metric.GAUGE},
 			"Execution Step": {common_utils.GetStringValueSafe(metricObject["Execution Step"]), metric.ATTRIBUTE},
