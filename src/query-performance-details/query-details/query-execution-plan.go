@@ -111,7 +111,7 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 
 func setExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []map[string]interface{}) error {
 	fmt.Println("long time no see")
-	ms := common_utils.CreateMetricSet(e, "MysqlQueryExecutionPlanV1", args)
+	ms := common_utils.CreateMetricSet(e, "executionplan", args)
 	ms.SetMetric("query_id", "hiii", metric.ATTRIBUTE)
 	// for _, metricObject := range metrics {
 	// 	// Create a new metric set for each row
