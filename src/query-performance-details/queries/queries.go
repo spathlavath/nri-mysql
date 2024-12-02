@@ -134,7 +134,6 @@ const (
 			END AS wait_category,
 			ROUND(SUM(wait_data.TIMER_WAIT) / 1000000000000, 3) AS total_wait_time_ms,
 			SUM(wait_data.COUNT_STAR) AS wait_event_count,
-			ROUND((SUM(wait_data.TIMER_WAIT) / 1000000000000) / SUM(wait_data.COUNT_STAR), 3) AS avg_wait_time_ms,
 			schema_data.query_text,
 			DATE_FORMAT(UTC_TIMESTAMP(), '%Y-%m-%dT%H:%i:%sZ') AS collection_timestamp
 		FROM (
@@ -143,7 +142,6 @@ const (
 				OBJECT_INSTANCE_BEGIN AS instance_id,
 				EVENT_NAME AS wait_event_name,
 				TIMER_WAIT,
-				1 AS COUNT_STAR
 			FROM performance_schema.events_waits_history_long
 			UNION ALL
 			SELECT 
@@ -151,7 +149,6 @@ const (
 				OBJECT_INSTANCE_BEGIN AS instance_id,
 				EVENT_NAME AS wait_event_name,
 				TIMER_WAIT,
-				1 AS COUNT_STAR
 			FROM performance_schema.events_waits_current
 		) AS wait_data
 		JOIN (

@@ -56,7 +56,6 @@ func setWaitEventMetrics(e *integration.Entity, args arguments.ArgumentList, met
 			"instance_id":          {metricData.InstanceID, metric.ATTRIBUTE},
 			"wait_event_name":      {metricData.WaitEventName, metric.ATTRIBUTE},
 			"wait_event_count":     {int(metricData.WaitEventCount), metric.GAUGE},
-			"avg_wait_time_ms":     {metricData.AvgWaitTimeMs, metric.GAUGE},
 			"total_wait_time_ms":   {metricData.TotalWaitTimeMs, metric.GAUGE},
 		}
 		for name, metric := range metricsMap {
