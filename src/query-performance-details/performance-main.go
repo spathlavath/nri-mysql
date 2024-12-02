@@ -1,8 +1,6 @@
 package query_performance_details
 
 import (
-	"fmt"
-
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	arguments "github.com/newrelic/nri-mysql/src/args"
 	common_utils "github.com/newrelic/nri-mysql/src/query-performance-details/common-utils"
@@ -28,14 +26,14 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 
 	individualQueryDetails, individualQueryDetailsErr := query_details.PopulateIndividualQueryDetails(db, queryIdList, e, args)
 	if individualQueryDetailsErr != nil {
-		log.Errorf("Error populating individual query details: %v", individualQueryDetailsErr)
+		// log.Errorf("Error populating individual query details: %v", individualQueryDetailsErr)
 		return
 	}
-	fmt.Println("Individual Query details collected successfully.", individualQueryDetails)
+	// fmt.Println("Individual Query details collected successfully.", individualQueryDetails)
 
 	_, executionPlanMetricsErr := query_details.PopulateExecutionPlans(db, individualQueryDetails, e, args)
 	if executionPlanMetricsErr != nil {
-		log.Errorf("Error populating execution plan details: %v", executionPlanMetricsErr)
+		// log.Errorf("Error populating execution plan details: %v", executionPlanMetricsErr)
 		return
 	}
 	// fmt.Println("Execution Plan details collected successfully.", executionPlanMetrics)

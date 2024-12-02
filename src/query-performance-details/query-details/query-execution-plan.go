@@ -32,19 +32,19 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 		upperQueryText := strings.ToUpper(queryText)
 
 		if !supportedStatements[strings.Split(upperQueryText, " ")[0]] {
-			fmt.Printf("Skipping unsupported query for EXPLAIN: %s\n", queryText)
+			// fmt.Printf("Skipping unsupported query for EXPLAIN: %s\n", queryText)
 			continue
 		}
 
 		if strings.Contains(queryText, "?") {
-			fmt.Printf("Skipping query with placeholders for EXPLAIN: %s\n", queryText)
+			// fmt.Printf("Skipping query with placeholders for EXPLAIN: %s\n", queryText)
 			continue
 		}
 
 		execPlanQuery := fmt.Sprintf("EXPLAIN FORMAT=JSON %s", queryText)
 		rows, err := db.QueryxContext(ctx, execPlanQuery)
 		if err != nil {
-			log.Error("Error executing EXPLAIN for query '%s': %v\n", queryText, err)
+			// log.Error("Error executing EXPLAIN for query '%s': %v\n", queryText, err)
 			continue
 		}
 		defer rows.Close()
@@ -53,7 +53,7 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 		if rows.Next() {
 			err := rows.Scan(&execPlanJSON)
 			if err != nil {
-				log.Error("Failed to scan execution plan: %v", err)
+				// log.Error("Failed to scan execution plan: %v", err)
 				continue
 			}
 		}
@@ -61,7 +61,7 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 		var execPlan map[string]interface{}
 		err = json.Unmarshal([]byte(execPlanJSON), &execPlan)
 		if err != nil {
-			log.Error("Failed to unmarshal execution plan: %v", err)
+			// log.Error("Failed to unmarshal execution plan: %v", err)
 			continue
 		}
 		// fmt.Println("Query execPlan------", execPlan)
@@ -102,8 +102,8 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 	}
 	planErr := setExecutionPlanMetrics(e, args, events)
 	if planErr != nil {
-		fmt.Println("Error setting execution plan metrics: ", planErr)
-		log.Error("Error setting value for: %v", planErr)
+		// fmt.Println("Error setting execution plan metrics: ", planErr)
+		// log.Error("Error setting value for: %v", planErr)
 	}
 	// fmt.Println("events------", events)
 	return events, nil
