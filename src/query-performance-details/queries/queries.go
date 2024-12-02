@@ -37,8 +37,6 @@ const (
 			AND QUERY_SAMPLE_TEXT NOT LIKE '%DIGEST_TEXT%'
 			AND QUERY_SAMPLE_TEXT NOT LIKE 'EXPLAIN %'
 			AND QUERY_SAMPLE_TEXT NOT LIKE 'START %'
-            AND QUERY_SAMPLE_TEXT NOT LIKE '%PERFORMANCE_SCHEMA%'
-            AND QUERY_SAMPLE_TEXT NOT LIKE '%INFORMATION_SCHEMA%'
         ORDER BY avg_elapsed_time_ms DESC;
     `
 	CurrentRunningQueriesSearch = `
@@ -62,8 +60,6 @@ const (
 			AND SQL_TEXT NOT LIKE '%%DIGEST_TEXT%%'
 			AND SQL_TEXT NOT LIKE 'START %%'
             AND SQL_TEXT NOT LIKE 'EXPLAIN %%'
-            AND SQL_TEXT NOT LIKE '%%PERFORMANCE_SCHEMA%%'
-            AND SQL_TEXT NOT LIKE '%%INFORMATION_SCHEMA%%'
 			AND TIMER_WAIT / 1000000 > ?
 		ORDER BY TIMER_WAIT DESC;
 	`
@@ -88,8 +84,6 @@ const (
 			AND SQL_TEXT NOT LIKE '%%DIGEST_TEXT%%'
 			AND SQL_TEXT NOT LIKE 'START %%'
             AND SQL_TEXT NOT LIKE 'EXPLAIN %%'
-            AND SQL_TEXT NOT LIKE '%%PERFORMANCE_SCHEMA%%'
-            AND SQL_TEXT NOT LIKE '%%INFORMATION_SCHEMA%%'
 			AND TIMER_WAIT / 1000000 > ?
 		ORDER BY TIMER_WAIT DESC;
 	`
@@ -114,8 +108,6 @@ const (
 			AND SQL_TEXT NOT LIKE '%%DIGEST_TEXT%%'
 			AND SQL_TEXT NOT LIKE 'START %%'
             AND SQL_TEXT NOT LIKE 'EXPLAIN %%'
-            AND SQL_TEXT NOT LIKE '%%PERFORMANCE_SCHEMA%%'
-            AND SQL_TEXT NOT LIKE '%%INFORMATION_SCHEMA%%'
 			AND TIMER_WAIT / 1000000 > ?
 		ORDER BY TIMER_WAIT DESC;
 	`
@@ -163,6 +155,16 @@ const (
 				CURRENT_SCHEMA AS database_name,
 				DIGEST_TEXT AS query_text
 			FROM performance_schema.events_statements_history_long
+			WHERE CURRENT_SCHEMA NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
+				AND SQL_TEXT NOT LIKE '%SET %'
+				AND SQL_TEXT NOT LIKE '%SHOW %'
+				AND SQL_TEXT NOT LIKE '%INFORMATION_SCHEMA%'
+				AND SQL_TEXT NOT LIKE '%PERFORMANCE_SCHEMA%'
+				AND SQL_TEXT NOT LIKE '%mysql%'
+				AND SQL_TEXT NOT LIKE '%DIGEST%'
+				AND SQL_TEXT NOT LIKE '%DIGEST_TEXT%'
+				AND SQL_TEXT NOT LIKE 'START %'
+				AND SQL_TEXT NOT LIKE 'EXPLAIN %'
 			UNION ALL
 			SELECT 
 				THREAD_ID,
@@ -170,6 +172,16 @@ const (
 				CURRENT_SCHEMA AS database_name,
 				DIGEST_TEXT AS query_text
 			FROM performance_schema.events_statements_current
+			WHERE CURRENT_SCHEMA NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
+				AND SQL_TEXT NOT LIKE '%SET %'
+				AND SQL_TEXT NOT LIKE '%SHOW %'
+				AND SQL_TEXT NOT LIKE '%INFORMATION_SCHEMA%'
+				AND SQL_TEXT NOT LIKE '%PERFORMANCE_SCHEMA%'
+				AND SQL_TEXT NOT LIKE '%mysql%'
+				AND SQL_TEXT NOT LIKE '%DIGEST%'
+				AND SQL_TEXT NOT LIKE '%DIGEST_TEXT%'
+				AND SQL_TEXT NOT LIKE 'START %'
+				AND SQL_TEXT NOT LIKE 'EXPLAIN %'
 		) AS schema_data
 		ON wait_data.THREAD_ID = schema_data.THREAD_ID
 		LEFT JOIN performance_schema.events_waits_summary_global_by_event_name ewsg
