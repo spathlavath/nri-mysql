@@ -75,7 +75,7 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 		}
 
 		events = append(events, baseIngestionData)
-		formatAsTable(metrics.TableMetrics)
+		// formatAsTable(metrics.TableMetrics)
 
 		for _, metric := range metrics.TableMetrics {
 			tableIngestionData := make(map[string]interface{})
@@ -136,7 +136,7 @@ func setExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 		}
 
 		// Print the metric set for debugging
-		common_utils.PrintMetricSet(ms)
+		// common_utils.PrintMetricSet(ms)
 	}
 
 	return nil
