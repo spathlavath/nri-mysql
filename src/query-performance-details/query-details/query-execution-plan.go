@@ -112,7 +112,7 @@ func setExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 
 	for _, metricObject := range metrics {
 		// Create a new metric set for each row
-		ms := common_utils.CreateMetricSet(e, "MysqlQueryExecutionPlan", args)
+		ms := common_utils.CreateMetricSet(e, "MysqlQueryExecutionPlanV1", args)
 		metricsMap := map[string]struct {
 			Value      interface{}
 			MetricType metric.SourceType
