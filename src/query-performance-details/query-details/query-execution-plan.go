@@ -156,68 +156,77 @@ func setExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 	return nil
 }
 
+// extractMetricsFromPlan processes the top-level query block and recursively extracts metrics.
 func extractMetricsFromPlan(plan map[string]interface{}) performance_data_model.ExecutionPlan {
 	var metrics performance_data_model.ExecutionPlan
-	queryBlock, _ := plan["query_block"].(map[string]interface{})
 	stepID := 0
-	if costInfo, exists := queryBlock["cost_info"].(map[string]interface{}); exists {
-		metrics.TotalCost = getCostSafely(costInfo, "query_cost")
-	}
 
-	if nestedLoop, exists := queryBlock["nested_loop"].([]interface{}); exists {
-		for _, nested := range nestedLoop {
-			if nestedMap, ok := nested.(map[string]interface{}); ok {
-				nestedMetrics, newStepID := extractTableMetrics(nestedMap, stepID)
-				metrics.TableMetrics = append(metrics.TableMetrics, nestedMetrics...)
-				stepID = newStepID
-			} else {
-				log.Error("Unexpected type for nested element: %T", nested)
-			}
-		}
-	}
-
-	if orderingOp, exists := queryBlock["ordering_operation"].(map[string]interface{}); exists {
-		if groupingOp, exists := orderingOp["grouping_operation"].(map[string]interface{}); exists {
-			if nestedLoop, exists := groupingOp["nested_loop"].([]interface{}); exists {
-				for _, nested := range nestedLoop {
-					if nestedMap, ok := nested.(map[string]interface{}); ok {
-						nestedMetrics, newStepID := extractTableMetrics(nestedMap, stepID)
-						metrics.TableMetrics = append(metrics.TableMetrics, nestedMetrics...)
-						stepID = newStepID
-					} else {
-						log.Error("Unexpected type for nested element in grouping_operation: %T", nested)
-					}
-				}
-			}
-		}
-	}
-
-	if table, exists := queryBlock["table"].(map[string]interface{}); exists {
-		metricsTable, _ := extractTableMetrics(map[string]interface{}{"table": table}, stepID)
-		metrics.TableMetrics = append(metrics.TableMetrics, metricsTable...)
+	if queryBlock, exists := plan["query_block"].(map[string]interface{}); exists {
+		extractMetricsFromQueryBlock(queryBlock, &metrics, &stepID)
 	}
 
 	return metrics
 }
 
-func getCostSafely(costInfo map[string]interface{}, key string) float64 {
-	if costValue, ok := costInfo[key]; ok {
-		switch v := costValue.(type) {
-		case float64:
-			return v
-		case string:
-			parsedVal, err := strconv.ParseFloat(v, 64)
-			if err == nil {
-				return parsedVal
+// extractMetricsFromQueryBlock processes a query block and extracts metrics, handling nested structures.
+func extractMetricsFromQueryBlock(queryBlock map[string]interface{}, metrics *performance_data_model.ExecutionPlan, stepID *int) {
+	if costInfo, exists := queryBlock["cost_info"].(map[string]interface{}); exists {
+		metrics.TotalCost += getCostSafely(costInfo, "query_cost")
+	}
+
+	// Process tables directly in the query block
+	if table, exists := queryBlock["table"].(map[string]interface{}); exists {
+		tableMetrics, _ := extractTableMetrics(map[string]interface{}{"table": table}, *stepID)
+		metrics.TableMetrics = append(metrics.TableMetrics, tableMetrics...)
+	}
+
+	// Process nested loops
+	if nestedLoop, exists := queryBlock["nested_loop"].([]interface{}); exists {
+		for _, nested := range nestedLoop {
+			if nestedMap, ok := nested.(map[string]interface{}); ok {
+				extractMetricsFromQueryBlock(nestedMap, metrics, stepID)
 			}
-			log.Error("Failed to parse string to float64 for key %q: %v", key, err)
-		default:
-			log.Error("Unhandled type for key %q: %T", key, costValue)
 		}
 	}
-	return 0.0 // Default to 0.0 if key doesn't exist or type doesn't match
+
+	// Process ordering operations
+	if orderingOp, exists := queryBlock["ordering_operation"].(map[string]interface{}); exists {
+		extractMetricsFromQueryBlock(orderingOp, metrics, stepID)
+	}
+
+	// Process select list subqueries
+	if subqueries, exists := queryBlock["select_list_subqueries"].([]interface{}); exists {
+		for _, subquery := range subqueries {
+			if subqueryMap, ok := subquery.(map[string]interface{}); ok {
+				if subQueryBlock, exists := subqueryMap["query_block"].(map[string]interface{}); exists {
+					extractMetricsFromQueryBlock(subQueryBlock, metrics, stepID)
+				}
+			}
+		}
+	}
+
+	// Process materialized subqueries
+	if materializedSubquery, exists := queryBlock["materialized_from_subquery"].(map[string]interface{}); exists {
+		if subQueryBlock, exists := materializedSubquery["query_block"].(map[string]interface{}); exists {
+			extractMetricsFromQueryBlock(subQueryBlock, metrics, stepID)
+		}
+	}
+
+	// Process union results
+	if unionResult, exists := queryBlock["union_result"].(map[string]interface{}); exists {
+		if querySpecifications, exists := unionResult["query_specifications"].([]interface{}); exists {
+			for _, querySpec := range querySpecifications {
+				if querySpecMap, ok := querySpec.(map[string]interface{}); ok {
+					if subQueryBlock, exists := querySpecMap["query_block"].(map[string]interface{}); exists {
+						extractMetricsFromQueryBlock(subQueryBlock, metrics, stepID)
+					}
+				}
+			}
+		}
+	}
 }
 
+// extractTableMetrics extracts metrics from a table structure.
 func extractTableMetrics(tableInfo map[string]interface{}, stepID int) ([]performance_data_model.TableMetrics, int) {
 	var tableMetrics []performance_data_model.TableMetrics
 	stepID++
@@ -245,19 +254,58 @@ func extractTableMetrics(tableInfo map[string]interface{}, stepID int) ([]perfor
 		tableMetrics = append(tableMetrics, metrics)
 	}
 
+	// Handle nested structures within the table
 	if nestedLoop, exists := tableInfo["nested_loop"].([]interface{}); exists {
 		for _, nested := range nestedLoop {
 			if nestedMap, ok := nested.(map[string]interface{}); ok {
-				metrics, newStepID := extractTableMetrics(nestedMap, stepID)
-				tableMetrics = append(tableMetrics, metrics...)
+				nestedMetrics, newStepID := extractTableMetrics(nestedMap, stepID)
+				tableMetrics = append(tableMetrics, nestedMetrics...)
 				stepID = newStepID
-			} else {
-				log.Error("Unexpected type for nested element: %T", nested)
+			}
+		}
+	}
+
+	// Handle materialized subqueries within the table
+	if materializedSubquery, exists := tableInfo["materialized_from_subquery"].(map[string]interface{}); exists {
+		if subQueryBlock, exists := materializedSubquery["query_block"].(map[string]interface{}); exists {
+			subMetrics := extractMetricsFromPlan(map[string]interface{}{"query_block": subQueryBlock})
+			tableMetrics = append(tableMetrics, subMetrics.TableMetrics...)
+		}
+	}
+
+	// Handle union results within the table
+	if unionResult, exists := tableInfo["union_result"].(map[string]interface{}); exists {
+		if querySpecifications, exists := unionResult["query_specifications"].([]interface{}); exists {
+			for _, querySpec := range querySpecifications {
+				if querySpecMap, ok := querySpec.(map[string]interface{}); ok {
+					if subQueryBlock, exists := querySpecMap["query_block"].(map[string]interface{}); exists {
+						subMetrics := extractMetricsFromPlan(map[string]interface{}{"query_block": subQueryBlock})
+						tableMetrics = append(tableMetrics, subMetrics.TableMetrics...)
+					}
+				}
 			}
 		}
 	}
 
 	return tableMetrics, stepID
+}
+
+func getCostSafely(costInfo map[string]interface{}, key string) float64 {
+	if costValue, ok := costInfo[key]; ok {
+		switch v := costValue.(type) {
+		case float64:
+			return v
+		case string:
+			parsedVal, err := strconv.ParseFloat(v, 64)
+			if err == nil {
+				return parsedVal
+			}
+			log.Error("Failed to parse string to float64 for key %q: %v", key, err)
+		default:
+			log.Error("Unhandled type for key %q: %T", key, costValue)
+		}
+	}
+	return 0.0 // Default to 0.0 if key doesn't exist or type doesn't match
 }
 
 // func formatAsTable(metrics []performance_data_model.TableMetrics) {
