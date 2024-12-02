@@ -141,14 +141,14 @@ const (
 				THREAD_ID,
 				OBJECT_INSTANCE_BEGIN AS instance_id,
 				EVENT_NAME AS wait_event_name,
-				TIMER_WAIT,
+				TIMER_WAIT
 			FROM performance_schema.events_waits_history_long
 			UNION ALL
 			SELECT 
 				THREAD_ID,
 				OBJECT_INSTANCE_BEGIN AS instance_id,
 				EVENT_NAME AS wait_event_name,
-				TIMER_WAIT,
+				TIMER_WAIT
 			FROM performance_schema.events_waits_current
 		) AS wait_data
 		JOIN (
