@@ -185,7 +185,9 @@ func extractMetricsFromQueryBlock(queryBlock map[string]interface{}, metrics *pe
 
 	// Process ordering operations
 	if orderingOp, exists := queryBlock["ordering_operation"].(map[string]interface{}); exists {
-		extractMetricsFromQueryBlock(orderingOp, metrics, stepID)
+		if groupingOp, exists := orderingOp["grouping_operation"].(map[string]interface{}); exists {
+			extractMetricsFromQueryBlock(groupingOp, metrics, stepID)
+		}
 	}
 
 	// Process windowing operations
