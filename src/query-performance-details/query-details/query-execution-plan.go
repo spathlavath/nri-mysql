@@ -170,8 +170,9 @@ func extractMetricsFromQueryBlock(queryBlock map[string]interface{}, metrics *pe
 
 	// Process tables directly in the query block
 	if table, exists := queryBlock["table"].(map[string]interface{}); exists {
-		tableMetrics, _ := extractTableMetrics(map[string]interface{}{"table": table}, *stepID)
+		tableMetrics, newStepID := extractTableMetrics(map[string]interface{}{"table": table}, *stepID)
 		metrics.TableMetrics = append(metrics.TableMetrics, tableMetrics...)
+		*stepID = newStepID
 	}
 
 	// Process nested loops
