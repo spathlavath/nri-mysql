@@ -99,7 +99,11 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 	if len(events) == 0 {
 		return []map[string]interface{}{}, nil
 	}
-	setExecutionPlanMetrics(e, args, events)
+	planErr := setExecutionPlanMetrics(e, args, events)
+	if planErr != nil {
+		fmt.Println("Error setting execution plan metrics: ", planErr)
+		log.Error("Error setting value for: %v", planErr)
+	}
 	return events, nil
 }
 
