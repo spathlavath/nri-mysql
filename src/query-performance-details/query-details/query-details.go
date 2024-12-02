@@ -131,9 +131,9 @@ func setIndividualQueryMetrics(e *integration.Entity, args arguments.ArgumentLis
 			"query_id":      {metricObject.QueryID, metric.ATTRIBUTE},
 			"query_text":    {metricObject.AnonymizedQueryText, metric.ATTRIBUTE},
 			"event_id":      {metricObject.EventID, metric.ATTRIBUTE},
-			"timer_wait":    {metricObject.TimerWait, metric.ATTRIBUTE},
-			"rows_sent":     {metricObject.RowsSent, metric.ATTRIBUTE},
-			"rows_examined": {metricObject.RowsExamined, metric.ATTRIBUTE},
+			"timer_wait":    {metricObject.TimerWait, metric.DELTA},
+			"rows_sent":     {metricObject.RowsSent, metric.DELTA},
+			"rows_examined": {metricObject.RowsExamined, metric.GAUGE},
 		}
 
 		for name, metric := range metricsMap {

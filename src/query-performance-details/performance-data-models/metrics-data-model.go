@@ -1,6 +1,9 @@
 package performance_data_models
 
-import "database/sql"
+import (
+	"database/sql"
+	"time"
+)
 
 type QueryMetrics struct {
 	QueryID             string         `json:"query_id" db:"query_id"`
@@ -18,13 +21,13 @@ type QueryMetrics struct {
 }
 
 type QueryPlanMetrics struct {
-	QueryID             string `json:"query_id" db:"query_id"`
-	AnonymizedQueryText string `json:"query_text" db:"query_text"`
-	QueryText           string `json:"query_sample_text" db:"query_sample_text"`
-	EventID             uint64 `json:"event_id" db:"event_id"`
-	TimerWait           int64  `json:"timer_wait" db:"timer_wait"`
-	RowsSent            int64  `json:"rows_sent" db:"rows_sent"`
-	RowsExamined        int64  `json:"rows_examined" db:"rows_examined"`
+	QueryID             string        `json:"query_id" db:"query_id"`
+	AnonymizedQueryText string        `json:"query_text" db:"query_text"`
+	QueryText           string        `json:"query_sample_text" db:"query_sample_text"`
+	EventID             int64         `json:"event_id" db:"event_id"`
+	TimerWait           time.Duration `json:"timer_wait" db:"timer_wait"`
+	RowsSent            int64         `json:"rows_sent" db:"rows_sent"`
+	RowsExamined        int64         `json:"rows_examined" db:"rows_examined"`
 }
 
 type ExecutionPlan struct {
