@@ -8,8 +8,8 @@ const (
             SCHEMA_NAME AS database_name,
             'N/A' AS schema_name,
             COUNT_STAR AS execution_count,
-            ROUND((SUM_CPU_TIME / COUNT_STAR) / 1000000000000, 3) AS avg_cpu_time_ms,
-            ROUND((SUM_TIMER_WAIT / COUNT_STAR) / 1000000000000, 3) AS avg_elapsed_time_ms,
+            ROUND((SUM_CPU_TIME / COUNT_STAR) / 1000000000, 3) AS avg_cpu_time_ms,
+			ROUND((SUM_TIMER_WAIT / COUNT_STAR) / 1000000000, 3) AS avg_elapsed_time_ms,
             SUM_ROWS_EXAMINED / COUNT_STAR AS avg_disk_reads,
             SUM_ROWS_AFFECTED / COUNT_STAR AS avg_disk_writes,
             CASE
@@ -45,7 +45,7 @@ const (
 			DIGEST_TEXT AS query_text,
 			SQL_TEXT AS query_sample_text,
 			EVENT_ID AS event_id,
-			TIMER_WAIT AS timer_wait,
+			ROUND(TIMER_WAIT / 1000000000, 3) AS timer_wait,
 			ROWS_SENT AS rows_sent,
 			ROWS_EXAMINED AS rows_examined
 		FROM performance_schema.events_statements_current
@@ -69,7 +69,7 @@ const (
 			DIGEST_TEXT AS query_text,
 			SQL_TEXT AS query_sample_text,
 			EVENT_ID AS event_id,
-			TIMER_WAIT AS timer_wait,
+			ROUND(TIMER_WAIT / 1000000000, 3) AS timer_wait,
 			ROWS_SENT AS rows_sent,
 			ROWS_EXAMINED AS rows_examined
 		FROM performance_schema.events_statements_history
@@ -93,7 +93,7 @@ const (
 			DIGEST_TEXT AS query_text,
 			SQL_TEXT AS query_sample_text,
 			EVENT_ID AS event_id,
-			TIMER_WAIT AS timer_wait,
+			ROUND(TIMER_WAIT / 1000000000, 3) AS timer_wait,
 			ROWS_SENT AS rows_sent,
 			ROWS_EXAMINED AS rows_examined
 		FROM performance_schema.events_statements_history_long
@@ -128,9 +128,9 @@ const (
 				WHEN wait_data.wait_event_name LIKE 'wait/lock/transaction/%' THEN 'Transaction Lock'
 				ELSE 'Other'
 			END AS wait_category,
-			ROUND(IFNULL(SUM(wait_data.TIMER_WAIT),0) / 1000000000000, 3) AS total_wait_time_ms,
+			ROUND(IFNULL(SUM(wait_data.TIMER_WAIT),0) / 1000000000, 3) AS total_wait_time_ms,
 			SUM(ewsg.COUNT_STAR) AS wait_event_count,
-			ROUND((IFNULL(SUM(wait_data.TIMER_WAIT), 0) / 1000000000000) / IFNULL(SUM(ewsg.COUNT_STAR), 1), 3) AS avg_wait_time_ms,
+			ROUND((IFNULL(SUM(wait_data.TIMER_WAIT), 0) / 1000000000) / IFNULL(SUM(ewsg.COUNT_STAR), 1), 3) AS avg_wait_time_ms,
 			schema_data.query_text,
 			DATE_FORMAT(UTC_TIMESTAMP(), '%Y-%m-%dT%H:%i:%sZ') AS collection_timestamp
 		FROM (
