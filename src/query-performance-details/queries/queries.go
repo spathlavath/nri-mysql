@@ -161,14 +161,14 @@ const (
 				THREAD_ID,
 				DIGEST,
 				CURRENT_SCHEMA AS database_name,
-				SQL_TEXT AS query_text
+				DIGEST_TEXT AS query_text
 			FROM performance_schema.events_statements_history_long
 			UNION ALL
 			SELECT 
 				THREAD_ID,
 				DIGEST,
 				CURRENT_SCHEMA AS database_name,
-				SQL_TEXT AS query_text
+				DIGEST_TEXT AS query_text
 			FROM performance_schema.events_statements_current
 		) AS schema_data
 		ON wait_data.THREAD_ID = schema_data.THREAD_ID
