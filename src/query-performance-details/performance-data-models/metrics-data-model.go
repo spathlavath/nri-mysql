@@ -55,6 +55,7 @@ type WaitEventQueryMetrics struct {
 	InstanceID          string         `json:"instance_id" db:"instance_id"`
 	WaitEventName       string         `json:"wait_event_name" db:"wait_event_name"`
 	WaitEventCount      uint64         `json:"wait_event_count" db:"wait_event_count"`
+	AvgWaitTimeMs       float64        `json:"avg_wait_time_ms" db:"avg_wait_time_ms"`
 }
 
 type BlockingSessionMetrics struct {

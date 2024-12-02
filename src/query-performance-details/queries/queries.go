@@ -117,7 +117,7 @@ const (
 	`
 	Wait_event_query = `
 		SELECT
-			DIGEST AS query_id,
+			schema_data.DIGEST AS query_id,
 			wait_data.instance_id,
 			schema_data.database_name,
 			wait_data.wait_event_name,
@@ -133,7 +133,8 @@ const (
 				ELSE 'Other'
 			END AS wait_category,
 			ROUND(SUM(wait_data.TIMER_WAIT) / 1000000000000, 3) AS total_wait_time_ms,
-			SUM(wait_data.COUNT_STAR) AS wait_event_count,
+			SUM(ewsg.COUNT_STAR) AS wait_event_count,
+			ROUND((IFNULL(SUM(wait_data.TIMER_WAIT), 0) / 1000000000000) / IFNULL(SUM(ewsg.COUNT_STAR), 1), 3) AS avg_wait_time_ms,
 			schema_data.query_text,
 			DATE_FORMAT(UTC_TIMESTAMP(), '%Y-%m-%dT%H:%i:%sZ') AS collection_timestamp
 		FROM (
@@ -167,6 +168,8 @@ const (
 			FROM performance_schema.events_statements_current
 		) AS schema_data
 		ON wait_data.THREAD_ID = schema_data.THREAD_ID
+		LEFT JOIN performance_schema.events_waits_summary_global_by_event_name ewsg
+		ON ewsg.EVENT_NAME = wait_data.wait_event_name
 		GROUP BY
 			query_id,
 			wait_data.instance_id,
