@@ -2,11 +2,8 @@ package query_details
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/newrelic/infra-integrations-sdk/v3/data/metric"
