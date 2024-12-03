@@ -1,7 +1,6 @@
 package query_performance_details
 
 import (
-	"fmt"
 
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
