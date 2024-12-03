@@ -67,6 +67,8 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 		fmt.Println("execPlan", execPlan)
 
 		// metrics := extractMetricsFromPlan(execPlan)
+		mm:=common_utils.CreateMetricSet(e, "MysqlQueryExecution", args)
+		mm.SetMetric("query_id",execPlanJSON , metric.ATTRIBUTE)
 
 		// baseIngestionData := map[string]interface{}{
 		// 	"query_id":   query.QueryID,
