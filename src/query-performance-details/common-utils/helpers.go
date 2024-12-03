@@ -128,7 +128,7 @@ func ConvertToStringArray(arr []interface{}) string {
 
 func GetStringValueSafe(value interface{}) string {
 	if value == nil {
-		return ""
+		return "hei"
 	}
 	switch v := value.(type) {
 	case string:
@@ -137,10 +137,10 @@ func GetStringValueSafe(value interface{}) string {
 		if v.Valid {
 			return v.String
 		}
-		return ""
+		return "hell"
 	default:
 		log.Error("Unexpected type for value: %T", value)
-		return ""
+		return "wwww"
 	}
 }
 
