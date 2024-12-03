@@ -163,7 +163,7 @@ func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 		}
 
 		// Print the metric set for debugging
-		common_utils.PrintMetricSet(ms)
+		// common_utils.PrintMetricSet(ms)
 	}
 
 	return nil
