@@ -89,7 +89,7 @@ func processExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentL
 	mm := common_utils.CreateMetricSet(e, "InsideLoop1", args)
 	mm.SetMetric("query_id", "aaaaa", metric.ATTRIBUTE)
 
-	var execPlan map[string]interface{}
+	var execPlan interface{}
 	err = json.Unmarshal([]byte(execPlanJSON), &execPlan)
 	if err != nil {
 		log.Error("Failed to unmarshal execution plan: %v", err)
@@ -177,11 +177,25 @@ func processExecutionMetricsIngestion(e *integration.Entity, args arguments.Argu
 }
 
 // extractMetricsFromPlan processes the top-level query block and recursively extracts metrics.
-func extractMetricsFromPlan(plan map[string]interface{}) performance_data_model.ExecutionPlan {
+func extractMetricsFromPlan(plan interface{}) performance_data_model.ExecutionPlan {
+
+	var planResult map[string]interface{}
+	data, err := json.Marshal(plan)
+
+	if err != nil {
+		return performance_data_model.ExecutionPlan{}
+	}
+
+	err = json.Unmarshal(data, &planResult)
+
+	if err != nil {
+		return performance_data_model.ExecutionPlan{}
+	}
+
 	var metrics performance_data_model.ExecutionPlan
 	stepID := 0
 
-	if queryBlock, exists := plan["query_block"].(map[string]interface{}); exists {
+	if queryBlock, exists := planResult["query_block"].(map[string]interface{}); exists {
 		extractMetricsFromQueryBlock(queryBlock, &metrics, &stepID)
 	}
 
