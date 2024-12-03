@@ -133,7 +133,8 @@ func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 	// mm.SetMetric("query_id","aaaaa" , metric.ATTRIBUTE)
 	ms1 := common_utils.CreateMetricSet(e, "MysqlQueryExecutionVaa1", args)
 	ms1.SetMetric("query_id","testtingweds" , metric.ATTRIBUTE)
-	// for _, metricObject := range metrics {
+	for _, metricObject := range metrics {
+		fmt.Printf("metricObject", metricObject)
 	// 	ms := common_utils.CreateMetricSet(e, "MysqlQueryExecutionV1", args)
 		// metricsMap := map[string]struct {
 		// 	Value      interface{}
@@ -165,7 +166,7 @@ func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 	// 	ms.SetMetric("query_id","testting" , metric.ATTRIBUTE)
 	// 	fmt.Print(metricObject)
 
-	// }
+	}
 
 	return nil
 }
