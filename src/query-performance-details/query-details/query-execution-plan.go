@@ -71,7 +71,7 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 			"query_id":   query.QueryID,
 			"query_text": query.AnonymizedQueryText,
 			"total_cost": metrics.TotalCost,
-			"step_id":    0,
+			//"step_id":    0,
 		}
 
 		events = append(events, baseIngestionData)
@@ -111,7 +111,6 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 }
 
 func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []map[string]interface{}) error {
-	fmt.Println("long time no see")
 	for _, metricObject := range metrics {
 		// Create a new metric set for each row
 		ms := common_utils.CreateMetricSet(e, "MysqlQueryExecution", args)

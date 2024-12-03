@@ -1,8 +1,6 @@
 package query_performance_details
 
 import (
-	"fmt"
-
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	arguments "github.com/newrelic/nri-mysql/src/args"
 	common_utils "github.com/newrelic/nri-mysql/src/query-performance-details/common-utils"
@@ -28,18 +26,17 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 
 	individualQueryDetails, individualQueryDetailsErr := query_details.PopulateIndividualQueryDetails(db, queryIdList, e, args)
 	if individualQueryDetailsErr != nil {
-		// log.Errorf("Error populating individual query details: %v", individualQueryDetailsErr)
+		// log.Error("Error populating individual query details: %v", individualQueryDetailsErr)
 		return
 	}
 	// fmt.Println("Individual Query details collected successfully.", individualQueryDetails)
 
 	executionPlanMetrics, executionPlanMetricsErr := query_details.PopulateExecutionPlans(db, individualQueryDetails, e, args)
 	if executionPlanMetricsErr != nil {
-		// log.Errorf("Error populating execution plan details: %v", executionPlanMetricsErr)
+		// log.Error("Error populating execution plan details: %v", executionPlanMetricsErr)
 		return
 	}
 	// fmt.Println("Execution Plan details collected successfully.", executionPlanMetrics)
-	fmt.Print("hola")
 	planErr := query_details.SetExecutionPlanMetrics(e, args, executionPlanMetrics)
 	if planErr != nil {
 		// fmt.Println("Error setting execution plan metrics: ", planErr)
@@ -48,13 +45,13 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 
 	// waitEventMetrics, waitEventError := query_details.PopulateWaitEventMetrics(db, e, args)
 	// if waitEventError != nil {
-	// 	log.Errorf("Error populating wait event metrics: %v", waitEventError)
+	// 	log.Error("Error populating wait event metrics: %v", waitEventError)
 	// 	return
 	// }
 	// fmt.Println("Wait Event Metrics collected successfully.", waitEventMetrics)
 	// blockingSessionMetrics, populateBlockingSessionMetricsError := query_details.PopulateBlockingSessionMetrics(db, e, args)
 	// if populateBlockingSessionMetricsError != nil {
-	// 	log.Errorf("Error populating blocking session metrics: %v", populateBlockingSessionMetricsError)
+	// 	log.Error("Error populating blocking session metrics: %v", populateBlockingSessionMetricsError)
 	// 	return
 	// }
 	// fmt.Println("Blocking Session Metrics collected successfully.", blockingSessionMetrics)
