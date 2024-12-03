@@ -27,7 +27,9 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 	for _, query := range queries {
 		mm:=common_utils.CreateMetricSet(e, "insideLoop", args)
 		mm.SetMetric("query_id","aaaaa" , metric.ATTRIBUTE)
-		processExecutionPlanMetrics(e, args, db, query)
+		baseIngestionData,tableIngestionData:=processExecutionPlanMetrics(e, args, db, query)
+		events = append(events, baseIngestionData)
+		events=append(events, tableIngestionData)
 	}
 
 	if len(events) == 0 {
