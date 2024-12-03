@@ -25,6 +25,9 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
+	mm:=common_utils.CreateMetricSet(e, "EventTest123", args)
+	mm.SetMetric("query_id","sdsdsdsd" , metric.ATTRIBUTE)
+
 	for _, query := range queries {
 		queryText := strings.TrimSpace(query.QueryText)
 		// upperQueryText := strings.ToUpper(queryText)
