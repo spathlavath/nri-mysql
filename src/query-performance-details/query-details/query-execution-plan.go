@@ -114,7 +114,7 @@ func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 	fmt.Println("long time no see")
 	for _, metricObject := range metrics {
 		// Create a new metric set for each row
-		ms := common_utils.CreateMetricSet(e, "MysqlQueryExecutionPlanV1", args)
+		ms := common_utils.CreateMetricSet(e, "MysqlQueryExecution", args)
 		metricsMap := map[string]struct {
 			Value      interface{}
 			MetricType metric.SourceType
@@ -186,8 +186,25 @@ func extractMetricsFromQueryBlock(queryBlock map[string]interface{}, metrics *pe
 
 	// Process ordering operations
 	if orderingOp, exists := queryBlock["ordering_operation"].(map[string]interface{}); exists {
+		if table, exists := orderingOp["table"].(map[string]interface{}); exists {
+			tableMetrics, newStepID := extractTableMetrics(map[string]interface{}{"table": table}, *stepID)
+			metrics.TableMetrics = append(metrics.TableMetrics, tableMetrics...)
+			*stepID = newStepID
+		}
+
 		if groupingOp, exists := orderingOp["grouping_operation"].(map[string]interface{}); exists {
 			extractMetricsFromQueryBlock(groupingOp, metrics, stepID)
+		}
+
+		// Process select list subqueries
+		if subqueries, exists := orderingOp["select_list_subqueries"].([]interface{}); exists {
+			for _, subquery := range subqueries {
+				if subqueryMap, ok := subquery.(map[string]interface{}); ok {
+					if subQueryBlock, exists := subqueryMap["query_block"].(map[string]interface{}); exists {
+						extractMetricsFromQueryBlock(subQueryBlock, metrics, stepID)
+					}
+				}
+			}
 		}
 	}
 
