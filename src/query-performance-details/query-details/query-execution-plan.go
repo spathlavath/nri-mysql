@@ -165,6 +165,8 @@ func processExecutionMetricsIngestion(e *integration.Entity, args arguments.Argu
 	fmt.Println("metricsMap", metricsMap)
 
 	for name, metricData := range metricsMap {
+		fmt.Println("name", name)
+		fmt.Println("metricData", metricData)
 		err := ms.SetMetric(name, metricData.Value, metricData.MetricType)
 		if err != nil {
 			log.Error("Error setting value for %s: %v", name, err)
