@@ -2,8 +2,11 @@ package query_details
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/newrelic/infra-integrations-sdk/v3/data/metric"
@@ -16,103 +19,97 @@ import (
 )
 
 func PopulateExecutionPlans(db performance_database.DataSource, queries []performance_data_model.QueryPlanMetrics, e *integration.Entity, args arguments.ArgumentList) ([]map[string]interface{}, error) {
-	// supportedStatements := map[string]bool{"SELECT": true, "INSERT": true, "UPDATE": true, "DELETE": true, "WITH": true}
-	// var events []map[string]interface{}
+	supportedStatements := map[string]bool{"SELECT": true, "INSERT": true, "UPDATE": true, "DELETE": true, "WITH": true}
+	var events []map[string]interface{}
 
-	_, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	mm:=common_utils.CreateMetricSet(e, "EventTest123", args)
-	mm.SetMetric("query_id","sdsdsdsd" , metric.ATTRIBUTE)
-	return nil,nil
+	for _, query := range queries {
+		if query.QueryText == "" {
+			continue
+		}
+		queryText := strings.TrimSpace(query.QueryText)
+		upperQueryText := strings.ToUpper(queryText)
+
+		if !supportedStatements[strings.Split(upperQueryText, " ")[0]] {
+			log.Debug("Skipping unsupported query for EXPLAIN: %s", queryText)
+			continue
+		}
+
+		if strings.Contains(queryText, "?") {
+			log.Debug("Skipping query with placeholders for EXPLAIN: %s", queryText)
+			continue
+		}
+
+		execPlanQuery := fmt.Sprintf("EXPLAIN FORMAT=JSON %s", queryText)
+		rows, err := db.QueryxContext(ctx, execPlanQuery)
+		if err != nil {
+			log.Error("Error executing EXPLAIN for query '%s': %v", queryText, err)
+			continue
+		}
+
+		var execPlanJSON string
+		if rows.Next() {
+			err := rows.Scan(&execPlanJSON)
+			if err != nil {
+				log.Error("Failed to scan execution plan: %v", err)
+				rows.Close()
+				continue
+			}
+		}
+		rows.Close()
+
+		var execPlan map[string]interface{}
+		err = json.Unmarshal([]byte(execPlanJSON), &execPlan)
+		if err != nil {
+			log.Error("Failed to unmarshal execution plan: %v", err)
+			continue
+		}
+
+		metrics := extractMetricsFromPlan(execPlan)
+
+		baseIngestionData := map[string]interface{}{
+			"query_id":   query.QueryID,
+			"query_text": query.AnonymizedQueryText,
+			"total_cost": metrics.TotalCost,
+		}
+
+		events = append(events, baseIngestionData)
+
+		for _, metric := range metrics.TableMetrics {
+			tableIngestionData := make(map[string]interface{})
+			for k, v := range baseIngestionData {
+				tableIngestionData[k] = v
+			}
+			tableIngestionData["step_id"] = metric.StepID
+			tableIngestionData["execution_step"] = metric.ExecutionStep
+			tableIngestionData["access_type"] = metric.AccessType
+			tableIngestionData["rows_examined"] = metric.RowsExamined
+			tableIngestionData["rows_produced"] = metric.RowsProduced
+			tableIngestionData["filtered (%)"] = metric.Filtered
+			tableIngestionData["read_cost"] = metric.ReadCost
+			tableIngestionData["eval_cost"] = metric.EvalCost
+			tableIngestionData["data_read"] = metric.DataRead
+			tableIngestionData["extra_info"] = metric.ExtraInfo
+
+			events = append(events, tableIngestionData)
+		}
+	}
+
+	if len(events) == 0 {
+		return []map[string]interface{}{}, nil
+	}
+
+	// Set execution plan metrics
+	err := SetExecutionPlanMetrics(e, args, events)
+	if err != nil {
+		log.Error("Error setting execution plan metrics: %v", err)
+		return nil, err
+	}
+
+	return events, nil
 }
-	// for _, query := range queries {
-	// 	queryText := strings.TrimSpace(query.QueryText)
-		// upperQueryText := strings.ToUpper(queryText)
-
-		// if !supportedStatements[strings.Split(upperQueryText, " ")[0]] {
-		// 	log.Debug("Skipping unsupported query for EXPLAIN: %s", queryText)
-		// 	continue
-		// }
-
-		// if strings.Contains(queryText, "?") {
-		// 	log.Debug("Skipping query with placeholders for EXPLAIN: %s", queryText)
-		// 	continue
-		// }
-
-		// execPlanQuery := fmt.Sprintf("EXPLAIN FORMAT=JSON %s", queryText)
-		// rows, err := db.QueryxContext(ctx, execPlanQuery)
-		// if err != nil {
-		// 	log.Error("Error executing EXPLAIN for query '%s': %v", queryText, err)
-		// 	continue
-		// }
-
-		// var execPlanJSON string
-		// if rows.Next() {
-		// 	fmt.Print("in rows")
-		// 	err := rows.Scan(&execPlanJSON)
-		// 	if err != nil {
-		// 		log.Error("Failed to scan execution plan: %v", err)
-		// 		rows.Close()
-		// 		continue
-		// 	}
-		// }
-		// rows.Close()
-
-		// var execPlan map[string]interface{}
-		// err = json.Unmarshal([]byte(execPlanJSON), &execPlan)
-		// if err != nil {
-		// 	log.Info("Failed to unmarshal execution plan")
-		// 	continue
-		// }
-		// fmt.Println("execPlan", execPlan)
-
-		// // metrics := extractMetricsFromPlan(execPlan)
-		// mm:=common_utils.CreateMetricSet(e, "MysqlQueryExecutionaaaaa", args)
-		// mm.SetMetric("query_id",execPlanJSON , metric.ATTRIBUTE)
-
-		// baseIngestionData := map[string]interface{}{
-		// 	"query_id":   query.QueryID,
-		// 	"query_text": query.AnonymizedQueryText,
-		// 	"total_cost": metrics.TotalCost,
-		// }
-
-		// events = append(events, baseIngestionData)
-
-		// for _, metric := range metrics.TableMetrics {
-		// 	tableIngestionData := make(map[string]interface{})
-		// 	for k, v := range baseIngestionData {
-		// 		tableIngestionData[k] = v
-		// 	}
-		// 	tableIngestionData["step_id"] = metric.StepID
-		// 	tableIngestionData["execution_step"] = metric.ExecutionStep
-		// 	tableIngestionData["access_type"] = metric.AccessType
-		// 	tableIngestionData["rows_examined"] = metric.RowsExamined
-		// 	tableIngestionData["rows_produced"] = metric.RowsProduced
-		// 	tableIngestionData["filtered (%)"] = metric.Filtered
-		// 	tableIngestionData["read_cost"] = metric.ReadCost
-		// 	tableIngestionData["eval_cost"] = metric.EvalCost
-		// 	tableIngestionData["data_read"] = metric.DataRead
-		// 	tableIngestionData["extra_info"] = metric.ExtraInfo
-
-		// 	events = append(events, tableIngestionData)
-		// }
-
-
-	// if len(events) == 0 {
-	// 	return []map[string]interface{}{}, nil
-	// }
-
-	// // Set execution plan metrics
-	// err := SetExecutionPlanMetrics(e, args, events)
-	// if err != nil {
-	// 	log.Error("Error setting execution plan metrics: %v", err)
-	// 	return nil, err
-	// }
-
-	// return events, nil
-
-
 
 func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []map[string]interface{}) error {
 	for _, metricObject := range metrics {
