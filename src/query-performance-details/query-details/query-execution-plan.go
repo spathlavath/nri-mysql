@@ -157,7 +157,7 @@ func processExecutionMetricsIngestion(e *integration.Entity, args arguments.Argu
 		Value      string
 		MetricType metric.SourceType
 	}{
-		"query_id":   {common_utils.GetStringValueSafe(metricObject["query_id"]), metric.ATTRIBUTE},
+		"query_id":   {queryIdSafe, metric.ATTRIBUTE},
 		"query_text": {common_utils.GetStringValueSafe(metricObject["query_text"]), metric.ATTRIBUTE},
 		// "total_cost":     {common_utils.GetFloat64ValueSafe(metricObject["total_cost"]), metric.GAUGE},
 		// "step_id":        {common_utils.GetInt64ValueSafe(metricObject["step_id"]), metric.GAUGE},
