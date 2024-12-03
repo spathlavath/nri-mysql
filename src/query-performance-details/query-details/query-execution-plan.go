@@ -20,14 +20,15 @@ import (
 
 func PopulateExecutionPlans(db performance_database.DataSource, queries []performance_data_model.QueryPlanMetrics, e *integration.Entity, args arguments.ArgumentList) ([]map[string]interface{}, error) {
 	// supportedStatements := map[string]bool{"SELECT": true, "INSERT": true, "UPDATE": true, "DELETE": true, "WITH": true}
-	var events []map[string]interface{}
+	// var events []map[string]interface{}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	_, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	mm:=common_utils.CreateMetricSet(e, "EventTest123", args)
 	mm.SetMetric("query_id","sdsdsdsd" , metric.ATTRIBUTE)
-
+	return nil,nil
+}
 	// for _, query := range queries {
 	// 	queryText := strings.TrimSpace(query.QueryText)
 		// upperQueryText := strings.ToUpper(queryText)
@@ -99,7 +100,7 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 
 		// 	events = append(events, tableIngestionData)
 		// }
-	}
+
 
 	// if len(events) == 0 {
 	// 	return []map[string]interface{}{}, nil
@@ -113,7 +114,8 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 	// }
 
 	// return events, nil
-}
+
+
 
 func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []map[string]interface{}) error {
 	for _, metricObject := range metrics {
