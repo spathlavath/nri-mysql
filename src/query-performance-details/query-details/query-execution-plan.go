@@ -163,6 +163,8 @@ func processExecutionMetricsIngestion(e *integration.Entity, args arguments.Argu
 		"extra_info":     {metricObject["extra_info"], metric.ATTRIBUTE},
 	}
 
+	fmt.Println("metricsMap", metricsMap)
+
 
 	for name, metricData := range metricsMap {
 		if(metricData.Value==nil){
