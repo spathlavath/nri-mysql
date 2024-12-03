@@ -108,7 +108,6 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 		return nil, err
 	}
 
-	log.Debug("Execution plans populated successfully")
 	return events, nil
 }
 
@@ -136,7 +135,6 @@ func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 		}
 
 		for name, metricData := range metricsMap {
-			log.Debug("Setting metric %s: %v", name, metricData.Value)
 			err := ms.SetMetric(name, metricData.Value, metricData.MetricType)
 			if err != nil {
 				log.Error("Error setting value for %s: %v", name, err)
