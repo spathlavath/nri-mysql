@@ -32,46 +32,46 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 		upperQueryText := strings.ToUpper(queryText)
 
 		if !supportedStatements[strings.Split(upperQueryText, " ")[0]] {
-			// fmt.Printf("Skipping unsupported query for EXPLAIN: %s\n", queryText)
+			log.Debug("Skipping unsupported query for EXPLAIN: %s", queryText)
 			continue
 		}
 
 		if strings.Contains(queryText, "?") {
-			// fmt.Printf("Skipping query with placeholders for EXPLAIN: %s\n", queryText)
+			log.Debug("Skipping query with placeholders for EXPLAIN: %s", queryText)
 			continue
 		}
 
 		execPlanQuery := fmt.Sprintf("EXPLAIN FORMAT=JSON %s", queryText)
 		rows, err := db.QueryxContext(ctx, execPlanQuery)
 		if err != nil {
-			// log.Error("Error executing EXPLAIN for query '%s': %v\n", queryText, err)
+			log.Error("Error executing EXPLAIN for query '%s': %v", queryText, err)
 			continue
 		}
-		defer rows.Close()
 
 		var execPlanJSON string
 		if rows.Next() {
 			err := rows.Scan(&execPlanJSON)
 			if err != nil {
-				// log.Error("Failed to scan execution plan: %v", err)
+				log.Error("Failed to scan execution plan: %v", err)
+				rows.Close()
 				continue
 			}
 		}
+		rows.Close()
 
 		var execPlan map[string]interface{}
 		err = json.Unmarshal([]byte(execPlanJSON), &execPlan)
 		if err != nil {
-			// log.Error("Failed to unmarshal execution plan: %v", err)
+			log.Error("Failed to unmarshal execution plan: %v", err)
 			continue
 		}
-		// fmt.Println("Query execPlan------", execPlan)
+
 		metrics := extractMetricsFromPlan(execPlan)
 
 		baseIngestionData := map[string]interface{}{
 			"query_id":   query.QueryID,
 			"query_text": query.AnonymizedQueryText,
 			"total_cost": metrics.TotalCost,
-			//"step_id":    0,
 		}
 
 		events = append(events, baseIngestionData)
@@ -100,13 +100,15 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 	if len(events) == 0 {
 		return []map[string]interface{}{}, nil
 	}
-	// planErr := setExecutionPlanMetrics(e, args, events)
-	// if planErr != nil {
-	// 	// fmt.Println("Error setting execution plan metrics: ", planErr)
-	// 	// log.Error("Error setting value for: %v", planErr)
-	// }
-	// fmt.Println("events------", events)
-	fmt.Print("done")
+
+	// Set execution plan metrics
+	err := SetExecutionPlanMetrics(e, args, events)
+	if err != nil {
+		log.Error("Error setting execution plan metrics: %v", err)
+		return nil, err
+	}
+
+	log.Debug("Execution plans populated successfully")
 	return events, nil
 }
 
