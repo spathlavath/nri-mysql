@@ -28,8 +28,8 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 	mm:=common_utils.CreateMetricSet(e, "EventTest123", args)
 	mm.SetMetric("query_id","sdsdsdsd" , metric.ATTRIBUTE)
 
-	for _, query := range queries {
-		queryText := strings.TrimSpace(query.QueryText)
+	// for _, query := range queries {
+	// 	queryText := strings.TrimSpace(query.QueryText)
 		// upperQueryText := strings.ToUpper(queryText)
 
 		// if !supportedStatements[strings.Split(upperQueryText, " ")[0]] {
@@ -42,36 +42,36 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 		// 	continue
 		// }
 
-		execPlanQuery := fmt.Sprintf("EXPLAIN FORMAT=JSON %s", queryText)
-		rows, err := db.QueryxContext(ctx, execPlanQuery)
-		if err != nil {
-			log.Error("Error executing EXPLAIN for query '%s': %v", queryText, err)
-			continue
-		}
+		// execPlanQuery := fmt.Sprintf("EXPLAIN FORMAT=JSON %s", queryText)
+		// rows, err := db.QueryxContext(ctx, execPlanQuery)
+		// if err != nil {
+		// 	log.Error("Error executing EXPLAIN for query '%s': %v", queryText, err)
+		// 	continue
+		// }
 
-		var execPlanJSON string
-		if rows.Next() {
-			fmt.Print("in rows")
-			err := rows.Scan(&execPlanJSON)
-			if err != nil {
-				log.Error("Failed to scan execution plan: %v", err)
-				rows.Close()
-				continue
-			}
-		}
-		rows.Close()
+		// var execPlanJSON string
+		// if rows.Next() {
+		// 	fmt.Print("in rows")
+		// 	err := rows.Scan(&execPlanJSON)
+		// 	if err != nil {
+		// 		log.Error("Failed to scan execution plan: %v", err)
+		// 		rows.Close()
+		// 		continue
+		// 	}
+		// }
+		// rows.Close()
 
-		var execPlan map[string]interface{}
-		err = json.Unmarshal([]byte(execPlanJSON), &execPlan)
-		if err != nil {
-			log.Info("Failed to unmarshal execution plan")
-			continue
-		}
-		fmt.Println("execPlan", execPlan)
+		// var execPlan map[string]interface{}
+		// err = json.Unmarshal([]byte(execPlanJSON), &execPlan)
+		// if err != nil {
+		// 	log.Info("Failed to unmarshal execution plan")
+		// 	continue
+		// }
+		// fmt.Println("execPlan", execPlan)
 
-		// metrics := extractMetricsFromPlan(execPlan)
-		mm:=common_utils.CreateMetricSet(e, "MysqlQueryExecutionaaaaa", args)
-		mm.SetMetric("query_id",execPlanJSON , metric.ATTRIBUTE)
+		// // metrics := extractMetricsFromPlan(execPlan)
+		// mm:=common_utils.CreateMetricSet(e, "MysqlQueryExecutionaaaaa", args)
+		// mm.SetMetric("query_id",execPlanJSON , metric.ATTRIBUTE)
 
 		// baseIngestionData := map[string]interface{}{
 		// 	"query_id":   query.QueryID,
@@ -112,7 +112,7 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 	// 	return nil, err
 	// }
 
-	return events, nil
+	// return events, nil
 }
 
 func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []map[string]interface{}) error {
