@@ -101,6 +101,7 @@ func processExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentL
 	baseIngestionData := map[string]interface{}{
 		"query_id":   query.QueryID,
 		"query_text": query.AnonymizedQueryText,
+		"event_id":   query.EventID,
 		"total_cost": metrics.TotalCost,
 	}
 
