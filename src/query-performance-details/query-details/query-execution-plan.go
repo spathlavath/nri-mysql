@@ -21,14 +21,14 @@ import (
 func PopulateExecutionPlans(db performance_database.DataSource, queries []performance_data_model.QueryPlanMetrics, e *integration.Entity, args arguments.ArgumentList) ([]map[string]interface{}, error) {
 	var events []map[string]interface{}
 
-	fmt.Println("queries", queries)
-	mm := common_utils.CreateMetricSet(e, "outsideLoop", args)
-	mm.SetMetric("query_id", "aaaaa", metric.ATTRIBUTE)
+	// fmt.Println("queries", queries)
+	// mm := common_utils.CreateMetricSet(e, "outsideLoop", args)
+	// mm.SetMetric("query_id", "aaaaa", metric.ATTRIBUTE)
 	for _, query := range queries {
 		mm := common_utils.CreateMetricSet(e, "insideLoop", args)
 		mm.SetMetric("query_id", "aaaaa", metric.ATTRIBUTE)
-		baseIngestionData, tableIngestionData := processExecutionPlanMetrics(e, args, db, query)
-		events = append(events, baseIngestionData)
+		tableIngestionData := processExecutionPlanMetrics(e, args, db, query)
+		// events = append(events, baseIngestionData)
 		events = append(events, tableIngestionData)
 	}
 
@@ -46,33 +46,33 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 	return events, nil
 }
 
-func processExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, db performance_database.DataSource, query performance_data_model.QueryPlanMetrics) (map[string]interface{}, map[string]interface{}) {
+func processExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, db performance_database.DataSource, query performance_data_model.QueryPlanMetrics) map[string]interface{} {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	supportedStatements := map[string]bool{"SELECT": true, "INSERT": true, "UPDATE": true, "DELETE": true, "WITH": true}
 
 	if query.QueryText == "" {
-		return nil, nil
+		return nil
 	}
 	queryText := strings.TrimSpace(query.QueryText)
 	upperQueryText := strings.ToUpper(queryText)
 
 	if !supportedStatements[strings.Split(upperQueryText, " ")[0]] {
 		log.Debug("Skipping unsupported query for EXPLAIN: %s", queryText)
-		return nil, nil
+		return nil
 	}
 
 	if strings.Contains(queryText, "?") {
 		log.Debug("Skipping query with placeholders for EXPLAIN: %s", queryText)
-		return nil, nil
+		return nil
 	}
 
 	execPlanQuery := fmt.Sprintf("EXPLAIN FORMAT=JSON %s", queryText)
 	rows, err := db.QueryxContext(ctx, execPlanQuery)
 	if err != nil {
 		log.Error("Error executing EXPLAIN for query '%s': %v", queryText, err)
-		return nil, nil
+		return nil
 	}
 
 	var execPlanJSON string
@@ -81,7 +81,7 @@ func processExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentL
 		if err != nil {
 			log.Error("Failed to scan execution plan: %v", err)
 			rows.Close()
-			return nil, nil
+			return nil
 		}
 	}
 	rows.Close()
@@ -93,7 +93,7 @@ func processExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentL
 	err = json.Unmarshal([]byte(execPlanJSON), &execPlan)
 	if err != nil {
 		log.Error("Failed to unmarshal execution plan: %v", err)
-		return nil, nil
+		return nil
 	}
 
 	metrics := extractMetricsFromPlan(execPlan)
@@ -124,7 +124,7 @@ func processExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentL
 	}
 	fmt.Println("tableIngestionData", tableIngestionData)
 	fmt.Print("baseIngestionData", baseIngestionData)
-	return baseIngestionData, tableIngestionData
+	return tableIngestionData
 }
 
 func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []map[string]interface{}) error {
@@ -142,25 +142,26 @@ func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 
 func processExecutionMetricsIngestion(e *integration.Entity, args arguments.ArgumentList, metricObject map[string]interface{}) {
 	ms := common_utils.CreateMetricSet(e, "MysqlQueryExecutionV2", args)
-	queryId := metricObject["query_id"].(string)
-	fmt.Println("queryId------", queryId)
+	fmt.Println("Metric Object ---> ")
+	fmt.Println(metricObject)
+
 	metricsMap := map[string]struct {
 		Value      interface{}
 		MetricType metric.SourceType
 	}{
-		"query_id": {queryId, metric.ATTRIBUTE},
-		// "query_text":     {common_utils.GetStringValueSafe(metricObject["query_text"]), metric.ATTRIBUTE},
-		// "total_cost":     {common_utils.GetFloat64ValueSafe(metricObject["total_cost"]), metric.GAUGE},
-		// "step_id":        {common_utils.GetInt64ValueSafe(metricObject["step_id"]), metric.GAUGE},
-		// "execution_step": {common_utils.GetStringValueSafe(metricObject["execution_step"]), metric.ATTRIBUTE},
-		// "access_type":    {common_utils.GetStringValueSafe(metricObject["access_type"]), metric.ATTRIBUTE},
-		// "rows_examined":  {common_utils.GetInt64ValueSafe(metricObject["rows_examined"]), metric.GAUGE},
-		// "rows_produced":  {common_utils.GetInt64ValueSafe(metricObject["rows_produced"]), metric.GAUGE},
-		// "filtered (%)":   {common_utils.GetFloat64ValueSafe(metricObject["filtered (%)"]), metric.GAUGE},
-		// "read_cost":      {common_utils.GetFloat64ValueSafe(metricObject["read_cost"]), metric.GAUGE},
-		// "eval_cost":      {common_utils.GetFloat64ValueSafe(metricObject["eval_cost"]), metric.GAUGE},
-		// "data_read":      {common_utils.GetFloat64ValueSafe(metricObject["data_read"]), metric.GAUGE},
-		// "extra_info":     {common_utils.GetStringValueSafe(metricObject["extra_info"]), metric.ATTRIBUTE},
+		"query_id":       {common_utils.GetStringValueSafe(metricObject["query_id"]), metric.ATTRIBUTE},
+		"query_text":     {common_utils.GetStringValueSafe(metricObject["query_text"]), metric.ATTRIBUTE},
+		"total_cost":     {common_utils.GetFloat64ValueSafe(metricObject["total_cost"]), metric.GAUGE},
+		"step_id":        {common_utils.GetInt64ValueSafe(metricObject["step_id"]), metric.GAUGE},
+		"execution_step": {common_utils.GetStringValueSafe(metricObject["execution_step"]), metric.ATTRIBUTE},
+		"access_type":    {common_utils.GetStringValueSafe(metricObject["access_type"]), metric.ATTRIBUTE},
+		"rows_examined":  {common_utils.GetInt64ValueSafe(metricObject["rows_examined"]), metric.GAUGE},
+		"rows_produced":  {common_utils.GetInt64ValueSafe(metricObject["rows_produced"]), metric.GAUGE},
+		"filtered (%)":   {common_utils.GetFloat64ValueSafe(metricObject["filtered (%)"]), metric.GAUGE},
+		"read_cost":      {common_utils.GetFloat64ValueSafe(metricObject["read_cost"]), metric.GAUGE},
+		"eval_cost":      {common_utils.GetFloat64ValueSafe(metricObject["eval_cost"]), metric.GAUGE},
+		"data_read":      {common_utils.GetFloat64ValueSafe(metricObject["data_read"]), metric.GAUGE},
+		"extra_info":     {common_utils.GetStringValueSafe(metricObject["extra_info"]), metric.ATTRIBUTE},
 	}
 	fmt.Println("metricsMap", metricsMap)
 
