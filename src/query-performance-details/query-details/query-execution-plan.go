@@ -80,7 +80,7 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 				tableIngestionData[k] = v
 			}
 			tableIngestionData["step_id"] = metric.StepID
-			tableIngestionData["Execution Step"] = metric.ExecutionStep
+			tableIngestionData["execution_step"] = metric.ExecutionStep
 			tableIngestionData["access_type"] = metric.AccessType
 			tableIngestionData["rows_examined"] = metric.RowsExamined
 			tableIngestionData["rows_produced"] = metric.RowsProduced
@@ -120,7 +120,7 @@ func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 			"query_text":     {common_utils.GetStringValueSafe(metricObject["query_text"]), metric.ATTRIBUTE},
 			"total_cost":     {common_utils.GetFloat64ValueSafe(metricObject["total_cost"]), metric.GAUGE},
 			"step_id":        {common_utils.GetInt64ValueSafe(metricObject["step_id"]), metric.GAUGE},
-			"Execution Step": {common_utils.GetStringValueSafe(metricObject["Execution Step"]), metric.ATTRIBUTE},
+			"execution_step": {common_utils.GetStringValueSafe(metricObject["execution_step"]), metric.ATTRIBUTE},
 			"access_type":    {common_utils.GetStringValueSafe(metricObject["access_type"]), metric.ATTRIBUTE},
 			"rows_examined":  {common_utils.GetInt64ValueSafe(metricObject["rows_examined"]), metric.GAUGE},
 			"rows_produced":  {common_utils.GetInt64ValueSafe(metricObject["rows_produced"]), metric.GAUGE},

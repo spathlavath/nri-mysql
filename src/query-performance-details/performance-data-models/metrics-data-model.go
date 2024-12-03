@@ -36,7 +36,7 @@ type ExecutionPlan struct {
 
 type TableMetrics struct {
 	StepID        int     `json:"step_id"`
-	ExecutionStep string  `json:"Execution Step"`
+	ExecutionStep string  `json:"execution_step"`
 	AccessType    string  `json:"access_type"`
 	RowsExamined  int64   `json:"rows_examined"`
 	RowsProduced  int64   `json:"rows_produced"`
