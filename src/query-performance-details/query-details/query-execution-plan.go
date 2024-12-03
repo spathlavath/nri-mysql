@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-
+"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -148,7 +148,7 @@ func processExecutionMetricsIngestion(e *integration.Entity, args arguments.Argu
 		MetricType metric.SourceType
 	}{
 		"query_id":       {common_utils.GetStringValueSafe(metricObject["query_id"]), metric.ATTRIBUTE},
-		"query_text":     {metricObject["query_text"], metric.ATTRIBUTE},
+		"query_text":     {"tyerstdytdtffgjh", metric.ATTRIBUTE},
 		"total_cost":     {common_utils.GetFloat64ValueSafe(metricObject["total_cost"]), metric.GAUGE},
 		"step_id":        {common_utils.GetInt64ValueSafe(metricObject["step_id"]), metric.GAUGE},
 		"execution_step": {common_utils.GetStringValueSafe(metricObject["execution_step"]), metric.ATTRIBUTE},
