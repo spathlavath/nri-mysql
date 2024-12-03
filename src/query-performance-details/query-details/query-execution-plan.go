@@ -50,8 +50,7 @@ func processExecutionPlanMetrics( e *integration.Entity, args arguments.Argument
 	
 	supportedStatements := map[string]bool{"SELECT": true, "INSERT": true, "UPDATE": true, "DELETE": true, "WITH": true}
 	
-	mm:=common_utils.CreateMetricSet(e, "InsideLoop", args)
-	mm.SetMetric("query_id","aaaaa" , metric.ATTRIBUTE)
+	
 	if query.QueryText == "" {
 		return nil,nil
 	}
@@ -86,6 +85,9 @@ func processExecutionPlanMetrics( e *integration.Entity, args arguments.Argument
 	}
 	rows.Close()
 
+	mm:=common_utils.CreateMetricSet(e, "InsideLoop1", args)
+	mm.SetMetric("query_id","aaaaa" , metric.ATTRIBUTE)
+
 	var execPlan map[string]interface{}
 	err = json.Unmarshal([]byte(execPlanJSON), &execPlan)
 	if err != nil {
@@ -118,7 +120,6 @@ func processExecutionPlanMetrics( e *integration.Entity, args arguments.Argument
 		tableIngestionData["data_read"] = metric.DataRead
 		tableIngestionData["extra_info"] = metric.ExtraInfo
 
-		
 	}
 	return baseIngestionData,tableIngestionData
 }
