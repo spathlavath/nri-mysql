@@ -127,6 +127,7 @@ func ConvertToStringArray(arr []interface{}) string {
 }
 
 func GetStringValueSafe(value interface{}) string {
+	fmt.Printf("value: %v", value)
 	if value == nil {
 		return "hei"
 	}
