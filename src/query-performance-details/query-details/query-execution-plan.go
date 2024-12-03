@@ -121,6 +121,8 @@ func processExecutionPlanMetrics( e *integration.Entity, args arguments.Argument
 		tableIngestionData["extra_info"] = metric.ExtraInfo
 
 	}
+	fmt.Println("tableIngestionData", tableIngestionData)
+	fmt.Print("baseIngestionData", baseIngestionData)
 	return baseIngestionData,tableIngestionData
 }
 
