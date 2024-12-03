@@ -143,12 +143,14 @@ func processExecutionMetricsIngestion(e *integration.Entity, args arguments.Argu
 	ms := common_utils.CreateMetricSet(e, "MysqlQueryExecutionV2", args)
 	fmt.Println("metricObject-----", metricObject)
 	fmt.Println("query_text-----", metricObject["query_text"])
+	hey := common_utils.GetStringValueSafe(metricObject["query_text"])
+	bye := metricObject["query_text"]
 	metricsMap := map[string]struct {
 		Value      interface{}
 		MetricType metric.SourceType
 	}{
-		"query_id":       {common_utils.GetStringValueSafe(metricObject["query_id"]), metric.ATTRIBUTE},
-		"query_text":     {"tyerstdytdtffgjh", metric.ATTRIBUTE},
+		"query_id":       {bye, metric.ATTRIBUTE},
+		"query_text":     {hey, metric.ATTRIBUTE},
 		"total_cost":     {common_utils.GetFloat64ValueSafe(metricObject["total_cost"]), metric.GAUGE},
 		"step_id":        {common_utils.GetInt64ValueSafe(metricObject["step_id"]), metric.GAUGE},
 		"execution_step": {common_utils.GetStringValueSafe(metricObject["execution_step"]), metric.ATTRIBUTE},
