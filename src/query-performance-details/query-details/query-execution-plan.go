@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	// "os"
 	"strconv"
 	"strings"
 	"time"
@@ -17,7 +16,6 @@ import (
 	common_utils "github.com/newrelic/nri-mysql/src/query-performance-details/common-utils"
 	performance_data_model "github.com/newrelic/nri-mysql/src/query-performance-details/performance-data-models"
 	performance_database "github.com/newrelic/nri-mysql/src/query-performance-details/performance-database"
-	// "github.com/olekukonko/tablewriter"
 )
 
 func PopulateExecutionPlans(db performance_database.DataSource, queries []performance_data_model.QueryPlanMetrics, e *integration.Entity, args arguments.ArgumentList) ([]map[string]interface{}, error) {
@@ -75,7 +73,6 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 		}
 
 		events = append(events, baseIngestionData)
-		// formatAsTable(metrics.TableMetrics)
 
 		for _, metric := range metrics.TableMetrics {
 			tableIngestionData := make(map[string]interface{})
@@ -339,26 +336,3 @@ func getCostSafely(costInfo map[string]interface{}, key string) float64 {
 	}
 	return 0.0 // Default to 0.0 if key doesn't exist or type doesn't match
 }
-
-// func formatAsTable(metrics []performance_data_model.TableMetrics) {
-// 	table := tablewriter.NewWriter(os.Stdout)
-// 	table.SetHeader([]string{"step_id", "Execution Step", "access_type", "rows_examined", "rows_produced", "filtered (%)", "read_cost", "eval_cost", "data_read", "extra_info"})
-
-// 	for _, metric := range metrics {
-// 		row := []string{
-// 			fmt.Sprintf("%d", metric.StepID),
-// 			metric.ExecutionStep,
-// 			metric.AccessType,
-// 			fmt.Sprintf("%d", metric.RowsExamined),
-// 			fmt.Sprintf("%d", metric.RowsProduced),
-// 			fmt.Sprintf("%.2f", metric.Filtered),
-// 			fmt.Sprintf("%.2f", metric.ReadCost),
-// 			fmt.Sprintf("%.2f", metric.EvalCost),
-// 			fmt.Sprintf("%.2f", metric.DataRead),
-// 			metric.ExtraInfo,
-// 		}
-// 		table.Append(row)
-// 	}
-
-// 	table.Render()
-// }
