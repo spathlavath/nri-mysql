@@ -3,10 +3,11 @@ package validator
 import (
 	"database/sql"
 	"fmt"
-	common_utils "github.com/newrelic/nri-mysql/src/query-performance-details/common-utils"
-	"github.com/newrelic/nri-mysql/src/query-performance-details/performance-database"
 	"strconv"
 	"strings"
+
+	common_utils "github.com/newrelic/nri-mysql/src/query-performance-details/common-utils"
+	performance_database "github.com/newrelic/nri-mysql/src/query-performance-details/performance-database"
 
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 )

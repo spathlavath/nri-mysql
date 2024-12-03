@@ -14,7 +14,7 @@ import (
 )
 
 func PopulateWaitEventMetrics(db performance_database.DataSource, e *integration.Entity, args arguments.ArgumentList) ([]performance_data_model.WaitEventQueryMetrics, error) {
-	query := query_performance_details.Wait_event_query
+	query := query_performance_details.WaitEventsQuery
 
 	rows, err := db.QueryxContext(context.Background(), query)
 	if err != nil {

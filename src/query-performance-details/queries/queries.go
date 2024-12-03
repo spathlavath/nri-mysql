@@ -1,7 +1,7 @@
 package queries
 
 const (
-	Slow_queries = `
+	SlowQueries = `
         SELECT
             DIGEST AS query_id,
             DIGEST_TEXT AS query_text,
@@ -87,7 +87,7 @@ const (
 			AND TIMER_WAIT / 1000000 > ?
 		ORDER BY TIMER_WAIT DESC;
 	`
-	PastQueriesQuery = `
+	PastQueriesSearch = `
 		SELECT
 			DIGEST AS query_id,
 			DIGEST_TEXT AS query_text,
@@ -111,7 +111,7 @@ const (
 			AND TIMER_WAIT / 1000000 > ?
 		ORDER BY TIMER_WAIT DESC;
 	`
-	Wait_event_query = `
+	WaitEventsQuery = `
 		SELECT
 			schema_data.DIGEST AS query_id,
 			wait_data.instance_id,
@@ -196,7 +196,7 @@ const (
 		ORDER BY 
 			total_wait_time_ms DESC;
 	`
-	Blocking_session_query = `
+	BlockingSessionsQuery = `
 		SELECT 
                       r.trx_id AS blocked_txn_id,
                       r.trx_mysql_thread_id AS blocked_thread_id,

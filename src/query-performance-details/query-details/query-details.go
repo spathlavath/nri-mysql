@@ -27,7 +27,7 @@ func PopulateSlowQueryMetrics(e *integration.Entity, db performancedatabase.Data
 }
 
 func collectPerformanceSchemaMetrics(db performancedatabase.DataSource, slowQueryInterval int) ([]performancedatamodel.QueryMetrics, []string, error) {
-	query := queries.Slow_queries
+	query := queries.SlowQueries
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	rows, err := db.QueryxContext(ctx, query, slowQueryInterval)
@@ -280,7 +280,7 @@ func collectExtensiveQueryMetrics(db performancedatabase.DataSource, queryIDList
 	// Joining the placeholders to form the IN clause
 	inClause := strings.Join(placeholders, ", ")
 
-	query := fmt.Sprintf(queries.PastQueriesQuery, inClause)
+	query := fmt.Sprintf(queries.PastQueriesSearch, inClause)
 	args := make([]interface{}, len(queryIDList))
 	for i, id := range queryIDList {
 		args[i] = id
