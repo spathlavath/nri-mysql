@@ -1,4 +1,4 @@
-package query_performance_details
+package performance_database
 
 import (
 	"context"
@@ -13,43 +13,49 @@ import (
 	arguments "github.com/newrelic/nri-mysql/src/args"
 )
 
-type dataSource interface {
-	close()
-	queryX(string) (*sqlx.Rows, error)
+type DataSource interface {
+	Close()
+	QueryX(string) (*sqlx.Rows, error)
 	QueryxContext(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error)
 }
 
-type database struct {
+type Database struct {
 	source *sqlx.DB
 }
 
-func openDB(dsn string) (dataSource, error) {
+func OpenDB(dsn string) (DataSource, error) {
 	source, err := sqlx.Open("mysql", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("error opening %s: %v", dsn, err)
 	}
-	db := database{
+	db := Database{
 		source: source,
 	}
 	return &db, nil
 }
 
-func (db *database) close() {
+func (db *Database) Close() {
 	db.source.Close()
 }
 
-func (db *database) queryX(query string) (*sqlx.Rows, error) {
+func (db *Database) QueryX(query string) (*sqlx.Rows, error) {
 	rows, err := db.source.Queryx(query)
 	fatalIfErr(err)
 	return rows, err
 }
 
+func fatalIfErr(err error) {
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
 // QueryxContext method implementation
-func (db *database) QueryxContext(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error) {
+func (db *Database) QueryxContext(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error) {
 	return db.source.QueryxContext(ctx, query, args...)
 }
 
-func generateDSN(args arguments.ArgumentList) string {
+func GenerateDSN(args arguments.ArgumentList) string {
 	query := url.Values{}
 	if args.OldPasswords {
 		query.Add("allowOldPasswords", "true")

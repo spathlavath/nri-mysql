@@ -20,4 +20,6 @@ type ArgumentList struct {
 	OldPasswords                     bool   `default:"false" help:"Allow old passwords: https://dev.mysql.com/doc/refman/5.6/en/server-system-variables.html#sysvar_old_passwords"`
 	ShowVersion                      bool   `default:"false" help:"Print build information and exit"`
 	EnableQueryPerformanceMonitoring bool   `default:"true" help:"Enable query performance monitoring"`
+	SlowQueryInterval                int    `default:"30" help:"Slow Queries Interval(sec) for query performance monitoring. it should be same as mysql-config.yml interval"`
+	IndividualQueryThreshold         int    `default:"1000" help:"Individual Query Threshold(ms) for for fetching query performance metrics"`
 }
