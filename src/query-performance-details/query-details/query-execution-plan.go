@@ -24,7 +24,7 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-
+	fmt.Println("queries", queries)
 	for _, query := range queries {
 		if query.QueryText == "" {
 			continue
