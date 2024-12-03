@@ -100,17 +100,17 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 	if len(events) == 0 {
 		return []map[string]interface{}{}, nil
 	}
-	planErr := setExecutionPlanMetrics(e, args, events)
-	if planErr != nil {
-		// fmt.Println("Error setting execution plan metrics: ", planErr)
-		// log.Error("Error setting value for: %v", planErr)
-	}
+	// planErr := setExecutionPlanMetrics(e, args, events)
+	// if planErr != nil {
+	// 	// fmt.Println("Error setting execution plan metrics: ", planErr)
+	// 	// log.Error("Error setting value for: %v", planErr)
+	// }
 	// fmt.Println("events------", events)
 	fmt.Print("done")
 	return events, nil
 }
 
-func setExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []map[string]interface{}) error {
+func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []map[string]interface{}) error {
 	fmt.Println("long time no see")
 	for _, metricObject := range metrics {
 		// Create a new metric set for each row
