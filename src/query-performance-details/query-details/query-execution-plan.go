@@ -19,87 +19,15 @@ import (
 )
 
 func PopulateExecutionPlans(db performance_database.DataSource, queries []performance_data_model.QueryPlanMetrics, e *integration.Entity, args arguments.ArgumentList) ([]map[string]interface{}, error) {
-	supportedStatements := map[string]bool{"SELECT": true, "INSERT": true, "UPDATE": true, "DELETE": true, "WITH": true}
 	var events []map[string]interface{}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
 	fmt.Println("queries", queries)
 	mm:=common_utils.CreateMetricSet(e, "outsideLoop", args)
 	mm.SetMetric("query_id","aaaaa" , metric.ATTRIBUTE)
 	for _, query := range queries {
-		mm:=common_utils.CreateMetricSet(e, "InsideLoop", args)
+		mm:=common_utils.CreateMetricSet(e, "insideLoop", args)
 		mm.SetMetric("query_id","aaaaa" , metric.ATTRIBUTE)
-		if query.QueryText == "" {
-			continue
-		}
-		queryText := strings.TrimSpace(query.QueryText)
-		upperQueryText := strings.ToUpper(queryText)
-
-		if !supportedStatements[strings.Split(upperQueryText, " ")[0]] {
-			log.Debug("Skipping unsupported query for EXPLAIN: %s", queryText)
-			continue
-		}
-
-		if strings.Contains(queryText, "?") {
-			log.Debug("Skipping query with placeholders for EXPLAIN: %s", queryText)
-			continue
-		}
-
-		execPlanQuery := fmt.Sprintf("EXPLAIN FORMAT=JSON %s", queryText)
-		rows, err := db.QueryxContext(ctx, execPlanQuery)
-		if err != nil {
-			log.Error("Error executing EXPLAIN for query '%s': %v", queryText, err)
-			continue
-		}
-
-		var execPlanJSON string
-		if rows.Next() {
-			err := rows.Scan(&execPlanJSON)
-			if err != nil {
-				log.Error("Failed to scan execution plan: %v", err)
-				rows.Close()
-				continue
-			}
-		}
-		rows.Close()
-
-		var execPlan map[string]interface{}
-		err = json.Unmarshal([]byte(execPlanJSON), &execPlan)
-		if err != nil {
-			log.Error("Failed to unmarshal execution plan: %v", err)
-			continue
-		}
-
-		metrics := extractMetricsFromPlan(execPlan)
-
-		baseIngestionData := map[string]interface{}{
-			"query_id":   query.QueryID,
-			"query_text": query.AnonymizedQueryText,
-			"total_cost": metrics.TotalCost,
-		}
-
-		events = append(events, baseIngestionData)
-
-		for _, metric := range metrics.TableMetrics {
-			tableIngestionData := make(map[string]interface{})
-			for k, v := range baseIngestionData {
-				tableIngestionData[k] = v
-			}
-			tableIngestionData["step_id"] = metric.StepID
-			tableIngestionData["execution_step"] = metric.ExecutionStep
-			tableIngestionData["access_type"] = metric.AccessType
-			tableIngestionData["rows_examined"] = metric.RowsExamined
-			tableIngestionData["rows_produced"] = metric.RowsProduced
-			tableIngestionData["filtered (%)"] = metric.Filtered
-			tableIngestionData["read_cost"] = metric.ReadCost
-			tableIngestionData["eval_cost"] = metric.EvalCost
-			tableIngestionData["data_read"] = metric.DataRead
-			tableIngestionData["extra_info"] = metric.ExtraInfo
-
-			events = append(events, tableIngestionData)
-		}
-		break
+		processExecutionPlanMetrics(e, args, db, query)
 	}
 
 	if len(events) == 0 {
@@ -114,6 +42,85 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 	}
 
 	return events, nil
+}
+
+func processExecutionPlanMetrics( e *integration.Entity, args arguments.ArgumentList, db performance_database.DataSource, query performance_data_model.QueryPlanMetrics) ( map[string]interface{}, map[string]interface{}) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	
+	supportedStatements := map[string]bool{"SELECT": true, "INSERT": true, "UPDATE": true, "DELETE": true, "WITH": true}
+	
+	mm:=common_utils.CreateMetricSet(e, "InsideLoop", args)
+	mm.SetMetric("query_id","aaaaa" , metric.ATTRIBUTE)
+	if query.QueryText == "" {
+		return nil,nil
+	}
+	queryText := strings.TrimSpace(query.QueryText)
+	upperQueryText := strings.ToUpper(queryText)
+
+	if !supportedStatements[strings.Split(upperQueryText, " ")[0]] {
+		log.Debug("Skipping unsupported query for EXPLAIN: %s", queryText)
+		return nil,nil
+	}
+
+	if strings.Contains(queryText, "?") {
+		log.Debug("Skipping query with placeholders for EXPLAIN: %s", queryText)
+		return nil,nil
+	}
+
+	execPlanQuery := fmt.Sprintf("EXPLAIN FORMAT=JSON %s", queryText)
+	rows, err := db.QueryxContext(ctx, execPlanQuery)
+	if err != nil {
+		log.Error("Error executing EXPLAIN for query '%s': %v", queryText, err)
+		return nil,nil
+	}
+
+	var execPlanJSON string
+	if rows.Next() {
+		err := rows.Scan(&execPlanJSON)
+		if err != nil {
+			log.Error("Failed to scan execution plan: %v", err)
+			rows.Close()
+			return nil,nil
+		}
+	}
+	rows.Close()
+
+	var execPlan map[string]interface{}
+	err = json.Unmarshal([]byte(execPlanJSON), &execPlan)
+	if err != nil {
+		log.Error("Failed to unmarshal execution plan: %v", err)
+		return nil,nil
+	}
+
+	metrics := extractMetricsFromPlan(execPlan)
+
+	baseIngestionData := map[string]interface{}{
+		"query_id":   query.QueryID,
+		"query_text": query.AnonymizedQueryText,
+		"total_cost": metrics.TotalCost,
+	}
+
+	
+	tableIngestionData := make(map[string]interface{})
+	for _, metric := range metrics.TableMetrics {
+		for k, v := range baseIngestionData {
+			tableIngestionData[k] = v
+		}
+		tableIngestionData["step_id"] = metric.StepID
+		tableIngestionData["execution_step"] = metric.ExecutionStep
+		tableIngestionData["access_type"] = metric.AccessType
+		tableIngestionData["rows_examined"] = metric.RowsExamined
+		tableIngestionData["rows_produced"] = metric.RowsProduced
+		tableIngestionData["filtered (%)"] = metric.Filtered
+		tableIngestionData["read_cost"] = metric.ReadCost
+		tableIngestionData["eval_cost"] = metric.EvalCost
+		tableIngestionData["data_read"] = metric.DataRead
+		tableIngestionData["extra_info"] = metric.ExtraInfo
+
+		
+	}
+	return baseIngestionData,tableIngestionData
 }
 
 func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []map[string]interface{}) error {
