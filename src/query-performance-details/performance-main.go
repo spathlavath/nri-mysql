@@ -43,18 +43,18 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 	// fmt.Println("Execution Plan details collected successfully.", executionPlanMetrics)
 
 	// Wait Events
-	waitEventMetrics, waitEventError := query_details.PopulateWaitEventMetrics(db, e, args)
-	if waitEventError != nil {
-		log.Error("Error populating wait event metrics: %v", waitEventError)
-		return
-	}
-	fmt.Println("Wait Event Metrics collected successfully.", waitEventMetrics)
+	// waitEventMetrics, waitEventError := query_details.PopulateWaitEventMetrics(db, e, args)
+	// if waitEventError != nil {
+	// 	log.Error("Error populating wait event metrics: %v", waitEventError)
+	// 	return
+	// }
+	// fmt.Println("Wait Event Metrics collected successfully.", waitEventMetrics)
 
-	// Blocking Sessions
-	blockingSessionMetrics, populateBlockingSessionMetricsError := query_details.PopulateBlockingSessionMetrics(db, e, args)
-	if populateBlockingSessionMetricsError != nil {
-		log.Error("Error populating blocking session metrics: %v", populateBlockingSessionMetricsError)
-		return
-	}
-	fmt.Println("Blocking Session Metrics collected successfully.", blockingSessionMetrics)
+	// // Blocking Sessions
+	// blockingSessionMetrics, populateBlockingSessionMetricsError := query_details.PopulateBlockingSessionMetrics(db, e, args)
+	// if populateBlockingSessionMetricsError != nil {
+	// 	log.Error("Error populating blocking session metrics: %v", populateBlockingSessionMetricsError)
+	// 	return
+	// }
+	// fmt.Println("Blocking Session Metrics collected successfully.", blockingSessionMetrics)
 }
