@@ -22,14 +22,14 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 	var events []map[string]interface{}
 
 	fmt.Println("queries", queries)
-	mm:=common_utils.CreateMetricSet(e, "outsideLoop", args)
-	mm.SetMetric("query_id","aaaaa" , metric.ATTRIBUTE)
+	mm := common_utils.CreateMetricSet(e, "outsideLoop", args)
+	mm.SetMetric("query_id", "aaaaa", metric.ATTRIBUTE)
 	for _, query := range queries {
-		mm:=common_utils.CreateMetricSet(e, "insideLoop", args)
-		mm.SetMetric("query_id","aaaaa" , metric.ATTRIBUTE)
-		baseIngestionData,tableIngestionData:=processExecutionPlanMetrics(e, args, db, query)
+		mm := common_utils.CreateMetricSet(e, "insideLoop", args)
+		mm.SetMetric("query_id", "aaaaa", metric.ATTRIBUTE)
+		baseIngestionData, tableIngestionData := processExecutionPlanMetrics(e, args, db, query)
 		events = append(events, baseIngestionData)
-		events=append(events, tableIngestionData)
+		events = append(events, tableIngestionData)
 	}
 
 	if len(events) == 0 {
@@ -46,34 +46,33 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 	return events, nil
 }
 
-func processExecutionPlanMetrics( e *integration.Entity, args arguments.ArgumentList, db performance_database.DataSource, query performance_data_model.QueryPlanMetrics) ( map[string]interface{}, map[string]interface{}) {
+func processExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, db performance_database.DataSource, query performance_data_model.QueryPlanMetrics) (map[string]interface{}, map[string]interface{}) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	
+
 	supportedStatements := map[string]bool{"SELECT": true, "INSERT": true, "UPDATE": true, "DELETE": true, "WITH": true}
-	
-	
+
 	if query.QueryText == "" {
-		return nil,nil
+		return nil, nil
 	}
 	queryText := strings.TrimSpace(query.QueryText)
 	upperQueryText := strings.ToUpper(queryText)
 
 	if !supportedStatements[strings.Split(upperQueryText, " ")[0]] {
 		log.Debug("Skipping unsupported query for EXPLAIN: %s", queryText)
-		return nil,nil
+		return nil, nil
 	}
 
 	if strings.Contains(queryText, "?") {
 		log.Debug("Skipping query with placeholders for EXPLAIN: %s", queryText)
-		return nil,nil
+		return nil, nil
 	}
 
 	execPlanQuery := fmt.Sprintf("EXPLAIN FORMAT=JSON %s", queryText)
 	rows, err := db.QueryxContext(ctx, execPlanQuery)
 	if err != nil {
 		log.Error("Error executing EXPLAIN for query '%s': %v", queryText, err)
-		return nil,nil
+		return nil, nil
 	}
 
 	var execPlanJSON string
@@ -82,19 +81,19 @@ func processExecutionPlanMetrics( e *integration.Entity, args arguments.Argument
 		if err != nil {
 			log.Error("Failed to scan execution plan: %v", err)
 			rows.Close()
-			return nil,nil
+			return nil, nil
 		}
 	}
 	rows.Close()
 
-	mm:=common_utils.CreateMetricSet(e, "InsideLoop1", args)
-	mm.SetMetric("query_id","aaaaa" , metric.ATTRIBUTE)
+	mm := common_utils.CreateMetricSet(e, "InsideLoop1", args)
+	mm.SetMetric("query_id", "aaaaa", metric.ATTRIBUTE)
 
 	var execPlan map[string]interface{}
 	err = json.Unmarshal([]byte(execPlanJSON), &execPlan)
 	if err != nil {
 		log.Error("Failed to unmarshal execution plan: %v", err)
-		return nil,nil
+		return nil, nil
 	}
 
 	metrics := extractMetricsFromPlan(execPlan)
@@ -105,7 +104,6 @@ func processExecutionPlanMetrics( e *integration.Entity, args arguments.Argument
 		"total_cost": metrics.TotalCost,
 	}
 
-	
 	tableIngestionData := make(map[string]interface{})
 	for _, metric := range metrics.TableMetrics {
 		for k, v := range baseIngestionData {
@@ -125,25 +123,25 @@ func processExecutionPlanMetrics( e *integration.Entity, args arguments.Argument
 	}
 	fmt.Println("tableIngestionData", tableIngestionData)
 	fmt.Print("baseIngestionData", baseIngestionData)
-	return baseIngestionData,tableIngestionData
+	return baseIngestionData, tableIngestionData
 }
 
 func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []map[string]interface{}) error {
 	// mm:=common_utils.CreateMetricSet(e, "outsideLoopMet", args)
 	// mm.SetMetric("query_id","aaaaa" , metric.ATTRIBUTE)
 	ms1 := common_utils.CreateMetricSet(e, "MysqlQueryExecutionVcc1", args)
-	ms1.SetMetric("query_id","testtingweds" , metric.ATTRIBUTE)
+	ms1.SetMetric("query_id", "testtingweds", metric.ATTRIBUTE)
 	for _, metricObject := range metrics {
-		processExecutionMetricsIngestion(e, args,metricObject)
-
+		processExecutionMetricsIngestion(e, args, metricObject)
 
 	}
 
 	return nil
 }
 
-func processExecutionMetricsIngestion(e *integration.Entity, args arguments.ArgumentList,metricObject map[string]interface{}) {
+func processExecutionMetricsIngestion(e *integration.Entity, args arguments.ArgumentList, metricObject map[string]interface{}) {
 	ms := common_utils.CreateMetricSet(e, "MysqlQueryExecutionV2", args)
+	fmt.Println("metricObject-----", metricObject, metricObject["query_text"])
 	metricsMap := map[string]struct {
 		Value      interface{}
 		MetricType metric.SourceType
