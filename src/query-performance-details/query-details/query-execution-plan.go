@@ -131,7 +131,8 @@ func processExecutionPlanMetrics( e *integration.Entity, args arguments.Argument
 func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []map[string]interface{}) error {
 	// mm:=common_utils.CreateMetricSet(e, "outsideLoopMet", args)
 	// mm.SetMetric("query_id","aaaaa" , metric.ATTRIBUTE)
-	
+	ms1 := common_utils.CreateMetricSet(e, "MysqlQueryExecutionV1", args)
+	ms1.SetMetric("query_id","testting" , metric.ATTRIBUTE)
 	for _, metricObject := range metrics {
 		ms := common_utils.CreateMetricSet(e, "MysqlQueryExecutionV1", args)
 		// metricsMap := map[string]struct {
