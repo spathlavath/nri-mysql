@@ -25,7 +25,11 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	fmt.Println("queries", queries)
+	mm:=common_utils.CreateMetricSet(e, "outsideLoop", args)
+	mm.SetMetric("query_id","aaaaa" , metric.ATTRIBUTE)
 	for _, query := range queries {
+		mm:=common_utils.CreateMetricSet(e, "InsideLoop", args)
+		mm.SetMetric("query_id","aaaaa" , metric.ATTRIBUTE)
 		if query.QueryText == "" {
 			continue
 		}
