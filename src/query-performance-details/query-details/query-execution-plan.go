@@ -67,7 +67,7 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 		fmt.Println("execPlan", execPlan)
 
 		// metrics := extractMetricsFromPlan(execPlan)
-		mm:=common_utils.CreateMetricSet(e, "MysqlQueryExecution", args)
+		mm:=common_utils.CreateMetricSet(e, "MysqlQueryExecutionaaaaa", args)
 		mm.SetMetric("query_id",execPlanJSON , metric.ATTRIBUTE)
 
 		// baseIngestionData := map[string]interface{}{
@@ -98,16 +98,16 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 		// }
 	}
 
-	if len(events) == 0 {
-		return []map[string]interface{}{}, nil
-	}
+	// if len(events) == 0 {
+	// 	return []map[string]interface{}{}, nil
+	// }
 
-	// Set execution plan metrics
-	err := SetExecutionPlanMetrics(e, args, events)
-	if err != nil {
-		log.Error("Error setting execution plan metrics: %v", err)
-		return nil, err
-	}
+	// // Set execution plan metrics
+	// err := SetExecutionPlanMetrics(e, args, events)
+	// if err != nil {
+	// 	log.Error("Error setting execution plan metrics: %v", err)
+	// 	return nil, err
+	// }
 
 	return events, nil
 }
