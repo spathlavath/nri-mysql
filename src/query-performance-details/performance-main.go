@@ -1,7 +1,7 @@
 package query_performance_details
 
 import (
-
+	"github.com/newrelic/infra-integrations-sdk/data/metric"
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	arguments "github.com/newrelic/nri-mysql/src/args"
@@ -34,6 +34,9 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 	// fmt.Println("Individual Query details collected successfully.", individualQueryDetails)
 
 	// Query Execution Plan
+		// metrics := extractMetricsFromPlan(execPlan)
+	mm:=common_utils.CreateMetricSet(e, "MysqlQueryExecutionaaaassdsdsdsfdaa", args)
+	mm.SetMetric("query_id","aaaaa" , metric.ATTRIBUTE)
 	_, executionPlanMetricsErr := query_details.PopulateExecutionPlans(db, individualQueryDetails, e, args)
 	if executionPlanMetricsErr != nil {
 		log.Error("Error populating execution plan details: %v", executionPlanMetricsErr)
