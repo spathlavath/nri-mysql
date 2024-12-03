@@ -141,12 +141,12 @@ func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 
 func processExecutionMetricsIngestion(e *integration.Entity, args arguments.ArgumentList, metricObject map[string]interface{}) {
 	ms := common_utils.CreateMetricSet(e, "MysqlQueryExecutionV2", args)
-
+	queryId := metricObject["query_id"].(string)
 	metricsMap := map[string]struct {
 		Value      interface{}
 		MetricType metric.SourceType
 	}{
-		"query_id":       {common_utils.GetStringValueSafe(metricObject["query_id"]), metric.ATTRIBUTE},
+		"query_id":       {queryId, metric.ATTRIBUTE},
 		"query_text":     {common_utils.GetStringValueSafe(metricObject["query_text"]), metric.ATTRIBUTE},
 		"total_cost":     {common_utils.GetFloat64ValueSafe(metricObject["total_cost"]), metric.GAUGE},
 		"step_id":        {common_utils.GetInt64ValueSafe(metricObject["step_id"]), metric.GAUGE},
