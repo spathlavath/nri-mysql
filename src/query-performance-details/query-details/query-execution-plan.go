@@ -133,7 +133,7 @@ func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 	// mm.SetMetric("query_id","aaaaa" , metric.ATTRIBUTE)
 	
 	for _, metricObject := range metrics {
-		mm:=common_utils.CreateMetricSet(e, "outsideLoopMet", args)
+		mm:=common_utils.CreateMetricSet(e, "outsideLoopMewwt", args)
 		mm.SetMetric("query_id","aaaaa" , metric.ATTRIBUTE)
 		// Create a new metric set for each row
 		ms := common_utils.CreateMetricSet(e, "MysqlQueryExecution", args)
@@ -155,6 +155,7 @@ func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 			"data_read":      {common_utils.GetFloat64ValueSafe(metricObject["data_read"]), metric.GAUGE},
 			"extra_info":     {common_utils.GetStringValueSafe(metricObject["extra_info"]), metric.ATTRIBUTE},
 		}
+		fmt.Println("metricsMap", metricsMap)
 
 		for name, metricData := range metricsMap {
 			err := ms.SetMetric(name, metricData.Value, metricData.MetricType)
