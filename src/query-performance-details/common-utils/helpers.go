@@ -127,9 +127,9 @@ func ConvertToStringArray(arr []interface{}) string {
 }
 
 func GetStringValueSafe(value interface{}) string {
-	if value == nil {
-		return "hei"
-	}
+	// if value == nil {
+	// 	return "hei"
+	// }
 	switch v := value.(type) {
 	case string:
 		return v
