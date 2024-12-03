@@ -142,8 +142,16 @@ func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 
 func processExecutionMetricsIngestion(e *integration.Entity, args arguments.ArgumentList, metricObject map[string]interface{}) {
 	ms := common_utils.CreateMetricSet(e, "MysqlQueryExecutionV2", args)
-	fmt.Println("Metric Object ---> ")
-	fmt.Println(metricObject["query_id"])
+	// Debugging: Print the contents of metricObject
+	fmt.Println("Metric Object ---> ", metricObject)
+
+	// Access and print the value before passing to GetStringValueSafe
+	queryId := metricObject["query_id"]
+	fmt.Println("query_id before GetStringValueSafe:", queryId)
+
+	// Debugging: Print the value after passing to GetStringValueSafe
+	queryIdSafe := common_utils.GetStringValueSafe(queryId)
+	fmt.Println("query_id after GetStringValueSafe:", queryIdSafe)
 
 	metricsMap := map[string]struct {
 		Value      interface{}
