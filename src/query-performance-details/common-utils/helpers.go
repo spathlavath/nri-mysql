@@ -199,6 +199,7 @@ func GetInt64ValueSafe(value interface{}) int64 {
 	default:
 		log.Error("Unexpected type for value: %T", value)
 	}
+	fmt.Print("heyyyyy")
 	return 0
 }
 

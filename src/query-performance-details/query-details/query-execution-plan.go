@@ -143,35 +143,29 @@ func processExecutionMetricsIngestion(e *integration.Entity, args arguments.Argu
 	ms := common_utils.CreateMetricSet(e, "MysqlQueryExecutionV2", args)
 	fmt.Println("metricObject-----", metricObject)
 	fmt.Println("query_text-----", metricObject["query_text"])
-
 	metricsMap := map[string]struct {
 		Value      interface{}
 		MetricType metric.SourceType
 	}{
-		"query_id":       {metricObject["query_id"], metric.ATTRIBUTE},
-		"query_text":     {metricObject["query_text"], metric.ATTRIBUTE},
-		"total_cost":     {metricObject["total_cost"], metric.GAUGE},
-		"step_id":        {metricObject["step_id"], metric.GAUGE},
-		"execution_step": {metricObject["execution_step"], metric.ATTRIBUTE},
-		"access_type":    {metricObject["access_type"], metric.ATTRIBUTE},
-		"rows_examined":  {metricObject["rows_examined"], metric.GAUGE},
-		"rows_produced":  {metricObject["rows_produced"], metric.GAUGE},
-		"filtered (%)":   {metricObject["filtered (%)"], metric.GAUGE},
-		"read_cost":      {metricObject["read_cost"], metric.GAUGE},
-		"eval_cost":      {metricObject["eval_cost"], metric.GAUGE},
-		"data_read":      {metricObject["data_read"], metric.GAUGE},
-		"extra_info":     {metricObject["extra_info"], metric.ATTRIBUTE},
+		"query_id":       {common_utils.GetStringValueSafe(metricObject["query_id"]), metric.ATTRIBUTE},
+		"query_text":     {"tyerstdytdtffgjh", metric.ATTRIBUTE},
+		"total_cost":     {common_utils.GetFloat64ValueSafe(metricObject["total_cost"]), metric.GAUGE},
+		"step_id":        {common_utils.GetInt64ValueSafe(metricObject["step_id"]), metric.GAUGE},
+		"execution_step": {common_utils.GetStringValueSafe(metricObject["execution_step"]), metric.ATTRIBUTE},
+		"access_type":    {common_utils.GetStringValueSafe(metricObject["access_type"]), metric.ATTRIBUTE},
+		"rows_examined":  {common_utils.GetInt64ValueSafe(metricObject["rows_examined"]), metric.GAUGE},
+		"rows_produced":  {common_utils.GetInt64ValueSafe(metricObject["rows_produced"]), metric.GAUGE},
+		"filtered (%)":   {common_utils.GetFloat64ValueSafe(metricObject["filtered (%)"]), metric.GAUGE},
+		"read_cost":      {common_utils.GetFloat64ValueSafe(metricObject["read_cost"]), metric.GAUGE},
+		"eval_cost":      {common_utils.GetFloat64ValueSafe(metricObject["eval_cost"]), metric.GAUGE},
+		"data_read":      {common_utils.GetFloat64ValueSafe(metricObject["data_read"]), metric.GAUGE},
+		"extra_info":     {common_utils.GetStringValueSafe(metricObject["extra_info"]), metric.ATTRIBUTE},
 	}
-
 	fmt.Println("metricsMap", metricsMap)
 
-
 	for name, metricData := range metricsMap {
-		if(metricData.Value==nil){
-				continue
-		}
 		fmt.Println("name", name)
-		fmt.Println("metricData", metricData.Value,metricData.MetricType)
+		fmt.Println("metricData", metricData.Value)
 		err := ms.SetMetric(name, metricData.Value, metricData.MetricType)
 		if err != nil {
 			log.Error("Error setting value for %s: %v", name, err)
