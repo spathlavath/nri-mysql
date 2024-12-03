@@ -126,22 +126,22 @@ func ConvertToStringArray(arr []interface{}) string {
 	return strings.Join(parts, ", ")
 }
 
-func GetStringValueSafe(value interface{}) string {
+func GetStringValueSafe(value string) string {
 	// if value == nil {
 	// 	return "hei"
 	// }
-	switch v := value.(type) {
-	case string:
-		return v
-	case sql.NullString:
-		if v.Valid {
-			return v.String
-		}
-		return "hell"
-	default:
-		log.Error("Unexpected type for value: %T", value)
-		return "wwww"
-	}
+	// switch v := value.(type) {
+	// case string:
+	return value
+	// case sql.NullString:
+	// 	if v.Valid {
+	// 		return v.String
+	// 	}
+	// 	return "hell"
+	// default:
+	// 	log.Error("Unexpected type for value: %T", value)
+	// 	return "wwww"
+	// }
 }
 
 func GetFloat64ValueSafe(value interface{}) float64 {
