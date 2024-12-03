@@ -95,6 +95,7 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 
 			events = append(events, tableIngestionData)
 		}
+		break
 	}
 
 	if len(events) == 0 {
