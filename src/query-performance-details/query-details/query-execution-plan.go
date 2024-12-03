@@ -141,8 +141,7 @@ func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 
 func processExecutionMetricsIngestion(e *integration.Entity, args arguments.ArgumentList, metricObject map[string]interface{}) {
 	ms := common_utils.CreateMetricSet(e, "MysqlQueryExecutionV2", args)
-	fmt.Println("metricObject-----", metricObject)
-	fmt.Println("query_text-----", metricObject["query_text"])
+
 	metricsMap := map[string]struct {
 		Value      interface{}
 		MetricType metric.SourceType
