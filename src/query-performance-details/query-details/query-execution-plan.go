@@ -162,14 +162,14 @@ func processExecutionMetricsIngestion(e *integration.Entity, args arguments.Argu
 		"data_read":      {metricObject["data_read"], metric.GAUGE},
 		"extra_info":     {metricObject["extra_info"], metric.ATTRIBUTE},
 	}
-	fmt.Println("metricsMap", metricsMap)
+
 
 	for name, metricData := range metricsMap {
 		if(metricData.Value==nil){
 				continue
 		}
 		fmt.Println("name", name)
-		fmt.Println("metricData", metricData.Value)
+		fmt.Println("metricData", metricData.Value,metricData.MetricType)
 		err := ms.SetMetric(name, metricData.Value, metricData.MetricType)
 		if err != nil {
 			log.Error("Error setting value for %s: %v", name, err)
