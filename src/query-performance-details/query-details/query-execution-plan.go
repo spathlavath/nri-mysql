@@ -18,7 +18,7 @@ import (
 	performance_database "github.com/newrelic/nri-mysql/src/query-performance-details/performance-database"
 )
 
-func PopulateExecutionPlans(db performance_database.DataSource, queries []performance_data_model.QueryPlanMetrics, e *integration.Entity, args arguments.ArgumentList) ([]map[string]interface{}, error) {	
+func PopulateExecutionPlans(db performance_database.DataSource, queries []performance_data_model.QueryPlanMetrics, e *integration.Entity, args arguments.ArgumentList) ([]map[string]interface{}, error) {
 	var events []map[string]interface{}
 
 	for _, query := range queries {
@@ -40,7 +40,7 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 	return events, nil
 }
 
-func processExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, db performance_database.DataSource, query performance_data_model.QueryPlanMetrics) (map[string]interface{}) {
+func processExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, db performance_database.DataSource, query performance_data_model.QueryPlanMetrics) map[string]interface{} {
 	supportedStatements := map[string]bool{"SELECT": true, "INSERT": true, "UPDATE": true, "DELETE": true, "WITH": true}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -80,7 +80,7 @@ func processExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentL
 	}
 	rows.Close()
 
-	mm := common_utils.CreateMetricSet(e, "InsideLoop1", args)
+	mm := common_utils.CreateMetricSet(e, "InsideLP", args)
 	mm.SetMetric("query_id", "aaaaa", metric.ATTRIBUTE)
 
 	var execPlan map[string]interface{}
@@ -92,18 +92,12 @@ func processExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentL
 
 	metrics := extractMetricsFromPlan(execPlan)
 
-	baseIngestionData := map[string]interface{}{
-		"query_id":   query.QueryID,
-		"query_text": query.AnonymizedQueryText,
-		"event_id":   query.EventID,
-		"total_cost": metrics.TotalCost,
-	}
-
 	tableIngestionData := make(map[string]interface{})
 	for _, metric := range metrics.TableMetrics {
-		for k, v := range baseIngestionData {
-			tableIngestionData[k] = v
-		}
+		tableIngestionData["query_id"] = query.QueryID
+		tableIngestionData["query_text"] = query.AnonymizedQueryText
+		tableIngestionData["event_id"] = query.EventID
+		tableIngestionData["total_cost"] = metrics.TotalCost
 		tableIngestionData["step_id"] = metric.StepID
 		tableIngestionData["execution_step"] = metric.ExecutionStep
 		tableIngestionData["access_type"] = metric.AccessType
