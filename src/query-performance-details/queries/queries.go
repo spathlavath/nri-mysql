@@ -210,7 +210,6 @@ const (
 					  bt.PROCESSLIST_ID AS blocking_pid,
                       bt.PROCESSLIST_USER AS blocking_user,
                       bt.PROCESSLIST_HOST AS blocking_host,
-                      bt.PROCESSLIST_DB AS blocking_db,
                       es_waiting.DIGEST_TEXT AS blocked_query,
                       es_blocking.DIGEST_TEXT AS blocking_query,
 					  es_waiting.DIGEST AS blocked_query_id,
