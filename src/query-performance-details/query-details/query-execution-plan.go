@@ -25,17 +25,18 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 		tableIngestionDataList := processExecutionPlanMetrics(e, args, db, query)
 		events = append(events, tableIngestionDataList...)
 	}
-
+	mm := common_utils.CreateMetricSet(e, "InsidePopulate", args)
+	mm.SetMetric("query_id", "aaaaa", metric.ATTRIBUTE)
 	if len(events) == 0 {
 		return []map[string]interface{}{}, nil
 	}
 
 	// Set execution plan metrics
-	// err := SetExecutionPlanMetrics(e, args, events)
-	// if err != nil {
-	// 	log.Error("Error setting execution plan metrics: %v", err)
-	// 	return nil, err
-	// }
+	err := SetExecutionPlanMetrics(e, args, events)
+	if err != nil {
+		log.Error("Error setting execution plan metrics: %v", err)
+		return nil, err
+	}
 
 	return events, nil
 }
@@ -120,9 +121,9 @@ func processExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentL
 func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []map[string]interface{}) error {
 	ms1 := common_utils.CreateMetricSet(e, "MysqlQueryExecutionVcc1", args)
 	ms1.SetMetric("query_id", "testtingweds", metric.ATTRIBUTE)
-	// for _, metricObject := range metrics {
-	// 	processExecutionMetricsIngestion(e, args, metricObject)
-	// }
+	for _, metricObject := range metrics {
+		processExecutionMetricsIngestion(e, args, metricObject)
+	}
 
 	return nil
 }
@@ -146,8 +147,8 @@ func processExecutionMetricsIngestion(e *integration.Entity, args arguments.Argu
 		Value      interface{}
 		MetricType metric.SourceType
 	}{
-		"query_id":       {metricObject["query_id"], metric.ATTRIBUTE},
-		"query_text":     {metricObject["query_text"], metric.ATTRIBUTE},
+		"query_id":       {common_utils.GetStringValueSafe(metricObject["query_id"]), metric.ATTRIBUTE},
+		"query_text":     {common_utils.GetStringValueSafe(metricObject["query_text"]), metric.ATTRIBUTE},
 		"event_id":       {metricObject["event_id"], metric.GAUGE},
 		"total_cost":     {common_utils.GetFloat64ValueSafe(metricObject["total_cost"]), metric.GAUGE},
 		"step_id":        {common_utils.GetInt64ValueSafe(metricObject["step_id"]), metric.GAUGE},
