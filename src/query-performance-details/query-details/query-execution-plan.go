@@ -177,25 +177,25 @@ func processExecutionMetricsIngestion(e *integration.Entity, args arguments.Argu
 		fmt.Println("name", name)
 		fmt.Println("metricData", metricData.Value)
 
-		switch v := metricData.Value.(type) {
-		case int, int32, int64:
-			ms.SetMetric(name, v, metricData.MetricType)
-		case float32, float64:
-			ms.SetMetric(name, v, metricData.MetricType)
-		case string:
-			// if v == "" {
-			// 	return fmt.Errorf("value for %s is an empty string", v)
-			// }
-			ms.SetMetric(name, v, metricData.MetricType)
-		default:
-			fmt.Println("unexpected type for value:", v)
-			// return fmt.Errorf("unexpected type for value %s:", v)
-		}
-		// err := ms.SetMetric(name, metricData.Value, metricData.MetricType)
-		// if err != nil {
-		// 	log.Error("Error setting value for %s: %v", name, err)
-		// 	continue
+		// switch v := metricData.Value.(type) {
+		// case int, int32, int64:
+		// 	ms.SetMetric(name, v, metricData.MetricType)
+		// case float32, float64:
+		// 	ms.SetMetric(name, v, metricData.MetricType)
+		// case string:
+		// 	// if v == "" {
+		// 	// 	return fmt.Errorf("value for %s is an empty string", v)
+		// 	// }
+		// 	ms.SetMetric(name, v, metricData.MetricType)
+		// default:
+		// 	fmt.Println("unexpected type for value:", v)
+		// 	// return fmt.Errorf("unexpected type for value %s:", v)
 		// }
+		err := ms.SetMetric(name, metricData.Value, metricData.MetricType)
+		if err != nil {
+			log.Error("Error setting value for %s: %v", name, err)
+			continue
+		}
 	}
 }
 
