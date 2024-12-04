@@ -122,7 +122,7 @@ func main() {
 	if args.EnableQueryPerformanceMonitoring {
 		query_performance_details.PopulateQueryPerformanceMetrics(args, e)
 	}
-
+	fmt.Println("Publishing the inventory and metrics")
 	fatalIfErr(i.Publish())
 }
 

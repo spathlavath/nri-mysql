@@ -91,29 +91,29 @@ func processExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentL
 		return nil
 	}
 
-	extractMetricsFromPlan(execPlan)
+	metrics := extractMetricsFromPlan(execPlan)
 
 	var tableIngestionDataList []map[string]interface{}
-	// for _, metric := range metrics.TableMetrics {
-	// 	tableIngestionData := make(map[string]interface{})
-	// 	tableIngestionData["query_id"] = query.QueryID
-	// 	tableIngestionData["query_text"] = query.AnonymizedQueryText
-	// 	tableIngestionData["event_id"] = query.EventID
-	// 	tableIngestionData["total_cost"] = metrics.TotalCost
-	// 	tableIngestionData["step_id"] = metric.StepID
-	// 	tableIngestionData["execution_step"] = metric.ExecutionStep
-	// 	tableIngestionData["access_type"] = metric.AccessType
-	// 	tableIngestionData["rows_examined"] = metric.RowsExamined
-	// 	tableIngestionData["rows_produced"] = metric.RowsProduced
-	// 	tableIngestionData["filtered"] = metric.Filtered
-	// 	tableIngestionData["read_cost"] = metric.ReadCost
-	// 	tableIngestionData["eval_cost"] = metric.EvalCost
-	// 	tableIngestionData["data_read"] = metric.DataRead
-	// 	tableIngestionData["extra_info"] = metric.ExtraInfo
+	for _, metric := range metrics.TableMetrics {
+		tableIngestionData := make(map[string]interface{})
+		tableIngestionData["query_id"] = query.QueryID
+		tableIngestionData["query_text"] = query.AnonymizedQueryText
+		tableIngestionData["event_id"] = query.EventID
+		tableIngestionData["total_cost"] = metrics.TotalCost
+		tableIngestionData["step_id"] = metric.StepID
+		tableIngestionData["execution_step"] = metric.ExecutionStep
+		tableIngestionData["access_type"] = metric.AccessType
+		tableIngestionData["rows_examined"] = metric.RowsExamined
+		tableIngestionData["rows_produced"] = metric.RowsProduced
+		tableIngestionData["filtered"] = metric.Filtered
+		tableIngestionData["read_cost"] = metric.ReadCost
+		tableIngestionData["eval_cost"] = metric.EvalCost
+		tableIngestionData["data_read"] = metric.DataRead
+		tableIngestionData["extra_info"] = metric.ExtraInfo
 
-	// 	tableIngestionDataList = append(tableIngestionDataList, tableIngestionData)
-	// 	fmt.Println("tableIngestionData", tableIngestionData)
-	// }
+		tableIngestionDataList = append(tableIngestionDataList, tableIngestionData)
+		fmt.Println("tableIngestionData", tableIngestionData)
+	}
 
 	return tableIngestionDataList
 }
