@@ -81,7 +81,7 @@ func processExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentL
 	}
 	rows.Close()
 
-	mm := common_utils.CreateMetricSet(e, "InsideLP", args)
+	mm := common_utils.CreateMetricSet(e, "InsidePlan", args)
 	mm.SetMetric("query_id", "aaaaa", metric.ATTRIBUTE)
 
 	var execPlan map[string]interface{}
