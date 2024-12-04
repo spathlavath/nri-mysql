@@ -22,8 +22,8 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 	var events []map[string]interface{}
 
 	for _, query := range queries {
-		tableIngestionData := processExecutionPlanMetrics(e, args, db, query)
-		events = append(events, tableIngestionData)
+		tableIngestionDataList := processExecutionPlanMetrics(e, args, db, query)
+		events = append(events, tableIngestionDataList...)
 	}
 
 	if len(events) == 0 {
@@ -40,7 +40,7 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 	return events, nil
 }
 
-func processExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, db performance_database.DataSource, query performance_data_model.QueryPlanMetrics) map[string]interface{} {
+func processExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, db performance_database.DataSource, query performance_data_model.QueryPlanMetrics) []map[string]interface{} {
 	supportedStatements := map[string]bool{"SELECT": true, "INSERT": true, "UPDATE": true, "DELETE": true, "WITH": true}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -92,8 +92,9 @@ func processExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentL
 
 	metrics := extractMetricsFromPlan(execPlan)
 
-	tableIngestionData := make(map[string]interface{})
+	var tableIngestionDataList []map[string]interface{}
 	for _, metric := range metrics.TableMetrics {
+		tableIngestionData := make(map[string]interface{})
 		tableIngestionData["query_id"] = query.QueryID
 		tableIngestionData["query_text"] = query.AnonymizedQueryText
 		tableIngestionData["event_id"] = query.EventID
@@ -103,16 +104,17 @@ func processExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentL
 		tableIngestionData["access_type"] = metric.AccessType
 		tableIngestionData["rows_examined"] = metric.RowsExamined
 		tableIngestionData["rows_produced"] = metric.RowsProduced
-		tableIngestionData["filtered (%)"] = metric.Filtered
+		tableIngestionData["filtered"] = metric.Filtered
 		tableIngestionData["read_cost"] = metric.ReadCost
 		tableIngestionData["eval_cost"] = metric.EvalCost
 		tableIngestionData["data_read"] = metric.DataRead
 		tableIngestionData["extra_info"] = metric.ExtraInfo
 
+		tableIngestionDataList = append(tableIngestionDataList, tableIngestionData)
+		fmt.Println("tableIngestionData", tableIngestionData)
 	}
-	fmt.Println("tableIngestionData", tableIngestionData)
-	return tableIngestionData
 
+	return tableIngestionDataList
 }
 
 func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []map[string]interface{}) error {
