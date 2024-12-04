@@ -3,6 +3,7 @@ package common_utils
 import (
 	"database/sql"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 
@@ -171,35 +172,31 @@ func GetFloat64ValueSafe(value interface{}) float64 {
 	return 0.0
 }
 
-func GetInt64ValueSafe(value interface{}) int64 {
-	if value == nil {
-		return 0
-	}
-	switch v := value.(type) {
+func GetInt64ValueSafe(val interface{}) int64 {
+	switch v := val.(type) {
 	case int64:
 		return v
 	case int:
 		return int64(v)
+	case uint64:
+		if v <= uint64(math.MaxInt64) {
+			return int64(v)
+		}
+		fmt.Printf("Value %v overflows int64, returning 0", v)
+		return 0
 	case float64:
+		return int64(v)
+	case float32:
 		return int64(v)
 	case string:
 		parsedVal, err := strconv.ParseInt(v, 10, 64)
 		if err == nil {
 			return parsedVal
 		}
-		log.Error("Failed to parse string to int64: %v", err)
-	case sql.NullString:
-		if v.Valid {
-			parsedVal, err := strconv.ParseInt(v.String, 10, 64)
-			if err == nil {
-				return parsedVal
-			}
-			log.Error("Failed to parse sql.NullString to int64: %v", err)
-		}
+		fmt.Printf("Failed to parse string to int64: %v", err)
 	default:
-		log.Error("Unexpected type for value: %T", value)
+		fmt.Printf("Unhandled type in GetInt64ValueSafe: %T", val)
 	}
-	fmt.Print("heyyyyy")
 	return 0
 }
 

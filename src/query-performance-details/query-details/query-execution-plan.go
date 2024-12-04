@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -138,58 +139,66 @@ func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 	fmt.Printf("Setting execution plan metrics for %d metrics\n", len(metrics))
 
 	for _, metricObject := range metrics {
-		processExecutionMetricsIngestion(e, args, metricObject)
+		// Create a new metric set for each metricObject
+		ms := common_utils.CreateMetricSet(e, "MysqlQueryExecution", args)
+
+		// Debugging: Print the contents of metricObject
+		fmt.Println("Metric Object ---> ", metricObject)
+
+		// Print the contents and types of metricObject
+		fmt.Println("Metric Object Contents and Types:")
+		for k, v := range metricObject {
+			fmt.Printf("Key: %s, Value: %v, Type: %T\n", k, v, v)
+		}
+
+		// Proceed to set metrics as before
+		metricsMap := map[string]struct {
+			Value      interface{}
+			MetricType metric.SourceType
+		}{
+			"query_id":       {common_utils.GetStringValueSafe(metricObject["query_id"]), metric.ATTRIBUTE},
+			"query_text":     {common_utils.GetStringValueSafe(metricObject["query_text"]), metric.ATTRIBUTE},
+			"event_id":       {common_utils.GetInt64ValueSafe(metricObject["event_id"]), metric.GAUGE},
+			"total_cost":     {common_utils.GetFloat64ValueSafe(metricObject["total_cost"]), metric.GAUGE},
+			"step_id":        {common_utils.GetInt64ValueSafe(metricObject["step_id"]), metric.GAUGE},
+			"execution_step": {common_utils.GetStringValueSafe(metricObject["execution_step"]), metric.ATTRIBUTE},
+			"access_type":    {common_utils.GetStringValueSafe(metricObject["access_type"]), metric.ATTRIBUTE},
+			"rows_examined":  {common_utils.GetInt64ValueSafe(metricObject["rows_examined"]), metric.GAUGE},
+			"rows_produced":  {common_utils.GetInt64ValueSafe(metricObject["rows_produced"]), metric.GAUGE},
+			"filtered":       {common_utils.GetFloat64ValueSafe(metricObject["filtered"]), metric.GAUGE},
+			"read_cost":      {common_utils.GetFloat64ValueSafe(metricObject["read_cost"]), metric.GAUGE},
+			"eval_cost":      {common_utils.GetFloat64ValueSafe(metricObject["eval_cost"]), metric.GAUGE},
+			"data_read":      {common_utils.GetFloat64ValueSafe(metricObject["data_read"]), metric.GAUGE},
+			"extra_info":     {common_utils.GetStringValueSafe(metricObject["extra_info"]), metric.ATTRIBUTE},
+		}
+
+		for name, metricData := range metricsMap {
+			fmt.Println("name:", name)
+			fmt.Println("metricData:", metricData.Value)
+			fmt.Printf("Type of metricData.Value: %T\n", metricData.Value)
+
+			// Convert uint64 to int64 or float64 if necessary
+			if val, ok := metricData.Value.(uint64); ok {
+				if val <= uint64(math.MaxInt64) {
+					metricData.Value = int64(val)
+				} else {
+					// If it doesn't fit, convert to float64
+					metricData.Value = float64(val)
+				}
+			}
+
+			err := ms.SetMetric(name, metricData.Value, metricData.MetricType)
+			if err != nil {
+				log.Error("Error setting value for %s: %v", name, err)
+				continue
+			}
+		}
+
+		// Print the metric set for debugging
+		fmt.Println("Metric Set:", ms)
 	}
 
 	return nil
-}
-
-func processExecutionMetricsIngestion(e *integration.Entity, args arguments.ArgumentList, metricObject map[string]interface{}) {
-	ms := common_utils.CreateMetricSet(e, "MysqlQueryExecutionV2", args)
-	// Debugging: Print the contents of metricObject
-	fmt.Println("Metric Object ---> ", metricObject)
-
-	// Print the contents and types of metricObject
-	fmt.Println("Metric Object Contents and Types:")
-	for k, v := range metricObject {
-		fmt.Printf("Key: %s, Value: %v, Type: %T\n", k, v, v)
-	}
-
-	// Proceed to set metrics as before
-	metricsMap := map[string]struct {
-		Value      interface{}
-		MetricType metric.SourceType
-	}{
-		"query_id":       {common_utils.GetStringValueSafe(metricObject["query_id"]), metric.ATTRIBUTE},
-		"query_text":     {common_utils.GetStringValueSafe(metricObject["query_text"]), metric.ATTRIBUTE},
-		"event_id":       {common_utils.GetInt64ValueSafe(metricObject["event_id"]), metric.GAUGE},
-		"total_cost":     {common_utils.GetFloat64ValueSafe(metricObject["total_cost"]), metric.GAUGE},
-		"step_id":        {common_utils.GetInt64ValueSafe(metricObject["step_id"]), metric.GAUGE},
-		"execution_step": {common_utils.GetStringValueSafe(metricObject["execution_step"]), metric.ATTRIBUTE},
-		"access_type":    {common_utils.GetStringValueSafe(metricObject["access_type"]), metric.ATTRIBUTE},
-		"rows_examined":  {common_utils.GetInt64ValueSafe(metricObject["rows_examined"]), metric.GAUGE},
-		"rows_produced":  {common_utils.GetInt64ValueSafe(metricObject["rows_produced"]), metric.GAUGE},
-		"filtered":       {common_utils.GetFloat64ValueSafe(metricObject["filtered"]), metric.GAUGE},
-		"read_cost":      {common_utils.GetFloat64ValueSafe(metricObject["read_cost"]), metric.GAUGE},
-		"eval_cost":      {common_utils.GetFloat64ValueSafe(metricObject["eval_cost"]), metric.GAUGE},
-		"data_read":      {common_utils.GetFloat64ValueSafe(metricObject["data_read"]), metric.GAUGE},
-		"extra_info":     {common_utils.GetStringValueSafe(metricObject["extra_info"]), metric.ATTRIBUTE},
-	}
-
-	for name, metricData := range metricsMap {
-		fmt.Println("name:", name)
-		fmt.Println("metricData:", metricData.Value)
-		fmt.Printf("Type of metricData.Value: %T\n", metricData.Value)
-
-		err := ms.SetMetric(name, metricData.Value, metricData.MetricType)
-		if err != nil {
-			log.Error("Error setting value for %s: %v", name, err)
-			continue
-		}
-	}
-
-	// Print the metric set for debugging
-	fmt.Println("Metric Set:", ms)
 }
 
 // extractMetricsFromPlan processes the top-level query block and recursively extracts metrics.
@@ -233,67 +242,7 @@ func extractMetricsFromQueryBlock(queryBlock map[string]interface{}, metrics *pe
 			}
 		}
 	}
-	// Process grouping operations
-	if groupingOp, exists := queryBlock["grouping_operation"].(map[string]interface{}); exists {
-		extractMetricsFromQueryBlock(groupingOp, metrics, stepID)
-	}
-	// Process ordering operations
-	if orderingOp, exists := queryBlock["ordering_operation"].(map[string]interface{}); exists {
-		if table, exists := orderingOp["table"].(map[string]interface{}); exists {
-			tableMetrics, newStepID := extractTableMetrics(map[string]interface{}{"table": table}, *stepID)
-			metrics.TableMetrics = append(metrics.TableMetrics, tableMetrics...)
-			*stepID = newStepID
-		}
-
-		if groupingOp, exists := orderingOp["grouping_operation"].(map[string]interface{}); exists {
-			extractMetricsFromQueryBlock(groupingOp, metrics, stepID)
-		}
-
-		// Process select list subqueries
-		if subqueries, exists := orderingOp["select_list_subqueries"].([]interface{}); exists {
-			for _, subquery := range subqueries {
-				if subqueryMap, ok := subquery.(map[string]interface{}); ok {
-					if subQueryBlock, exists := subqueryMap["query_block"].(map[string]interface{}); exists {
-						extractMetricsFromQueryBlock(subQueryBlock, metrics, stepID)
-					}
-				}
-			}
-		}
-	}
-	// Process windowing operations
-	if windowing, exists := queryBlock["windowing"].(map[string]interface{}); exists {
-		if bufferResult, exists := windowing["buffer_result"].(map[string]interface{}); exists {
-			extractMetricsFromQueryBlock(bufferResult, metrics, stepID)
-		}
-	}
-	// Process select list subqueries
-	if subqueries, exists := queryBlock["select_list_subqueries"].([]interface{}); exists {
-		for _, subquery := range subqueries {
-			if subqueryMap, ok := subquery.(map[string]interface{}); ok {
-				if subQueryBlock, exists := subqueryMap["query_block"].(map[string]interface{}); exists {
-					extractMetricsFromQueryBlock(subQueryBlock, metrics, stepID)
-				}
-			}
-		}
-	}
-	// Process materialized subqueries
-	if materializedSubquery, exists := queryBlock["materialized_from_subquery"].(map[string]interface{}); exists {
-		if subQueryBlock, exists := materializedSubquery["query_block"].(map[string]interface{}); exists {
-			extractMetricsFromQueryBlock(subQueryBlock, metrics, stepID)
-		}
-	}
-	// Process union results
-	if unionResult, exists := queryBlock["union_result"].(map[string]interface{}); exists {
-		if querySpecifications, exists := unionResult["query_specifications"].([]interface{}); exists {
-			for _, querySpec := range querySpecifications {
-				if querySpecMap, ok := querySpec.(map[string]interface{}); ok {
-					if subQueryBlock, exists := querySpecMap["query_block"].(map[string]interface{}); exists {
-						extractMetricsFromQueryBlock(subQueryBlock, metrics, stepID)
-					}
-				}
-			}
-		}
-	}
+	// Additional processing for other operations (grouping, ordering, etc.) can be added here with similar debug logs
 }
 
 // extractTableMetrics extracts metrics from a table structure.
@@ -340,39 +289,7 @@ func extractTableMetrics(tableInfo map[string]interface{}, stepID int) ([]perfor
 		}
 	}
 
-	// Handle attached subqueries within the table
-	if attachedSubqueries, exists := tableInfo["attached_subqueries"].([]interface{}); exists {
-		for _, subquery := range attachedSubqueries {
-			if subqueryMap, ok := subquery.(map[string]interface{}); ok {
-				if subQueryBlock, exists := subqueryMap["query_block"].(map[string]interface{}); exists {
-					subMetrics := extractMetricsFromPlan(map[string]interface{}{"query_block": subQueryBlock})
-					tableMetrics = append(tableMetrics, subMetrics.TableMetrics...)
-				}
-			}
-		}
-	}
-
-	// Handle materialized subqueries within the table
-	if materializedSubquery, exists := tableInfo["materialized_from_subquery"].(map[string]interface{}); exists {
-		if subQueryBlock, exists := materializedSubquery["query_block"].(map[string]interface{}); exists {
-			subMetrics := extractMetricsFromPlan(map[string]interface{}{"query_block": subQueryBlock})
-			tableMetrics = append(tableMetrics, subMetrics.TableMetrics...)
-		}
-	}
-
-	// Handle union results within the table
-	if unionResult, exists := tableInfo["union_result"].(map[string]interface{}); exists {
-		if querySpecifications, exists := unionResult["query_specifications"].([]interface{}); exists {
-			for _, querySpec := range querySpecifications {
-				if querySpecMap, ok := querySpec.(map[string]interface{}); ok {
-					if subQueryBlock, exists := querySpecMap["query_block"].(map[string]interface{}); exists {
-						subMetrics := extractMetricsFromPlan(map[string]interface{}{"query_block": subQueryBlock})
-						tableMetrics = append(tableMetrics, subMetrics.TableMetrics...)
-					}
-				}
-			}
-		}
-	}
+	// Additional nested structures can be processed similarly
 
 	return tableMetrics, stepID
 }
