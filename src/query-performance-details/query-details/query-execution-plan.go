@@ -120,16 +120,15 @@ func processExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentL
 func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []map[string]interface{}) error {
 	ms1 := common_utils.CreateMetricSet(e, "MysqlQueryExecutionVcc1", args)
 	ms1.SetMetric("query_id", "testtingweds", metric.ATTRIBUTE)
-	for _, metricObject := range metrics {
-		processExecutionMetricsIngestion(e, args, metricObject)
-	}
+	// for _, metricObject := range metrics {
+	// 	processExecutionMetricsIngestion(e, args, metricObject)
+	// }
 
 	return nil
 }
 
 func processExecutionMetricsIngestion(e *integration.Entity, args arguments.ArgumentList, metricObject map[string]interface{}) {
 	ms := common_utils.CreateMetricSet(e, "MysqlQueryExecutionV2", args)
-
 	// Debugging: Print the contents of metricObject
 	fmt.Println("Metric Object ---> ", metricObject)
 
@@ -141,42 +140,38 @@ func processExecutionMetricsIngestion(e *integration.Entity, args arguments.Argu
 	queryIdSafe := common_utils.GetStringValueSafe(queryId)
 	fmt.Println("query_id after GetStringValueSafe:", queryIdSafe)
 
-	err := ms.SetMetric("name", "srikanth", metric.ATTRIBUTE)
-	if err != nil {
-		log.Error("Error setting value for: %v", err)
-	}
 	// Create a new metric set for each row
 	// ms := common_utils.CreateMetricSet(e, "MysqlQueryExecution", args)
-	// metricsMap := map[string]struct {
-	// 	Value      interface{}
-	// 	MetricType metric.SourceType
-	// }{
-	// 	"query_id":   {metricObject["query_id"], metric.ATTRIBUTE},
-	// 	"query_text": {metricObject["query_text"], metric.ATTRIBUTE},
-	// 	"event_id":   {metricObject["event_id"], metric.GAUGE},
-	// 	"total_cost":     {common_utils.GetFloat64ValueSafe(metricObject["total_cost"]), metric.GAUGE},
-	// 	"step_id":        {common_utils.GetInt64ValueSafe(metricObject["step_id"]), metric.GAUGE},
-	// 	"execution_step": {common_utils.GetStringValueSafe(metricObject["execution_step"]), metric.ATTRIBUTE},
-	// 	"access_type":    {common_utils.GetStringValueSafe(metricObject["access_type"]), metric.ATTRIBUTE},
-	// 	"rows_examined":  {common_utils.GetInt64ValueSafe(metricObject["rows_examined"]), metric.GAUGE},
-	// 	"rows_produced":  {common_utils.GetInt64ValueSafe(metricObject["rows_produced"]), metric.GAUGE},
-	// 	"filtered":       {common_utils.GetFloat64ValueSafe(metricObject["filtered"]), metric.GAUGE},
-	// 	"read_cost":      {common_utils.GetFloat64ValueSafe(metricObject["read_cost"]), metric.GAUGE},
-	// 	"eval_cost":      {common_utils.GetFloat64ValueSafe(metricObject["eval_cost"]), metric.GAUGE},
-	// 	"data_read":      {common_utils.GetFloat64ValueSafe(metricObject["data_read"]), metric.GAUGE},
-	// 	"extra_info":     {common_utils.GetStringValueSafe(metricObject["extra_info"]), metric.ATTRIBUTE},
-	// }
+	metricsMap := map[string]struct {
+		Value      interface{}
+		MetricType metric.SourceType
+	}{
+		"query_id":       {metricObject["query_id"], metric.ATTRIBUTE},
+		"query_text":     {metricObject["query_text"], metric.ATTRIBUTE},
+		"event_id":       {metricObject["event_id"], metric.GAUGE},
+		"total_cost":     {common_utils.GetFloat64ValueSafe(metricObject["total_cost"]), metric.GAUGE},
+		"step_id":        {common_utils.GetInt64ValueSafe(metricObject["step_id"]), metric.GAUGE},
+		"execution_step": {common_utils.GetStringValueSafe(metricObject["execution_step"]), metric.ATTRIBUTE},
+		"access_type":    {common_utils.GetStringValueSafe(metricObject["access_type"]), metric.ATTRIBUTE},
+		"rows_examined":  {common_utils.GetInt64ValueSafe(metricObject["rows_examined"]), metric.GAUGE},
+		"rows_produced":  {common_utils.GetInt64ValueSafe(metricObject["rows_produced"]), metric.GAUGE},
+		"filtered":       {common_utils.GetFloat64ValueSafe(metricObject["filtered"]), metric.GAUGE},
+		"read_cost":      {common_utils.GetFloat64ValueSafe(metricObject["read_cost"]), metric.GAUGE},
+		"eval_cost":      {common_utils.GetFloat64ValueSafe(metricObject["eval_cost"]), metric.GAUGE},
+		"data_read":      {common_utils.GetFloat64ValueSafe(metricObject["data_read"]), metric.GAUGE},
+		"extra_info":     {common_utils.GetStringValueSafe(metricObject["extra_info"]), metric.ATTRIBUTE},
+	}
 
-	// for name, metricData := range metricsMap {
-	// 	fmt.Println("name:", name)
-	// 	fmt.Println("metricData:", metricData.Value)
+	for name, metricData := range metricsMap {
+		fmt.Println("name:", name)
+		fmt.Println("metricData:", metricData.Value)
 
-	// 	err := ms.SetMetric(name, metricData.Value, metricData.MetricType)
-	// 	if err != nil {
-	// 		log.Error("Error setting value for %s: %v", name, err)
-	// 		continue
-	// 	}
-	// }
+		err := ms.SetMetric(name, metricData.Value, metricData.MetricType)
+		if err != nil {
+			log.Error("Error setting value for %s: %v", name, err)
+			continue
+		}
+	}
 
 	// Print the metric set for debugging
 	// common_utils.PrintMetricSet(ms)
