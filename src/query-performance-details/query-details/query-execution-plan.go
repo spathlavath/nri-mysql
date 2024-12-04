@@ -19,17 +19,79 @@ import (
 )
 
 func PopulateExecutionPlans(db performance_database.DataSource, queries []performance_data_model.QueryPlanMetrics, e *integration.Entity, args arguments.ArgumentList) ([]map[string]interface{}, error) {
+	supportedStatements := map[string]bool{"SELECT": true, "INSERT": true, "UPDATE": true, "DELETE": true, "WITH": true}
 	var events []map[string]interface{}
 
-	// fmt.Println("queries", queries)
-	// mm := common_utils.CreateMetricSet(e, "outsideLoop", args)
-	// mm.SetMetric("query_id", "aaaaa", metric.ATTRIBUTE)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
 	for _, query := range queries {
-		mm := common_utils.CreateMetricSet(e, "insideLoop", args)
-		mm.SetMetric("query_id", "aaaaa", metric.ATTRIBUTE)
-		tableIngestionData := processExecutionPlanMetrics(e, args, db, query)
-		// events = append(events, baseIngestionData)
-		events = append(events, tableIngestionData)
+		queryText := strings.TrimSpace(query.QueryText)
+		upperQueryText := strings.ToUpper(queryText)
+
+		if !supportedStatements[strings.Split(upperQueryText, " ")[0]] {
+			log.Debug("Skipping unsupported query for EXPLAIN: %s", queryText)
+			continue
+		}
+
+		if strings.Contains(queryText, "?") {
+			log.Debug("Skipping query with placeholders for EXPLAIN: %s", queryText)
+			continue
+		}
+
+		execPlanQuery := fmt.Sprintf("EXPLAIN FORMAT=JSON %s", queryText)
+		rows, err := db.QueryxContext(ctx, execPlanQuery)
+		if err != nil {
+			log.Error("Error executing EXPLAIN for query '%s': %v", queryText, err)
+			continue
+		}
+
+		var execPlanJSON string
+		if rows.Next() {
+			err := rows.Scan(&execPlanJSON)
+			if err != nil {
+				log.Error("Failed to scan execution plan: %v", err)
+				rows.Close()
+				continue
+			}
+		}
+		rows.Close()
+
+		var execPlan map[string]interface{}
+		err = json.Unmarshal([]byte(execPlanJSON), &execPlan)
+		if err != nil {
+			log.Error("Failed to unmarshal execution plan: %v", err)
+			continue
+		}
+
+		metrics := extractMetricsFromPlan(execPlan)
+
+		baseIngestionData := map[string]interface{}{
+			"query_id":   query.QueryID,
+			"query_text": query.AnonymizedQueryText,
+			"total_cost": metrics.TotalCost,
+		}
+
+		events = append(events, baseIngestionData)
+
+		for _, metric := range metrics.TableMetrics {
+			tableIngestionData := make(map[string]interface{})
+			for k, v := range baseIngestionData {
+				tableIngestionData[k] = v
+			}
+			tableIngestionData["step_id"] = metric.StepID
+			tableIngestionData["execution_step"] = metric.ExecutionStep
+			tableIngestionData["access_type"] = metric.AccessType
+			tableIngestionData["rows_examined"] = metric.RowsExamined
+			tableIngestionData["rows_produced"] = metric.RowsProduced
+			tableIngestionData["filtered"] = metric.Filtered
+			tableIngestionData["read_cost"] = metric.ReadCost
+			tableIngestionData["eval_cost"] = metric.EvalCost
+			tableIngestionData["data_read"] = metric.DataRead
+			tableIngestionData["extra_info"] = metric.ExtraInfo
+
+			events = append(events, tableIngestionData)
+		}
 	}
 
 	if len(events) == 0 {
@@ -46,95 +108,11 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 	return events, nil
 }
 
-func processExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, db performance_database.DataSource, query performance_data_model.QueryPlanMetrics) map[string]interface{} {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	supportedStatements := map[string]bool{"SELECT": true, "INSERT": true, "UPDATE": true, "DELETE": true, "WITH": true}
-
-	if query.QueryText == "" {
-		return nil
-	}
-	queryText := strings.TrimSpace(query.QueryText)
-	upperQueryText := strings.ToUpper(queryText)
-
-	if !supportedStatements[strings.Split(upperQueryText, " ")[0]] {
-		log.Debug("Skipping unsupported query for EXPLAIN: %s", queryText)
-		return nil
-	}
-
-	if strings.Contains(queryText, "?") {
-		log.Debug("Skipping query with placeholders for EXPLAIN: %s", queryText)
-		return nil
-	}
-
-	execPlanQuery := fmt.Sprintf("EXPLAIN FORMAT=JSON %s", queryText)
-	rows, err := db.QueryxContext(ctx, execPlanQuery)
-	if err != nil {
-		log.Error("Error executing EXPLAIN for query '%s': %v", queryText, err)
-		return nil
-	}
-
-	var execPlanJSON string
-	if rows.Next() {
-		err := rows.Scan(&execPlanJSON)
-		if err != nil {
-			log.Error("Failed to scan execution plan: %v", err)
-			rows.Close()
-			return nil
-		}
-	}
-	rows.Close()
-
-	mm := common_utils.CreateMetricSet(e, "InsideLoop1", args)
-	mm.SetMetric("query_id", "aaaaa", metric.ATTRIBUTE)
-
-	var execPlan map[string]interface{}
-	err = json.Unmarshal([]byte(execPlanJSON), &execPlan)
-	if err != nil {
-		log.Error("Failed to unmarshal execution plan: %v", err)
-		return nil
-	}
-
-	metrics := extractMetricsFromPlan(execPlan)
-
-	baseIngestionData := map[string]interface{}{
-		"query_id":   query.QueryID,
-		"query_text": query.AnonymizedQueryText,
-		"event_id":   query.EventID,
-		"total_cost": metrics.TotalCost,
-	}
-
-	tableIngestionData := make(map[string]interface{})
-	for _, metric := range metrics.TableMetrics {
-		for k, v := range baseIngestionData {
-			tableIngestionData[k] = v
-		}
-		tableIngestionData["step_id"] = metric.StepID
-		tableIngestionData["execution_step"] = metric.ExecutionStep
-		tableIngestionData["access_type"] = metric.AccessType
-		tableIngestionData["rows_examined"] = metric.RowsExamined
-		tableIngestionData["rows_produced"] = metric.RowsProduced
-		tableIngestionData["filtered (%)"] = metric.Filtered
-		tableIngestionData["read_cost"] = metric.ReadCost
-		tableIngestionData["eval_cost"] = metric.EvalCost
-		tableIngestionData["data_read"] = metric.DataRead
-		tableIngestionData["extra_info"] = metric.ExtraInfo
-
-	}
-	fmt.Println("tableIngestionData", tableIngestionData)
-	fmt.Print("baseIngestionData", baseIngestionData)
-	return tableIngestionData
-}
-
 func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []map[string]interface{}) error {
-	// mm:=common_utils.CreateMetricSet(e, "outsideLoopMet", args)
-	// mm.SetMetric("query_id","aaaaa" , metric.ATTRIBUTE)
 	ms1 := common_utils.CreateMetricSet(e, "MysqlQueryExecutionVcc1", args)
 	ms1.SetMetric("query_id", "testtingweds", metric.ATTRIBUTE)
 	for _, metricObject := range metrics {
 		processExecutionMetricsIngestion(e, args, metricObject)
-
 	}
 
 	return nil
@@ -153,6 +131,8 @@ func processExecutionMetricsIngestion(e *integration.Entity, args arguments.Argu
 	queryIdSafe := common_utils.GetStringValueSafe(queryId)
 	fmt.Println("query_id after GetStringValueSafe:", queryIdSafe)
 
+	// Create a new metric set for each row
+	// ms := common_utils.CreateMetricSet(e, "MysqlQueryExecution", args)
 	metricsMap := map[string]struct {
 		Value      interface{}
 		MetricType metric.SourceType
@@ -165,56 +145,49 @@ func processExecutionMetricsIngestion(e *integration.Entity, args arguments.Argu
 		"access_type":    {common_utils.GetStringValueSafe(metricObject["access_type"]), metric.ATTRIBUTE},
 		"rows_examined":  {common_utils.GetInt64ValueSafe(metricObject["rows_examined"]), metric.GAUGE},
 		"rows_produced":  {common_utils.GetInt64ValueSafe(metricObject["rows_produced"]), metric.GAUGE},
-		"filtered (%)":   {common_utils.GetFloat64ValueSafe(metricObject["filtered (%)"]), metric.GAUGE},
+		"filtered":       {common_utils.GetFloat64ValueSafe(metricObject["filtered"]), metric.GAUGE},
 		"read_cost":      {common_utils.GetFloat64ValueSafe(metricObject["read_cost"]), metric.GAUGE},
 		"eval_cost":      {common_utils.GetFloat64ValueSafe(metricObject["eval_cost"]), metric.GAUGE},
 		"data_read":      {common_utils.GetFloat64ValueSafe(metricObject["data_read"]), metric.GAUGE},
 		"extra_info":     {common_utils.GetStringValueSafe(metricObject["extra_info"]), metric.ATTRIBUTE},
 	}
-	fmt.Println("metricsMap", metricsMap)
 
 	for name, metricData := range metricsMap {
-		fmt.Println("name", name)
-		fmt.Println("metricData", metricData.Value)
+		// err := ms.SetMetric(name, metricData.Value, metricData.MetricType)
+		fmt.Println("name:", name)
+		fmt.Println("metricData:", metricData.Value)
 
-		// switch v := metricData.Value.(type) {
-		// case int, int32, int64:
-		// 	ms.SetMetric(name, v, metricData.MetricType)
-		// case float32, float64:
-		// 	ms.SetMetric(name, v, metricData.MetricType)
-		// case string:
-		// 	// if v == "" {
-		// 	// 	return fmt.Errorf("value for %s is an empty string", v)
-		// 	// }
-		// 	ms.SetMetric(name, v, metricData.MetricType)
-		// default:
-		// 	fmt.Println("unexpected type for value:", v)
-		// 	// return fmt.Errorf("unexpected type for value %s:", v)
-		// }
-		err := ms.SetMetric(name, metricData.Value, metricData.MetricType)
+		var err error
+		var v interface{} = metricData.Value
+
+		switch v.(type) {
+		case int, int32, int64:
+			err = ms.SetMetric(name, v, metricData.MetricType)
+		case float32, float64:
+			err = ms.SetMetric(name, v, metricData.MetricType)
+		case string:
+			if v == "" {
+				err = fmt.Errorf("value for %s is an empty string", name)
+			} else {
+				err = ms.SetMetric(name, v, metricData.MetricType)
+			}
+		default:
+			fmt.Println("unexpected type for value:", metricData.Value)
+			err = fmt.Errorf("unexpected type for value %s: %T", name, metricData.Value)
+		}
+
 		if err != nil {
 			log.Error("Error setting value for %s: %v", name, err)
 			continue
 		}
 	}
+
+	// Print the metric set for debugging
+	common_utils.PrintMetricSet(ms)
 }
 
 // extractMetricsFromPlan processes the top-level query block and recursively extracts metrics.
 func extractMetricsFromPlan(plan map[string]interface{}) performance_data_model.ExecutionPlan {
-
-	// var planResult map[string]interface{}
-	// data, err := json.Marshal(plan)
-
-	// if err != nil {
-	// 	return performance_data_model.ExecutionPlan{}
-	// }
-
-	// err = json.Unmarshal(data, &planResult)
-
-	// if err != nil {
-	// 	return performance_data_model.ExecutionPlan{}
-	// }
-
 	var metrics performance_data_model.ExecutionPlan
 	stepID := 0
 
@@ -246,6 +219,7 @@ func extractMetricsFromQueryBlock(queryBlock map[string]interface{}, metrics *pe
 			}
 		}
 	}
+	// Process grouping operations
 	if groupingOp, exists := queryBlock["grouping_operation"].(map[string]interface{}); exists {
 		extractMetricsFromQueryBlock(groupingOp, metrics, stepID)
 	}
