@@ -148,7 +148,7 @@ func processExecutionMetricsIngestion(e *integration.Entity, args arguments.Argu
 	}{
 		"query_id":       {common_utils.GetStringValueSafe(metricObject["query_id"]), metric.ATTRIBUTE},
 		"query_text":     {common_utils.GetStringValueSafe(metricObject["query_text"]), metric.ATTRIBUTE},
-		"event_id":       {common_utils.GetStringValueSafe(metricObject["event_id"]), metric.GAUGE},
+		"event_id":       {common_utils.GetInt64ValueSafe(metricObject["event_id"]), metric.GAUGE},
 		"total_cost":     {common_utils.GetFloat64ValueSafe(metricObject["total_cost"]), metric.GAUGE},
 		"step_id":        {common_utils.GetInt64ValueSafe(metricObject["step_id"]), metric.GAUGE},
 		"execution_step": {common_utils.GetStringValueSafe(metricObject["execution_step"]), metric.ATTRIBUTE},
