@@ -186,8 +186,9 @@ func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 					metricData.Value = float64(val)
 				}
 			}
-
+			fmt.Println("Before setting the metrics")
 			err := ms.SetMetric(name, metricData.Value, metricData.MetricType)
+			fmt.Println("After setting the metrics")
 			if err != nil {
 				log.Error("Error setting value for %s: %v", name, err)
 				continue
