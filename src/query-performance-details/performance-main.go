@@ -36,16 +36,16 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 	mm := common_utils.CreateMetricSet(e, "MysqlQueryExecutionaaaassdsdsdsfdaa", args)
 	mm.SetMetric("query_id", "aaaaa", metric.ATTRIBUTE)
 
-	_, executionPlanMetricsErr := query_details.PopulateExecutionPlan(db, individualQueryDetails, e, args)
-	if executionPlanMetricsErr != nil {
-		log.Error("Error populating execution plan details: %v", executionPlanMetricsErr)
-		return
-	}
-	// _, executionPlanMetricsErr := query_details.PopulateExecutionPlans(db, individualQueryDetails, e, args)
+	// _, executionPlanMetricsErr := query_details.PopulateExecutionPlan(db, individualQueryDetails, e, args)
 	// if executionPlanMetricsErr != nil {
 	// 	log.Error("Error populating execution plan details: %v", executionPlanMetricsErr)
 	// 	return
 	// }
+	_, executionPlanMetricsErr := query_details.PopulateExecutionPlans(db, individualQueryDetails, e, args)
+	if executionPlanMetricsErr != nil {
+		log.Error("Error populating execution plan details: %v", executionPlanMetricsErr)
+		return
+	}
 	// fmt.Println("Execution Plan details collected successfully.", executionPlanMetrics)
 
 	// Wait Events
