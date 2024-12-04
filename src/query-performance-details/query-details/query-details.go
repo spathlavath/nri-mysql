@@ -164,7 +164,7 @@ func setIndividualQueryMetrics(e *integration.Entity, args arguments.ArgumentLis
 	return nil
 }
 
-func currentQueryMetrics(db performancedatabase.DataSource, QueryIDList []string, individualQueryThreshold float64) ([]performancedatamodel.QueryPlanMetrics, error) {
+func currentQueryMetrics(db performancedatabase.DataSource, QueryIDList []string, individualQueryThreshold int) ([]performancedatamodel.QueryPlanMetrics, error) {
 	// Check Performance Schema availability
 	metrics, err := collectCurrentQueryMetrics(db, QueryIDList, individualQueryThreshold)
 	if err != nil {
@@ -175,7 +175,7 @@ func currentQueryMetrics(db performancedatabase.DataSource, QueryIDList []string
 	return metrics, nil
 }
 
-func recentQueryMetrics(db performancedatabase.DataSource, QueryIDList []string, individualQueryThreshold float64) ([]performancedatamodel.QueryPlanMetrics, error) {
+func recentQueryMetrics(db performancedatabase.DataSource, QueryIDList []string, individualQueryThreshold int) ([]performancedatamodel.QueryPlanMetrics, error) {
 	// Check Performance Schema availability
 	metrics, err := collectRecentQueryMetrics(db, QueryIDList, individualQueryThreshold)
 	if err != nil {
@@ -186,7 +186,7 @@ func recentQueryMetrics(db performancedatabase.DataSource, QueryIDList []string,
 	return metrics, nil
 }
 
-func extensiveQueryMetrics(db performancedatabase.DataSource, QueryIDList []string, individualQueryThreshold float64) ([]performancedatamodel.QueryPlanMetrics, error) {
+func extensiveQueryMetrics(db performancedatabase.DataSource, QueryIDList []string, individualQueryThreshold int) ([]performancedatamodel.QueryPlanMetrics, error) {
 	// Check Performance Schema availability
 	metrics, err := collectExtensiveQueryMetrics(db, QueryIDList, individualQueryThreshold)
 	if err != nil {
@@ -197,7 +197,7 @@ func extensiveQueryMetrics(db performancedatabase.DataSource, QueryIDList []stri
 	return metrics, nil
 }
 
-func collectCurrentQueryMetrics(db performancedatabase.DataSource, queryIDList []string, individualQueryThreshold float64) ([]performancedatamodel.QueryPlanMetrics, error) {
+func collectCurrentQueryMetrics(db performancedatabase.DataSource, queryIDList []string, individualQueryThreshold int) ([]performancedatamodel.QueryPlanMetrics, error) {
 	if len(queryIDList) == 0 {
 		log.Warn("queryIDList is empty")
 		return nil, nil
@@ -241,7 +241,7 @@ func collectCurrentQueryMetrics(db performancedatabase.DataSource, queryIDList [
 	return metrics, nil
 }
 
-func collectRecentQueryMetrics(db performancedatabase.DataSource, queryIDList []string, individualQueryThreshold float64) ([]performancedatamodel.QueryPlanMetrics, error) {
+func collectRecentQueryMetrics(db performancedatabase.DataSource, queryIDList []string, individualQueryThreshold int) ([]performancedatamodel.QueryPlanMetrics, error) {
 	if len(queryIDList) == 0 {
 		log.Warn("queryIDList is empty")
 		return nil, nil
@@ -283,7 +283,7 @@ func collectRecentQueryMetrics(db performancedatabase.DataSource, queryIDList []
 	return metrics, nil
 }
 
-func collectExtensiveQueryMetrics(db performancedatabase.DataSource, queryIDList []string, individualQueryThreshold float64) ([]performancedatamodel.QueryPlanMetrics, error) {
+func collectExtensiveQueryMetrics(db performancedatabase.DataSource, queryIDList []string, individualQueryThreshold int) ([]performancedatamodel.QueryPlanMetrics, error) {
 	if len(queryIDList) == 0 {
 		log.Warn("queryIDList is empty")
 		return nil, nil
