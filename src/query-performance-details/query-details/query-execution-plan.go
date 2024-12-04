@@ -18,80 +18,12 @@ import (
 	performance_database "github.com/newrelic/nri-mysql/src/query-performance-details/performance-database"
 )
 
-func PopulateExecutionPlans(db performance_database.DataSource, queries []performance_data_model.QueryPlanMetrics, e *integration.Entity, args arguments.ArgumentList) ([]map[string]interface{}, error) {
-	supportedStatements := map[string]bool{"SELECT": true, "INSERT": true, "UPDATE": true, "DELETE": true, "WITH": true}
+func PopulateExecutionPlans(db performance_database.DataSource, queries []performance_data_model.QueryPlanMetrics, e *integration.Entity, args arguments.ArgumentList) ([]map[string]interface{}, error) {	
 	var events []map[string]interface{}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
 	for _, query := range queries {
-		queryText := strings.TrimSpace(query.QueryText)
-		upperQueryText := strings.ToUpper(queryText)
-
-		if !supportedStatements[strings.Split(upperQueryText, " ")[0]] {
-			log.Debug("Skipping unsupported query for EXPLAIN: %s", queryText)
-			continue
-		}
-
-		if strings.Contains(queryText, "?") {
-			log.Debug("Skipping query with placeholders for EXPLAIN: %s", queryText)
-			continue
-		}
-
-		execPlanQuery := fmt.Sprintf("EXPLAIN FORMAT=JSON %s", queryText)
-		rows, err := db.QueryxContext(ctx, execPlanQuery)
-		if err != nil {
-			log.Error("Error executing EXPLAIN for query '%s': %v", queryText, err)
-			continue
-		}
-
-		var execPlanJSON string
-		if rows.Next() {
-			err := rows.Scan(&execPlanJSON)
-			if err != nil {
-				log.Error("Failed to scan execution plan: %v", err)
-				rows.Close()
-				continue
-			}
-		}
-		rows.Close()
-
-		var execPlan map[string]interface{}
-		err = json.Unmarshal([]byte(execPlanJSON), &execPlan)
-		if err != nil {
-			log.Error("Failed to unmarshal execution plan: %v", err)
-			continue
-		}
-
-		metrics := extractMetricsFromPlan(execPlan)
-
-		baseIngestionData := map[string]interface{}{
-			"query_id":   query.QueryID,
-			"query_text": query.AnonymizedQueryText,
-			"total_cost": metrics.TotalCost,
-		}
-
-		events = append(events, baseIngestionData)
-
-		for _, metric := range metrics.TableMetrics {
-			tableIngestionData := make(map[string]interface{})
-			for k, v := range baseIngestionData {
-				tableIngestionData[k] = v
-			}
-			tableIngestionData["step_id"] = metric.StepID
-			tableIngestionData["execution_step"] = metric.ExecutionStep
-			tableIngestionData["access_type"] = metric.AccessType
-			tableIngestionData["rows_examined"] = metric.RowsExamined
-			tableIngestionData["rows_produced"] = metric.RowsProduced
-			tableIngestionData["filtered"] = metric.Filtered
-			tableIngestionData["read_cost"] = metric.ReadCost
-			tableIngestionData["eval_cost"] = metric.EvalCost
-			tableIngestionData["data_read"] = metric.DataRead
-			tableIngestionData["extra_info"] = metric.ExtraInfo
-
-			events = append(events, tableIngestionData)
-		}
+		tableIngestionData := processExecutionPlanMetrics(e, args, db, query)
+		events = append(events, tableIngestionData)
 	}
 
 	if len(events) == 0 {
@@ -106,6 +38,87 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 	}
 
 	return events, nil
+}
+
+func processExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, db performance_database.DataSource, query performance_data_model.QueryPlanMetrics) (map[string]interface{}) {
+	supportedStatements := map[string]bool{"SELECT": true, "INSERT": true, "UPDATE": true, "DELETE": true, "WITH": true}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if query.QueryText == "" {
+		return nil
+	}
+	queryText := strings.TrimSpace(query.QueryText)
+	upperQueryText := strings.ToUpper(queryText)
+
+	if !supportedStatements[strings.Split(upperQueryText, " ")[0]] {
+		log.Debug("Skipping unsupported query for EXPLAIN: %s", queryText)
+		return nil
+	}
+
+	if strings.Contains(queryText, "?") {
+		log.Debug("Skipping query with placeholders for EXPLAIN: %s", queryText)
+		return nil
+	}
+
+	execPlanQuery := fmt.Sprintf("EXPLAIN FORMAT=JSON %s", queryText)
+	rows, err := db.QueryxContext(ctx, execPlanQuery)
+	if err != nil {
+		log.Error("Error executing EXPLAIN for query '%s': %v", queryText, err)
+		return nil
+	}
+
+	var execPlanJSON string
+	if rows.Next() {
+		err := rows.Scan(&execPlanJSON)
+		if err != nil {
+			log.Error("Failed to scan execution plan: %v", err)
+			rows.Close()
+			return nil
+		}
+	}
+	rows.Close()
+
+	mm := common_utils.CreateMetricSet(e, "InsideLoop1", args)
+	mm.SetMetric("query_id", "aaaaa", metric.ATTRIBUTE)
+
+	var execPlan map[string]interface{}
+	err = json.Unmarshal([]byte(execPlanJSON), &execPlan)
+	if err != nil {
+		log.Error("Failed to unmarshal execution plan: %v", err)
+		return nil
+	}
+
+	metrics := extractMetricsFromPlan(execPlan)
+
+	baseIngestionData := map[string]interface{}{
+		"query_id":   query.QueryID,
+		"query_text": query.AnonymizedQueryText,
+		"event_id":   query.EventID,
+		"total_cost": metrics.TotalCost,
+	}
+
+	tableIngestionData := make(map[string]interface{})
+	for _, metric := range metrics.TableMetrics {
+		for k, v := range baseIngestionData {
+			tableIngestionData[k] = v
+		}
+		tableIngestionData["step_id"] = metric.StepID
+		tableIngestionData["execution_step"] = metric.ExecutionStep
+		tableIngestionData["access_type"] = metric.AccessType
+		tableIngestionData["rows_examined"] = metric.RowsExamined
+		tableIngestionData["rows_produced"] = metric.RowsProduced
+		tableIngestionData["filtered (%)"] = metric.Filtered
+		tableIngestionData["read_cost"] = metric.ReadCost
+		tableIngestionData["eval_cost"] = metric.EvalCost
+		tableIngestionData["data_read"] = metric.DataRead
+		tableIngestionData["extra_info"] = metric.ExtraInfo
+
+	}
+	fmt.Println("tableIngestionData", tableIngestionData)
+	return tableIngestionData
+
 }
 
 func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []map[string]interface{}) error {
@@ -139,6 +152,7 @@ func processExecutionMetricsIngestion(e *integration.Entity, args arguments.Argu
 	}{
 		"query_id":       {common_utils.GetStringValueSafe(metricObject["query_id"]), metric.ATTRIBUTE},
 		"query_text":     {common_utils.GetStringValueSafe(metricObject["query_text"]), metric.ATTRIBUTE},
+		"event_id":       {common_utils.GetStringValueSafe(metricObject["event_id"]), metric.GAUGE},
 		"total_cost":     {common_utils.GetFloat64ValueSafe(metricObject["total_cost"]), metric.GAUGE},
 		"step_id":        {common_utils.GetInt64ValueSafe(metricObject["step_id"]), metric.GAUGE},
 		"execution_step": {common_utils.GetStringValueSafe(metricObject["execution_step"]), metric.ATTRIBUTE},
@@ -153,29 +167,28 @@ func processExecutionMetricsIngestion(e *integration.Entity, args arguments.Argu
 	}
 
 	for name, metricData := range metricsMap {
-		// err := ms.SetMetric(name, metricData.Value, metricData.MetricType)
 		fmt.Println("name:", name)
 		fmt.Println("metricData:", metricData.Value)
 
-		var err error
-		var v interface{} = metricData.Value
+		// var err error
+		// var v interface{} = metricData.Value
 
-		switch v.(type) {
-		case int, int32, int64:
-			err = ms.SetMetric(name, v, metricData.MetricType)
-		case float32, float64:
-			err = ms.SetMetric(name, v, metricData.MetricType)
-		case string:
-			if v == "" {
-				err = fmt.Errorf("value for %s is an empty string", name)
-			} else {
-				err = ms.SetMetric(name, v, metricData.MetricType)
-			}
-		default:
-			fmt.Println("unexpected type for value:", metricData.Value)
-			err = fmt.Errorf("unexpected type for value %s: %T", name, metricData.Value)
-		}
-
+		// switch v.(type) {
+		// case int, int32, int64:
+		// 	err = ms.SetMetric(name, v, metricData.MetricType)
+		// case float32, float64:
+		// 	err = ms.SetMetric(name, v, metricData.MetricType)
+		// case string:
+		// 	if v == "" {
+		// 		err = fmt.Errorf("value for %s is an empty string", name)
+		// 	} else {
+		// 		err = ms.SetMetric(name, v, metricData.MetricType)
+		// 	}
+		// default:
+		// 	fmt.Println("unexpected type for value:", metricData.Value)
+		// 	err = fmt.Errorf("unexpected type for value %s: %T", name, metricData.Value)
+		// }
+		err := ms.SetMetric(name, metricData.Value, metricData.MetricType)
 		if err != nil {
 			log.Error("Error setting value for %s: %v", name, err)
 			continue
