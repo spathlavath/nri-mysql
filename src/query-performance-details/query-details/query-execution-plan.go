@@ -146,44 +146,26 @@ func processExecutionMetricsIngestion(e *integration.Entity, args arguments.Argu
 		Value      interface{}
 		MetricType metric.SourceType
 	}{
-		"query_id":       {metricObject["query_id"], metric.ATTRIBUTE},
-		"query_text":     {metricObject["query_text"], metric.ATTRIBUTE},
-		"event_id":       {metricObject["event_id"], metric.GAUGE},
-		"total_cost":     {common_utils.GetFloat64ValueSafe(metricObject["total_cost"]), metric.GAUGE},
-		"step_id":        {common_utils.GetInt64ValueSafe(metricObject["step_id"]), metric.GAUGE},
-		"execution_step": {common_utils.GetStringValueSafe(metricObject["execution_step"]), metric.ATTRIBUTE},
-		"access_type":    {common_utils.GetStringValueSafe(metricObject["access_type"]), metric.ATTRIBUTE},
-		"rows_examined":  {common_utils.GetInt64ValueSafe(metricObject["rows_examined"]), metric.GAUGE},
-		"rows_produced":  {common_utils.GetInt64ValueSafe(metricObject["rows_produced"]), metric.GAUGE},
-		"filtered":       {common_utils.GetFloat64ValueSafe(metricObject["filtered"]), metric.GAUGE},
-		"read_cost":      {common_utils.GetFloat64ValueSafe(metricObject["read_cost"]), metric.GAUGE},
-		"eval_cost":      {common_utils.GetFloat64ValueSafe(metricObject["eval_cost"]), metric.GAUGE},
-		"data_read":      {common_utils.GetFloat64ValueSafe(metricObject["data_read"]), metric.GAUGE},
-		"extra_info":     {common_utils.GetStringValueSafe(metricObject["extra_info"]), metric.ATTRIBUTE},
+		"query_id":   {metricObject["query_id"], metric.ATTRIBUTE},
+		"query_text": {metricObject["query_text"], metric.ATTRIBUTE},
+		"event_id":   {metricObject["event_id"], metric.GAUGE},
+		// "total_cost":     {common_utils.GetFloat64ValueSafe(metricObject["total_cost"]), metric.GAUGE},
+		// "step_id":        {common_utils.GetInt64ValueSafe(metricObject["step_id"]), metric.GAUGE},
+		// "execution_step": {common_utils.GetStringValueSafe(metricObject["execution_step"]), metric.ATTRIBUTE},
+		// "access_type":    {common_utils.GetStringValueSafe(metricObject["access_type"]), metric.ATTRIBUTE},
+		// "rows_examined":  {common_utils.GetInt64ValueSafe(metricObject["rows_examined"]), metric.GAUGE},
+		// "rows_produced":  {common_utils.GetInt64ValueSafe(metricObject["rows_produced"]), metric.GAUGE},
+		// "filtered":       {common_utils.GetFloat64ValueSafe(metricObject["filtered"]), metric.GAUGE},
+		// "read_cost":      {common_utils.GetFloat64ValueSafe(metricObject["read_cost"]), metric.GAUGE},
+		// "eval_cost":      {common_utils.GetFloat64ValueSafe(metricObject["eval_cost"]), metric.GAUGE},
+		// "data_read":      {common_utils.GetFloat64ValueSafe(metricObject["data_read"]), metric.GAUGE},
+		// "extra_info":     {common_utils.GetStringValueSafe(metricObject["extra_info"]), metric.ATTRIBUTE},
 	}
 
 	for name, metricData := range metricsMap {
 		fmt.Println("name:", name)
 		fmt.Println("metricData:", metricData.Value)
 
-		// var err error
-		// var v interface{} = metricData.Value
-
-		// switch v.(type) {
-		// case int, int32, int64:
-		// 	err = ms.SetMetric(name, v, metricData.MetricType)
-		// case float32, float64:
-		// 	err = ms.SetMetric(name, v, metricData.MetricType)
-		// case string:
-		// 	if v == "" {
-		// 		err = fmt.Errorf("value for %s is an empty string", name)
-		// 	} else {
-		// 		err = ms.SetMetric(name, v, metricData.MetricType)
-		// 	}
-		// default:
-		// 	fmt.Println("unexpected type for value:", metricData.Value)
-		// 	err = fmt.Errorf("unexpected type for value %s: %T", name, metricData.Value)
-		// }
 		err := ms.SetMetric(name, metricData.Value, metricData.MetricType)
 		if err != nil {
 			log.Error("Error setting value for %s: %v", name, err)
