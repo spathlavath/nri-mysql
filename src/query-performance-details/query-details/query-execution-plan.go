@@ -242,7 +242,72 @@ func extractMetricsFromQueryBlock(queryBlock map[string]interface{}, metrics *pe
 			}
 		}
 	}
-	// Additional processing for other operations (grouping, ordering, etc.) can be added here with similar debug logs
+
+	// Process grouping operations
+	if groupingOp, exists := queryBlock["grouping_operation"].(map[string]interface{}); exists {
+		extractMetricsFromQueryBlock(groupingOp, metrics, stepID)
+	}
+	// Process ordering operations
+	if orderingOp, exists := queryBlock["ordering_operation"].(map[string]interface{}); exists {
+		if table, exists := orderingOp["table"].(map[string]interface{}); exists {
+			tableMetrics, newStepID := extractTableMetrics(map[string]interface{}{"table": table}, *stepID)
+			metrics.TableMetrics = append(metrics.TableMetrics, tableMetrics...)
+			*stepID = newStepID
+		}
+
+		if groupingOp, exists := orderingOp["grouping_operation"].(map[string]interface{}); exists {
+			extractMetricsFromQueryBlock(groupingOp, metrics, stepID)
+		}
+
+		// Process select list subqueries
+		if subqueries, exists := orderingOp["select_list_subqueries"].([]interface{}); exists {
+			for _, subquery := range subqueries {
+				if subqueryMap, ok := subquery.(map[string]interface{}); ok {
+					if subQueryBlock, exists := subqueryMap["query_block"].(map[string]interface{}); exists {
+						extractMetricsFromQueryBlock(subQueryBlock, metrics, stepID)
+					}
+				}
+			}
+		}
+	}
+
+	// Process windowing operations
+	if windowing, exists := queryBlock["windowing"].(map[string]interface{}); exists {
+		if bufferResult, exists := windowing["buffer_result"].(map[string]interface{}); exists {
+			extractMetricsFromQueryBlock(bufferResult, metrics, stepID)
+		}
+	}
+
+	// Process select list subqueries
+	if subqueries, exists := queryBlock["select_list_subqueries"].([]interface{}); exists {
+		for _, subquery := range subqueries {
+			if subqueryMap, ok := subquery.(map[string]interface{}); ok {
+				if subQueryBlock, exists := subqueryMap["query_block"].(map[string]interface{}); exists {
+					extractMetricsFromQueryBlock(subQueryBlock, metrics, stepID)
+				}
+			}
+		}
+	}
+
+	// Process materialized subqueries
+	if materializedSubquery, exists := queryBlock["materialized_from_subquery"].(map[string]interface{}); exists {
+		if subQueryBlock, exists := materializedSubquery["query_block"].(map[string]interface{}); exists {
+			extractMetricsFromQueryBlock(subQueryBlock, metrics, stepID)
+		}
+	}
+
+	// Process union results
+	if unionResult, exists := queryBlock["union_result"].(map[string]interface{}); exists {
+		if querySpecifications, exists := unionResult["query_specifications"].([]interface{}); exists {
+			for _, querySpec := range querySpecifications {
+				if querySpecMap, ok := querySpec.(map[string]interface{}); ok {
+					if subQueryBlock, exists := querySpecMap["query_block"].(map[string]interface{}); exists {
+						extractMetricsFromQueryBlock(subQueryBlock, metrics, stepID)
+					}
+				}
+			}
+		}
+	}
 }
 
 // extractTableMetrics extracts metrics from a table structure.
@@ -289,7 +354,39 @@ func extractTableMetrics(tableInfo map[string]interface{}, stepID int) ([]perfor
 		}
 	}
 
-	// Additional nested structures can be processed similarly
+	// Handle attached subqueries within the table
+	if attachedSubqueries, exists := tableInfo["attached_subqueries"].([]interface{}); exists {
+		for _, subquery := range attachedSubqueries {
+			if subqueryMap, ok := subquery.(map[string]interface{}); ok {
+				if subQueryBlock, exists := subqueryMap["query_block"].(map[string]interface{}); exists {
+					subMetrics := extractMetricsFromPlan(map[string]interface{}{"query_block": subQueryBlock})
+					tableMetrics = append(tableMetrics, subMetrics.TableMetrics...)
+				}
+			}
+		}
+	}
+
+	// Handle materialized subqueries within the table
+	if materializedSubquery, exists := tableInfo["materialized_from_subquery"].(map[string]interface{}); exists {
+		if subQueryBlock, exists := materializedSubquery["query_block"].(map[string]interface{}); exists {
+			subMetrics := extractMetricsFromPlan(map[string]interface{}{"query_block": subQueryBlock})
+			tableMetrics = append(tableMetrics, subMetrics.TableMetrics...)
+		}
+	}
+
+	// Handle union results within the table
+	if unionResult, exists := tableInfo["union_result"].(map[string]interface{}); exists {
+		if querySpecifications, exists := unionResult["query_specifications"].([]interface{}); exists {
+			for _, querySpec := range querySpecifications {
+				if querySpecMap, ok := querySpec.(map[string]interface{}); ok {
+					if subQueryBlock, exists := querySpecMap["query_block"].(map[string]interface{}); exists {
+						subMetrics := extractMetricsFromPlan(map[string]interface{}{"query_block": subQueryBlock})
+						tableMetrics = append(tableMetrics, subMetrics.TableMetrics...)
+					}
+				}
+			}
+		}
+	}
 
 	return tableMetrics, stepID
 }
