@@ -43,11 +43,11 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 
 	ms.SetMetric("query_id_2", "aaaaa...2", metric.ATTRIBUTE)
 
-	fmt.Printf("Total events collected: %d\n", len(events))
+	// fmt.Printf("Total events collected: %d\n", len(events))
 
-	if len(events) == 0 {
-		return make([]DBPerformanceEvent, 0), nil
-	}
+	// if len(events) == 0 {
+	// 	return make([]DBPerformanceEvent, 0), nil
+	// }
 
 	ms.SetMetric("query_id_3", "aaaaa...3", metric.ATTRIBUTE)
 
