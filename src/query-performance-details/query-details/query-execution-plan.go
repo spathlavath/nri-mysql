@@ -381,8 +381,8 @@ func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 		}{
 
 			"access_type":   {metricObject.AccessType, metric.ATTRIBUTE},
-			"rows_examined": {metricObject.RowsExaminedPerScan, metric.ATTRIBUTE},
-			"rows_produced": {metricObject.RowsProducedPerJoin, metric.ATTRIBUTE},
+			"rows_examined": {metricObject.RowsExaminedPerScan, metric.GAUGE},
+			"rows_produced": {metricObject.RowsProducedPerJoin, metric.GAUGE},
 			"filtered":      {metricObject.Filtered, metric.GAUGE},
 			"read_cost":     {metricObject.ReadCost, metric.GAUGE},
 			"eval_cost":     {metricObject.EvalCost, metric.GAUGE},
