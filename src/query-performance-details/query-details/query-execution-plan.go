@@ -173,12 +173,12 @@ func publishQueryPerformanceMetrics(metricsMap map[string]struct {
 }, ms *metric.Set) {
 	ms.SetMetric("inside_set_execution_plan_metricyxxxxxxxxxx", 9, metric.GAUGE)
 
-	for metricName, metricData := range metricsMap {
-		err := ms.SetMetric(metricName, metricData.Value, metricData.MetricType)
-		if err != nil {
-			log.Error("Error setting metric %s: %v", metricName, err)
-		}
-	}
+	// for metricName, metricData := range metricsMap {
+	// 	err := ms.SetMetric(metricName, metricData.Value, metricData.MetricType)
+	// 	if err != nil {
+	// 		log.Error("Error setting metric %s: %v", metricName, err)
+	// 	}
+	// }
 }
 
 func extractMetrics(js *simplejson.Json, dbPerformanceEvents []DBPerformanceEvent, queryID string, eventID uint64) []DBPerformanceEvent {
