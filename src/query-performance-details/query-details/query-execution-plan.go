@@ -33,31 +33,24 @@ type DBPerformanceEvent struct {
 
 func PopulateExecutionPlans(db performance_database.DataSource, queries []performance_data_model.QueryPlanMetrics, e *integration.Entity, args arguments.ArgumentList) ([]DBPerformanceEvent, error) {
 	var events []DBPerformanceEvent
-	ms := common_utils.CreateMetricSet(e, "MysqlQueryExecution", args)
-	ms.SetMetric("query_id_1", "aaaaa...1", metric.ATTRIBUTE)
+
 	for _, query := range queries {
 		fmt.Printf("Query: %v\n", query)
 		tableIngestionDataList := processExecutionPlanMetrics(db, query)
 		events = append(events, tableIngestionDataList...)
 	}
 
-	ms.SetMetric("query_id_2", "aaaaa...2", metric.ATTRIBUTE)
+	fmt.Printf("Total events collected: %d\n", len(events))
 
-	// fmt.Printf("Total events collected: %d\n", len(events))
-
-	// if len(events) == 0 {
-	// 	return make([]DBPerformanceEvent, 0), nil
-	// }
-
-	ms.SetMetric("query_id_3", "aaaaa...3", metric.ATTRIBUTE)
+	if len(events) == 0 {
+		return make([]DBPerformanceEvent, 0), nil
+	}
 
 	err := SetExecutionPlanMetrics(e, args, events)
 	if err != nil {
 		log.Error("Error setting execution plan metrics: %v", err)
 		return nil, err
 	}
-
-	ms.SetMetric("query_id_4", "aaaaa...4", metric.ATTRIBUTE)
 
 	return events, nil
 }
@@ -136,9 +129,9 @@ func extractMetricsFromJSONString(jsonString, queryID string, eventID uint64) ([
 }
 
 func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []DBPerformanceEvent) error {
-	fmt.Printf("Setting execution plan metrics for %d metrics\n", len(metrics))
+	ms := e.NewMetricSet("MysqlQueryExecutionPlan")
+
 	for _, metricObject := range metrics {
-		ms := common_utils.CreateMetricSet(e, "MysqlQueryExecution", args)
 
 		fmt.Println("Metric Object ---> ", metricObject)
 		fmt.Println("Metric Object Contents and Types:")
@@ -152,8 +145,6 @@ func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 }
 
 func publishQueryPerformanceMetrics(metricObject DBPerformanceEvent, ms *metric.Set) {
-	ms.SetMetric("inside_set_execution_plan_metricyxxxxxxxxxx", 9, metric.GAUGE)
-
 	metricsMap := map[string]struct {
 		Value      interface{}
 		MetricType metric.SourceType
