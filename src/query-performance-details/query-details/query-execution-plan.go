@@ -158,8 +158,8 @@ func publishQueryPerformanceMetrics(metricObject DBPerformanceEvent, ms *metric.
 		Value      interface{}
 		MetricType metric.SourceType
 	}{
-		"query_id":      {metricObject.QueryID, metric.ATTRIBUTE},
-		"query_text":    {metricObject.QueryText, metric.ATTRIBUTE},
+		"query_id": {metricObject.QueryID, metric.ATTRIBUTE},
+		// "query_text":    {metricObject.QueryText, metric.ATTRIBUTE},
 		"event_id":      {metricObject.EventID, metric.GAUGE},
 		"query_cost":    {metricObject.QueryCost, metric.GAUGE},
 		"access_type":   {metricObject.AccessType, metric.ATTRIBUTE},
