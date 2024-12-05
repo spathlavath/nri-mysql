@@ -182,7 +182,7 @@ func GetInt64ValueSafe(val interface{}) int64 {
 		if v <= uint64(math.MaxInt64) {
 			return int64(v)
 		}
-		fmt.Println("Value %v overflows int64, returning 0", v)
+		fmt.Printf("Value %v overflows int64, returning 0", v)
 		return 0
 	case float64:
 		return int64(v)
@@ -193,9 +193,9 @@ func GetInt64ValueSafe(val interface{}) int64 {
 		if err == nil {
 			return parsedVal
 		}
-		fmt.Println("Failed to parse string to int64: %v", err)
+		fmt.Printf("Failed to parse string to int64: %v", err)
 	default:
-		fmt.Println("Unhandled type in GetInt64ValueSafe: %T", val)
+		fmt.Printf("Unhandled type in GetInt64ValueSafe: %T", val)
 	}
 	return 0
 }
