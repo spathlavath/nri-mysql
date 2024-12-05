@@ -34,11 +34,11 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 	ms := common_utils.CreateMetricSet(e, "MysqlTest", args)
 	ms.SetMetric("name", "prashanth", metric.ATTRIBUTE)
 	// Set execution plan metrics
-	err := SetExecutionPlanMetrics(e, args, events)
-	if err != nil {
-		log.Error("Error setting execution plan metrics: %v", err)
-		return nil, err
-	}
+	// err := SetExecutionPlanMetrics(e, args, events)
+	// if err != nil {
+	// 	log.Error("Error setting execution plan metrics: %v", err)
+	// 	return nil, err
+	// }
 
 	return events, nil
 }
