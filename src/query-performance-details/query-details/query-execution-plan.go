@@ -365,39 +365,36 @@ func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 		// ms.SetMetric("total_cost", metricObject.TotalCost, metric.GAUGE)
 		// ms.SetMetric("step_id", metricObject.StepID, metric.GAUGE)
 		// ms.SetMetric("execution_step", metricObject.ExecutionStep, metric.ATTRIBUTE)
-		err := ms.SetMetric("access_type", metricObject.AccessType, metric.ATTRIBUTE)
-		if err != nil {
-			fmt.Println("Error setting access_type metric: ", err)
-			log.Error("Error setting access_type metric: %v", err)
-		}
+		// ms.SetMetric("access_type", metricObject.AccessType, metric.ATTRIBUTE)
 		// ms.SetMetric("rows_examined", metricObject.RowsExamined, metric.GAUGE)
-		err = ms.SetMetric("rows_produced", metricObject.RowsExaminedPerScan, metric.GAUGE)
-		if err != nil {
-			fmt.Println("Error setting rows_produced metric: ", err)
-			log.Error("Error setting rows_produced metric: %v", err)
-		}
-		err = ms.SetMetric("rows_produced", metricObject.RowsProducedPerJoin, metric.GAUGE)
-		if err != nil {
-			fmt.Println("Error setting rows_produced metric: ", err)
-			log.Error("Error setting rows_produced metric: %v", err)
-		}
-		err = ms.SetMetric("filtered", metricObject.Filtered, metric.GAUGE)
-		if err != nil {
-			fmt.Println("Error setting filtered metric: ", err)
-			log.Error("Error setting filtered metric: %v", err)
-		}
-		err = ms.SetMetric("read_cost", metricObject.ReadCost, metric.GAUGE)
-		if err != nil {
-			fmt.Println("Error setting read_cost metric: ", err)
-			log.Error("Error setting read_cost metric: %v", err)
-		}
-		err = ms.SetMetric("eval_cost", metricObject.EvalCost, metric.GAUGE)
-		if err != nil {
-			fmt.Println("Error setting eval_cost metric: ", err)
-			log.Error("Error setting eval_cost metric: %v", err)
-		}
+		// ms.SetMetric("rows_examined", metricObject.RowsExaminedPerScan, metric.GAUGE)
+		// ms.SetMetric("rows_produced", metricObject.RowsProducedPerJoin, metric.GAUGE)
+		// ms.SetMetric("filtered", metricObject.Filtered, metric.GAUGE)
+		// ms.SetMetric("read_cost", metricObject.ReadCost, metric.GAUGE)
+		// ms.SetMetric("eval_cost", metricObject.EvalCost, metric.GAUGE)
 		// ms.SetMetric("data_read", metricObject.DataRead, metric.GAUGE)
 		// ms.SetMetric("extra_info", metricObject.ExtraInfo, metric.ATTRIBUTE)
+
+		metricsMap := map[string]struct {
+			Value      interface{}
+			MetricType metric.SourceType
+		}{
+
+			"access_type":   {metricObject.AccessType, metric.ATTRIBUTE},
+			"rows_examined": {metricObject.RowsExaminedPerScan, metric.ATTRIBUTE},
+			"rows_produced": {metricObject.RowsProducedPerJoin, metric.ATTRIBUTE},
+			"filtered":      {metricObject.Filtered, metric.GAUGE},
+			"read_cost":     {metricObject.ReadCost, metric.GAUGE},
+			"eval_cost":     {metricObject.EvalCost, metric.GAUGE},
+		}
+
+		for name, metric := range metricsMap {
+			err := ms.SetMetric(name, metric.Value, metric.MetricType)
+			if err != nil {
+				log.Warn("Error setting value:  %s", err)
+				continue
+			}
+		}
 
 		// Print the metric set for debugging
 		common_utils.PrintMetricSet(ms)
