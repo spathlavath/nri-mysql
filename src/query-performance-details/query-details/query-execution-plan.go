@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/newrelic/infra-integrations-sdk/v3/data/metric"
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	arguments "github.com/newrelic/nri-mysql/src/args"
@@ -16,37 +17,41 @@ import (
 	performance_database "github.com/newrelic/nri-mysql/src/query-performance-details/performance-database"
 )
 
-func PopulateExecutionPlans(db performance_database.DataSource, queries []performance_data_model.QueryPlanMetrics, e *integration.Entity, args arguments.ArgumentList) ([]map[string]interface{}, error) {
-	var events []map[string]interface{}
+func PopulateExecutionPlans(db performance_database.DataSource, queries []performance_data_model.QueryPlanMetrics, e *integration.Entity, args arguments.ArgumentList) ([]performance_data_model.Event, error) {
+	var events []performance_data_model.Event
 	ms := e.NewMetricSet("MysqlTest")
 	ms.Metrics["name"] = "p1"
 	for _, query := range queries {
 		ms1 := e.NewMetricSet("MysqlTest1")
 		ms1.Metrics["name"] = "p2"
 		fmt.Printf("Query: %v\n", query)
-		// tableIngestionDataList := processExecutionPlanMetrics(e, args, db, query)
-		// events = append(events, tableIngestionDataList...)
+		tableIngestionDataList := processExecutionPlanMetrics(e, args, db, query)
+		events = append(events, tableIngestionDataList...)
 	}
 
 	// Debugging: Log the number of events collected
 	fmt.Printf("Total events collected: %d\n", len(events))
 
 	if len(events) == 0 {
-		return make([]map[string]interface{}, 0), nil
+		return make([]performance_data_model.Event, 0), nil
 	}
+
+	// Create and set metrics for MysqlTest2
 	ms2 := e.NewMetricSet("MysqlTest2")
 	ms2.Metrics["name"] = "p3"
+	ms2.Metrics["total_events"] = len(events)
+
 	// Set execution plan metrics
-	// err := SetExecutionPlanMetrics(e, args, events)
-	// if err != nil {
-	// 	log.Error("Error setting execution plan metrics: %v", err)
-	// 	return nil, err
-	// }
+	err := SetExecutionPlanMetrics(e, args, events)
+	if err != nil {
+		log.Error("Error setting execution plan metrics: %v", err)
+		return nil, err
+	}
 
 	return events, nil
 }
 
-func processExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, db performance_database.DataSource, query performance_data_model.QueryPlanMetrics) []map[string]interface{} {
+func processExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, db performance_database.DataSource, query performance_data_model.QueryPlanMetrics) []performance_data_model.Event {
 	supportedStatements := map[string]bool{"SELECT": true, "INSERT": true, "UPDATE": true, "DELETE": true, "WITH": true}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -108,118 +113,20 @@ func processExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentL
 	fmt.Println("Unmarshaled Execution Plan:")
 	fmt.Printf("%+v\n", execPlan)
 
-	metrics := extractMetricsFromPlan(execPlan)
+	metrics := extractMetricsFromPlan(execPlan, query.QueryID, query.AnonymizedQueryText, query.EventID)
 
-	var tableIngestionDataList []map[string]interface{}
-	for _, metric := range metrics.TableMetrics {
-		tableIngestionData := make(map[string]interface{})
-		tableIngestionData["query_id"] = query.QueryID
-		tableIngestionData["query_text"] = query.AnonymizedQueryText
-		tableIngestionData["event_id"] = query.EventID
-		tableIngestionData["total_cost"] = metrics.TotalCost
-		tableIngestionData["step_id"] = int64(metric.StepID)
-		tableIngestionData["execution_step"] = metric.ExecutionStep
-		tableIngestionData["access_type"] = metric.AccessType
-		tableIngestionData["rows_examined"] = int64(metric.RowsExamined)
-		tableIngestionData["rows_produced"] = int64(metric.RowsProduced)
-		tableIngestionData["filtered"] = float64(metric.Filtered)
-		tableIngestionData["read_cost"] = float64(metric.ReadCost)
-		tableIngestionData["eval_cost"] = float64(metric.EvalCost)
-		tableIngestionData["data_read"] = float64(metric.DataRead)
-		tableIngestionData["extra_info"] = metric.ExtraInfo
-
-		// Debugging: Print the table ingestion data
-		fmt.Println("tableIngestionData:", tableIngestionData)
-
-		tableIngestionDataList = append(tableIngestionDataList, tableIngestionData)
-	}
-	ms := e.NewMetricSet("MysqlTest3")
-	ms.Metrics["name"] = "ramana"
-	return tableIngestionDataList
+	return metrics
 }
 
-func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []map[string]interface{}) error {
-	// Debugging: Log the number of metrics to process
-	fmt.Printf("Setting execution plan metrics for %d metrics\n", len(metrics))
-	ms := common_utils.CreateMetricSet(e, "MysqlTest2", args)
-	ms.Metrics["name"] = "srikanth"
-	// for _, metricObject := range metrics {
-	// 	// Create a new metric set for each metricObject
-	// 	ms := common_utils.CreateMetricSet(e, "MysqlQueryExecution", args)
-
-	// 	// Debugging: Print the contents of metricObject
-	// 	fmt.Println("Metric Object ---> ", metricObject)
-
-	// 	// Print the contents and types of metricObject
-	// 	fmt.Println("Metric Object Contents and Types:")
-	// 	for k, v := range metricObject {
-	// 		fmt.Printf("Key: %s, Value: %v, Type: %T\n", k, v, v)
-	// 	}
-	// 	ms.SetMetric("query_id", metricObject["query_id"], metric.ATTRIBUTE)
-	// 	ms.SetMetric("query_text", metricObject["query_text"], metric.ATTRIBUTE)
-	// 	// Debugging: Print the contents of metricObject
-	// 	fmt.Println("query_id & query_text ---> ", metricObject["query_id"], metricObject["query_text"])
-	// 	// Proceed to set metrics as before
-	// 	// metricsMap := map[string]struct {
-	// 	// 	Value      interface{}
-	// 	// 	MetricType metric.SourceType
-	// 	// }{
-	// 	// 	"query_id":       {common_utils.GetStringValueSafe(metricObject["query_id"]), metric.ATTRIBUTE},
-	// 	// 	"query_text":     {common_utils.GetStringValueSafe(metricObject["query_text"]), metric.ATTRIBUTE},
-	// 	// 	"event_id":       {common_utils.GetInt64ValueSafe(metricObject["event_id"]), metric.GAUGE},
-	// 	// 	"total_cost":     {common_utils.GetFloat64ValueSafe(metricObject["total_cost"]), metric.GAUGE},
-	// 	// 	"step_id":        {common_utils.GetInt64ValueSafe(metricObject["step_id"]), metric.GAUGE},
-	// 	// 	"execution_step": {common_utils.GetStringValueSafe(metricObject["execution_step"]), metric.ATTRIBUTE},
-	// 	// 	"access_type":    {common_utils.GetStringValueSafe(metricObject["access_type"]), metric.ATTRIBUTE},
-	// 	// 	"rows_examined":  {common_utils.GetInt64ValueSafe(metricObject["rows_examined"]), metric.GAUGE},
-	// 	// 	"rows_produced":  {common_utils.GetInt64ValueSafe(metricObject["rows_produced"]), metric.GAUGE},
-	// 	// 	"filtered":       {common_utils.GetFloat64ValueSafe(metricObject["filtered"]), metric.GAUGE},
-	// 	// 	"read_cost":      {common_utils.GetFloat64ValueSafe(metricObject["read_cost"]), metric.GAUGE},
-	// 	// 	"eval_cost":      {common_utils.GetFloat64ValueSafe(metricObject["eval_cost"]), metric.GAUGE},
-	// 	// 	"data_read":      {common_utils.GetFloat64ValueSafe(metricObject["data_read"]), metric.GAUGE},
-	// 	// 	"extra_info":     {common_utils.GetStringValueSafe(metricObject["extra_info"]), metric.ATTRIBUTE},
-	// 	// }
-
-	// 	// for name, metricData := range metricsMap {
-	// 	// 	fmt.Println("name:", name)
-	// 	// 	fmt.Println("metricData:", metricData.Value)
-	// 	// 	fmt.Printf("Type of metricData.Value: %T\n", metricData.Value)
-
-	// 	// 	// Convert uint64 to int64 or float64 if necessary
-	// 	// 	if val, ok := metricData.Value.(uint64); ok {
-	// 	// 		if val <= uint64(math.MaxInt64) {
-	// 	// 			metricData.Value = int64(val)
-	// 	// 		} else {
-	// 	// 			// If it doesn't fit, convert to float64
-	// 	// 			metricData.Value = float64(val)
-	// 	// 		}
-	// 	// 	}
-	// 	// 	fmt.Println("Before setting the metrics")
-	// 	// 	err := ms.SetMetric(name, metricData.Value, metricData.MetricType)
-	// 	// 	fmt.Println("After setting the metrics")
-	// 	// 	if err != nil {
-	// 	// 		log.Error("Error setting value for %s: %v", name, err)
-	// 	// 		continue
-	// 	// 	}
-	// 	// }
-
-	// 	// Print the metric set for debugging
-	// 	fmt.Println("Metric Set:", ms)
-	// }
-
-	return nil
-}
-
-// extractMetricsFromPlan processes the top-level query block and recursively extracts metrics.
-func extractMetricsFromPlan(plan map[string]interface{}) performance_data_model.ExecutionPlan {
-	var metrics performance_data_model.ExecutionPlan
+func extractMetricsFromPlan(plan map[string]interface{}, queryID, queryText string, eventID uint64) []performance_data_model.Event {
+	var metrics []performance_data_model.Event
 	stepID := 0
 
 	// Debugging: Log the entire plan
 	fmt.Printf("Extracting metrics from plan: %+v\n", plan)
 
 	if queryBlock, exists := plan["query_block"].(map[string]interface{}); exists {
-		extractMetricsFromQueryBlock(queryBlock, &metrics, &stepID)
+		extractMetricsFromQueryBlock(queryBlock, &metrics, &stepID, queryID, queryText, eventID, 0)
 	} else {
 		fmt.Println("No 'query_block' found in plan.")
 	}
@@ -227,19 +134,19 @@ func extractMetricsFromPlan(plan map[string]interface{}) performance_data_model.
 	return metrics
 }
 
-// extractMetricsFromQueryBlock processes a query block and extracts metrics, handling nested structures.
-func extractMetricsFromQueryBlock(queryBlock map[string]interface{}, metrics *performance_data_model.ExecutionPlan, stepID *int) {
+func extractMetricsFromQueryBlock(queryBlock map[string]interface{}, metrics *[]performance_data_model.Event, stepID *int, queryID, queryText string, eventID uint64, parentCost float64) {
 	// Debugging: Log the queryBlock
 	fmt.Printf("Processing Query Block: %+v\n", queryBlock)
 
+	var totalCost float64
 	if costInfo, exists := queryBlock["cost_info"].(map[string]interface{}); exists {
-		metrics.TotalCost += getCostSafely(costInfo, "query_cost")
+		totalCost = getCostSafely(costInfo, "query_cost")
 	}
 
 	// Process tables directly in the query block
 	if table, exists := queryBlock["table"].(map[string]interface{}); exists {
-		tableMetrics, newStepID := extractTableMetrics(map[string]interface{}{"table": table}, *stepID)
-		metrics.TableMetrics = append(metrics.TableMetrics, tableMetrics...)
+		tableMetrics, newStepID := extractTableMetrics(map[string]interface{}{"table": table}, *stepID, queryID, queryText, eventID, totalCost)
+		*metrics = append(*metrics, tableMetrics...)
 		*stepID = newStepID
 	}
 
@@ -247,25 +154,26 @@ func extractMetricsFromQueryBlock(queryBlock map[string]interface{}, metrics *pe
 	if nestedLoop, exists := queryBlock["nested_loop"].([]interface{}); exists {
 		for _, nested := range nestedLoop {
 			if nestedMap, ok := nested.(map[string]interface{}); ok {
-				extractMetricsFromQueryBlock(nestedMap, metrics, stepID)
+				extractMetricsFromQueryBlock(nestedMap, metrics, stepID, queryID, queryText, eventID, totalCost)
 			}
 		}
 	}
 
 	// Process grouping operations
 	if groupingOp, exists := queryBlock["grouping_operation"].(map[string]interface{}); exists {
-		extractMetricsFromQueryBlock(groupingOp, metrics, stepID)
+		extractMetricsFromQueryBlock(groupingOp, metrics, stepID, queryID, queryText, eventID, totalCost)
 	}
+
 	// Process ordering operations
 	if orderingOp, exists := queryBlock["ordering_operation"].(map[string]interface{}); exists {
 		if table, exists := orderingOp["table"].(map[string]interface{}); exists {
-			tableMetrics, newStepID := extractTableMetrics(map[string]interface{}{"table": table}, *stepID)
-			metrics.TableMetrics = append(metrics.TableMetrics, tableMetrics...)
+			tableMetrics, newStepID := extractTableMetrics(map[string]interface{}{"table": table}, *stepID, queryID, queryText, eventID, totalCost)
+			*metrics = append(*metrics, tableMetrics...)
 			*stepID = newStepID
 		}
 
 		if groupingOp, exists := orderingOp["grouping_operation"].(map[string]interface{}); exists {
-			extractMetricsFromQueryBlock(groupingOp, metrics, stepID)
+			extractMetricsFromQueryBlock(groupingOp, metrics, stepID, queryID, queryText, eventID, totalCost)
 		}
 
 		// Process select list subqueries
@@ -273,7 +181,7 @@ func extractMetricsFromQueryBlock(queryBlock map[string]interface{}, metrics *pe
 			for _, subquery := range subqueries {
 				if subqueryMap, ok := subquery.(map[string]interface{}); ok {
 					if subQueryBlock, exists := subqueryMap["query_block"].(map[string]interface{}); exists {
-						extractMetricsFromQueryBlock(subQueryBlock, metrics, stepID)
+						extractMetricsFromQueryBlock(subQueryBlock, metrics, stepID, queryID, queryText, eventID, totalCost)
 					}
 				}
 			}
@@ -283,7 +191,7 @@ func extractMetricsFromQueryBlock(queryBlock map[string]interface{}, metrics *pe
 	// Process windowing operations
 	if windowing, exists := queryBlock["windowing"].(map[string]interface{}); exists {
 		if bufferResult, exists := windowing["buffer_result"].(map[string]interface{}); exists {
-			extractMetricsFromQueryBlock(bufferResult, metrics, stepID)
+			extractMetricsFromQueryBlock(bufferResult, metrics, stepID, queryID, queryText, eventID, totalCost)
 		}
 	}
 
@@ -292,7 +200,7 @@ func extractMetricsFromQueryBlock(queryBlock map[string]interface{}, metrics *pe
 		for _, subquery := range subqueries {
 			if subqueryMap, ok := subquery.(map[string]interface{}); ok {
 				if subQueryBlock, exists := subqueryMap["query_block"].(map[string]interface{}); exists {
-					extractMetricsFromQueryBlock(subQueryBlock, metrics, stepID)
+					extractMetricsFromQueryBlock(subQueryBlock, metrics, stepID, queryID, queryText, eventID, totalCost)
 				}
 			}
 		}
@@ -301,7 +209,7 @@ func extractMetricsFromQueryBlock(queryBlock map[string]interface{}, metrics *pe
 	// Process materialized subqueries
 	if materializedSubquery, exists := queryBlock["materialized_from_subquery"].(map[string]interface{}); exists {
 		if subQueryBlock, exists := materializedSubquery["query_block"].(map[string]interface{}); exists {
-			extractMetricsFromQueryBlock(subQueryBlock, metrics, stepID)
+			extractMetricsFromQueryBlock(subQueryBlock, metrics, stepID, queryID, queryText, eventID, totalCost)
 		}
 	}
 
@@ -311,7 +219,7 @@ func extractMetricsFromQueryBlock(queryBlock map[string]interface{}, metrics *pe
 			for _, querySpec := range querySpecifications {
 				if querySpecMap, ok := querySpec.(map[string]interface{}); ok {
 					if subQueryBlock, exists := querySpecMap["query_block"].(map[string]interface{}); exists {
-						extractMetricsFromQueryBlock(subQueryBlock, metrics, stepID)
+						extractMetricsFromQueryBlock(subQueryBlock, metrics, stepID, queryID, queryText, eventID, totalCost)
 					}
 				}
 			}
@@ -319,15 +227,18 @@ func extractMetricsFromQueryBlock(queryBlock map[string]interface{}, metrics *pe
 	}
 }
 
-// extractTableMetrics extracts metrics from a table structure.
-func extractTableMetrics(tableInfo map[string]interface{}, stepID int) ([]performance_data_model.TableMetrics, int) {
+func extractTableMetrics(tableInfo map[string]interface{}, stepID int, queryID, queryText string, eventID uint64, parentCost float64) ([]performance_data_model.Event, int) {
 	fmt.Printf("Processing Table Info: %+v\n", tableInfo)
 
-	var tableMetrics []performance_data_model.TableMetrics
+	var tableMetrics []performance_data_model.Event
 	stepID++
 
 	if table, exists := tableInfo["table"].(map[string]interface{}); exists {
-		metrics := performance_data_model.TableMetrics{
+		metrics := performance_data_model.Event{
+			QueryID:       queryID,
+			QueryText:     queryText,
+			EventID:       eventID,
+			TotalCost:     parentCost,
 			StepID:        stepID,
 			ExecutionStep: common_utils.GetString(table, "table_name"),
 			AccessType:    common_utils.GetString(table, "access_type"),
@@ -356,7 +267,7 @@ func extractTableMetrics(tableInfo map[string]interface{}, stepID int) ([]perfor
 	if nestedLoop, exists := tableInfo["nested_loop"].([]interface{}); exists {
 		for _, nested := range nestedLoop {
 			if nestedMap, ok := nested.(map[string]interface{}); ok {
-				nestedMetrics, newStepID := extractTableMetrics(nestedMap, stepID)
+				nestedMetrics, newStepID := extractTableMetrics(nestedMap, stepID, queryID, queryText, eventID, parentCost)
 				tableMetrics = append(tableMetrics, nestedMetrics...)
 				stepID = newStepID
 			}
@@ -368,8 +279,8 @@ func extractTableMetrics(tableInfo map[string]interface{}, stepID int) ([]perfor
 		for _, subquery := range attachedSubqueries {
 			if subqueryMap, ok := subquery.(map[string]interface{}); ok {
 				if subQueryBlock, exists := subqueryMap["query_block"].(map[string]interface{}); exists {
-					subMetrics := extractMetricsFromPlan(map[string]interface{}{"query_block": subQueryBlock})
-					tableMetrics = append(tableMetrics, subMetrics.TableMetrics...)
+					subMetrics := extractMetricsFromPlan(map[string]interface{}{"query_block": subQueryBlock}, queryID, queryText, eventID)
+					tableMetrics = append(tableMetrics, subMetrics...)
 				}
 			}
 		}
@@ -378,8 +289,8 @@ func extractTableMetrics(tableInfo map[string]interface{}, stepID int) ([]perfor
 	// Handle materialized subqueries within the table
 	if materializedSubquery, exists := tableInfo["materialized_from_subquery"].(map[string]interface{}); exists {
 		if subQueryBlock, exists := materializedSubquery["query_block"].(map[string]interface{}); exists {
-			subMetrics := extractMetricsFromPlan(map[string]interface{}{"query_block": subQueryBlock})
-			tableMetrics = append(tableMetrics, subMetrics.TableMetrics...)
+			subMetrics := extractMetricsFromPlan(map[string]interface{}{"query_block": subQueryBlock}, queryID, queryText, eventID)
+			tableMetrics = append(tableMetrics, subMetrics...)
 		}
 	}
 
@@ -389,8 +300,8 @@ func extractTableMetrics(tableInfo map[string]interface{}, stepID int) ([]perfor
 			for _, querySpec := range querySpecifications {
 				if querySpecMap, ok := querySpec.(map[string]interface{}); ok {
 					if subQueryBlock, exists := querySpecMap["query_block"].(map[string]interface{}); exists {
-						subMetrics := extractMetricsFromPlan(map[string]interface{}{"query_block": subQueryBlock})
-						tableMetrics = append(tableMetrics, subMetrics.TableMetrics...)
+						subMetrics := extractMetricsFromPlan(map[string]interface{}{"query_block": subQueryBlock}, queryID, queryText, eventID)
+						tableMetrics = append(tableMetrics, subMetrics...)
 					}
 				}
 			}
@@ -398,6 +309,42 @@ func extractTableMetrics(tableInfo map[string]interface{}, stepID int) ([]perfor
 	}
 
 	return tableMetrics, stepID
+}
+
+func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []performance_data_model.Event) error {
+	// Debugging: Log the number of metrics to process
+	fmt.Printf("Setting execution plan metrics for %d metrics\n", len(metrics))
+	for _, metricObject := range metrics {
+		// Create a new metric set for each metricObject
+		ms := common_utils.CreateMetricSet(e, "MysqlQueryExecution", args)
+
+		// Debugging: Print the contents of metricObject
+		fmt.Println("Metric Object ---> ", metricObject)
+
+		// Print the contents and types of metricObject
+		fmt.Println("Metric Object Contents and Types:")
+		fmt.Printf("%+v\n", metricObject)
+
+		ms.SetMetric("query_id", metricObject.QueryID, metric.ATTRIBUTE)
+		ms.SetMetric("query_text", metricObject.QueryText, metric.ATTRIBUTE)
+		ms.SetMetric("event_id", metricObject.EventID, metric.GAUGE)
+		ms.SetMetric("total_cost", metricObject.TotalCost, metric.GAUGE)
+		ms.SetMetric("step_id", metricObject.StepID, metric.GAUGE)
+		ms.SetMetric("execution_step", metricObject.ExecutionStep, metric.ATTRIBUTE)
+		ms.SetMetric("access_type", metricObject.AccessType, metric.ATTRIBUTE)
+		ms.SetMetric("rows_examined", metricObject.RowsExamined, metric.GAUGE)
+		ms.SetMetric("rows_produced", metricObject.RowsProduced, metric.GAUGE)
+		ms.SetMetric("filtered", metricObject.Filtered, metric.GAUGE)
+		ms.SetMetric("read_cost", metricObject.ReadCost, metric.GAUGE)
+		ms.SetMetric("eval_cost", metricObject.EvalCost, metric.GAUGE)
+		ms.SetMetric("data_read", metricObject.DataRead, metric.GAUGE)
+		ms.SetMetric("extra_info", metricObject.ExtraInfo, metric.ATTRIBUTE)
+
+		// Print the metric set for debugging
+		common_utils.PrintMetricSet(ms)
+	}
+
+	return nil
 }
 
 func getCostSafely(costInfo map[string]interface{}, key string) float64 {
