@@ -365,7 +365,11 @@ func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 		// ms.SetMetric("total_cost", metricObject.TotalCost, metric.GAUGE)
 		// ms.SetMetric("step_id", metricObject.StepID, metric.GAUGE)
 		// ms.SetMetric("execution_step", metricObject.ExecutionStep, metric.ATTRIBUTE)
-		ms.SetMetric("access_type", metricObject.AccessType, metric.ATTRIBUTE)
+		err := ms.SetMetric("access_type", metricObject.AccessType, metric.ATTRIBUTE)
+		if err != nil {
+			fmt.Println("Error setting access_type metric: ", err)
+			log.Error("Error setting access_type metric: %v", err)
+		}
 		// ms.SetMetric("rows_examined", metricObject.RowsExamined, metric.GAUGE)
 		ms.SetMetric("rows_produced", metricObject.RowsExaminedPerScan, metric.GAUGE)
 		ms.SetMetric("rows_produced", metricObject.RowsProducedPerJoin, metric.GAUGE)
