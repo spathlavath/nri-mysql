@@ -141,44 +141,43 @@ func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 	ms.SetMetric("inside_set_execution_plan_metricyyyyyyyyyyyyyyyz", 2, metric.GAUGE)
 
 	for _, metricObject := range metrics {
-		fmt.Println("Metric Object ---> ", metricObject)
-		fmt.Println("Metric Object Contents and Types:")
-		fmt.Printf("%+v\n", metricObject)
 
-		metricsMap := map[string]struct {
-			Value      interface{}
-			MetricType metric.SourceType
-		}{
-			"query_id":      {metricObject.QueryID, metric.ATTRIBUTE},
-			"event_id":      {metricObject.EventID, metric.GAUGE},
-			"query_cost":    {metricObject.QueryCost, metric.GAUGE},
-			"access_type":   {metricObject.AccessType, metric.ATTRIBUTE},
-			"rows_examined": {metricObject.RowsExaminedPerScan, metric.GAUGE},
-			"rows_produced": {metricObject.RowsProducedPerJoin, metric.GAUGE},
-			"filtered":      {metricObject.Filtered, metric.GAUGE},
-			"read_cost":     {metricObject.ReadCost, metric.GAUGE},
-			"eval_cost":     {metricObject.EvalCost, metric.GAUGE},
-		}
+		// fmt.Println("Metric Object ---> ", metricObject)
+		// fmt.Println("Metric Object Contents and Types:")
+		// fmt.Printf("%+v\n", metricObject)
 
-		publishQueryPerformanceMetrics(metricsMap, ms)
+		publishQueryPerformanceMetrics(metricObject, ms)
 
 		// common_utils.PrintMetricSet(ms)
 	}
 	return nil
 }
 
-func publishQueryPerformanceMetrics(metricsMap map[string]struct {
-	Value      interface{}
-	MetricType metric.SourceType
-}, ms *metric.Set) {
+func publishQueryPerformanceMetrics(metricObject DBPerformanceEvent, ms *metric.Set) {
 	ms.SetMetric("inside_set_execution_plan_metricyxxxxxxxxxx", 9, metric.GAUGE)
 
-	// for metricName, metricData := range metricsMap {
-	// 	err := ms.SetMetric(metricName, metricData.Value, metricData.MetricType)
-	// 	if err != nil {
-	// 		log.Error("Error setting metric %s: %v", metricName, err)
-	// 	}
-	// }
+	metricsMap := map[string]struct {
+		Value      interface{}
+		MetricType metric.SourceType
+	}{
+		"query_id":      {metricObject.QueryID, metric.ATTRIBUTE},
+		"event_id":      {metricObject.EventID, metric.GAUGE},
+		"query_cost":    {metricObject.QueryCost, metric.GAUGE},
+		"access_type":   {metricObject.AccessType, metric.ATTRIBUTE},
+		"rows_examined": {metricObject.RowsExaminedPerScan, metric.GAUGE},
+		"rows_produced": {metricObject.RowsProducedPerJoin, metric.GAUGE},
+		"filtered":      {metricObject.Filtered, metric.GAUGE},
+		"read_cost":     {metricObject.ReadCost, metric.GAUGE},
+		"eval_cost":     {metricObject.EvalCost, metric.GAUGE},
+	}
+
+	for metricName, metricData := range metricsMap {
+		fmt.Println("metricName =========> ", metricName)
+		err := ms.SetMetric(metricName, metricData.Value, metricData.MetricType)
+		if err != nil {
+			log.Error("Error setting metric %s: %v", metricName, err)
+		}
+	}
 }
 
 func extractMetrics(js *simplejson.Json, dbPerformanceEvents []DBPerformanceEvent, queryID string, eventID uint64) []DBPerformanceEvent {
