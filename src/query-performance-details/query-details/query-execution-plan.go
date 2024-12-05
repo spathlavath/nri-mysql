@@ -123,7 +123,8 @@ func extractMetricsFromJSONString(jsonString, queryID string, eventID interface{
 	}
 
 	dbPerformanceEvents := make([]DBPerformanceEvent, 0)
-	dbPerformanceEvents = extractMetrics(js, dbPerformanceEvents, queryID, eventID.(float64))
+	fmt.Println("Dummy Value ", eventID)
+	dbPerformanceEvents = extractMetrics(js, dbPerformanceEvents, queryID, 123)
 
 	return dbPerformanceEvents, nil
 }
