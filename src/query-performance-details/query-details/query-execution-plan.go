@@ -33,8 +33,8 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 	if len(events) == 0 {
 		return []map[string]interface{}{}, nil
 	}
-	ms2 := e.NewMetricSet("p3")
-	ms2.Metrics["name"] = "prashanth"
+	ms2 := e.NewMetricSet("MysqlTest1")
+	ms2.Metrics["name"] = "p3"
 	// Set execution plan metrics
 	// err := SetExecutionPlanMetrics(e, args, events)
 	// if err != nil {
