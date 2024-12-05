@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/newrelic/infra-integrations-sdk/v3/data/metric"
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	arguments "github.com/newrelic/nri-mysql/src/args"
@@ -21,7 +20,7 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 	var events []map[string]interface{}
 
 	for _, query := range queries {
-		tableIngestionDataList := processExecutionPlanMetrics(db, query)
+		tableIngestionDataList := processExecutionPlanMetrics(e, args, db, query)
 		events = append(events, tableIngestionDataList...)
 	}
 
@@ -31,8 +30,8 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 	if len(events) == 0 {
 		return []map[string]interface{}{}, nil
 	}
-	ms := common_utils.CreateMetricSet(e, "MysqlTest", args)
-	ms.SetMetric("name", "prashanth", metric.ATTRIBUTE)
+	ms := e.NewMetricSet("MysqlTest")
+	ms.Metrics["name"] = "prashanth"
 	// Set execution plan metrics
 	// err := SetExecutionPlanMetrics(e, args, events)
 	// if err != nil {
@@ -43,7 +42,7 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 	return events, nil
 }
 
-func processExecutionPlanMetrics(db performance_database.DataSource, query performance_data_model.QueryPlanMetrics) []map[string]interface{} {
+func processExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, db performance_database.DataSource, query performance_data_model.QueryPlanMetrics) []map[string]interface{} {
 	supportedStatements := map[string]bool{"SELECT": true, "INSERT": true, "UPDATE": true, "DELETE": true, "WITH": true}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -130,15 +129,16 @@ func processExecutionPlanMetrics(db performance_database.DataSource, query perfo
 
 		tableIngestionDataList = append(tableIngestionDataList, tableIngestionData)
 	}
-
+	ms := e.NewMetricSet("MysqlTest1")
+	ms.Metrics["name"] = "ramana"
 	return tableIngestionDataList
 }
 
 func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []map[string]interface{}) error {
 	// Debugging: Log the number of metrics to process
 	fmt.Printf("Setting execution plan metrics for %d metrics\n", len(metrics))
-	ms := common_utils.CreateMetricSet(e, "MysqlTestPlan", args)
-	ms.SetMetric("name", "srikanth", metric.ATTRIBUTE)
+	ms := common_utils.CreateMetricSet(e, "MysqlTest2", args)
+	ms.Metrics["name"] = "srikanth"
 	// for _, metricObject := range metrics {
 	// 	// Create a new metric set for each metricObject
 	// 	ms := common_utils.CreateMetricSet(e, "MysqlQueryExecution", args)
