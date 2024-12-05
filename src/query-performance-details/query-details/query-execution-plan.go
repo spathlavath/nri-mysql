@@ -160,7 +160,7 @@ func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 			"eval_cost":     {metricObject.EvalCost, metric.GAUGE},
 		}
 
-		publishQueryPerformanceMetrics(metricsMap, *e, args)
+		publishQueryPerformanceMetrics(metricsMap, ms)
 
 		// common_utils.PrintMetricSet(ms)
 	}
@@ -170,9 +170,10 @@ func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 func publishQueryPerformanceMetrics(metricsMap map[string]struct {
 	Value      interface{}
 	MetricType metric.SourceType
-}, e integration.Entity, args arguments.ArgumentList) {
+}, ms *metric.Set) {
+	ms.SetMetric("inside_set_execution_plan_metricyxxxxxxxxxx", 9, metric.GAUGE)
+
 	for metricName, metricData := range metricsMap {
-		ms := common_utils.CreateMetricSet(&e, "MysqlQueryExecution", args)
 		err := ms.SetMetric(metricName, metricData.Value, metricData.MetricType)
 		if err != nil {
 			log.Error("Error setting metric %s: %v", metricName, err)
