@@ -140,7 +140,7 @@ func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 	ms := common_utils.CreateMetricSet(e, "MysqlQueryExecution", args)
 	ms.SetMetric("inside_set_metrics", 2, metric.GAUGE)
 	for i, metricObject := range metrics {
-		ms.SetMetric("inside_set_metrics_loop_20s", i+10, metric.GAUGE)
+		ms.SetMetric("inside_set_metrics_loop_tens", i+10, metric.GAUGE)
 
 		fmt.Println("Metric Object ---> ", metricObject)
 		fmt.Println("Metric Object Contents and Types:")
@@ -161,7 +161,7 @@ func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 			"eval_cost":     {metricObject.EvalCost, metric.GAUGE},
 		}
 
-		ms.SetMetric("inside_set_execution_plan_metrics", i+20, metric.GAUGE)
+		ms.SetMetric("inside_set_metrics_loop_twenties", i+20, metric.GAUGE)
 
 		for name, metric := range metricsMap {
 			err := ms.SetMetric(name, metric.Value, metric.MetricType)
@@ -171,7 +171,7 @@ func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 			}
 		}
 
-		ms.SetMetric("inside_set_metrics_loop_30s", i+30, metric.GAUGE)
+		ms.SetMetric("inside_set_metrics_loop_thirties", i+30, metric.GAUGE)
 
 		common_utils.PrintMetricSet(ms)
 	}
