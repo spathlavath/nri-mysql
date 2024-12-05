@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/bitly/go-simplejson"
+	"github.com/newrelic/infra-integrations-sdk/data/attribute"
 	"github.com/newrelic/infra-integrations-sdk/v3/data/metric"
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
@@ -128,8 +130,8 @@ func extractMetricsFromJSONString(jsonString, queryID string, eventID uint64) ([
 }
 
 func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []DBPerformanceEvent) error {
-	ms := e.NewMetricSet("MysqlQueryExecutionPlan")
-	ms.SetMetric("query_id", "aaaaa", metric.ATTRIBUTE)
+	ms := e.NewMetricSet("MysqlQueryExecutionPlan", attribute.Attr("port", strconv.Itoa(args.Port)))
+	ms.SetMetric("port", args.Port, metric.ATTRIBUTE)
 
 	// for _, metricObject := range metrics {
 
