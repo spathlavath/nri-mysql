@@ -128,40 +128,41 @@ func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 	fmt.Printf("Setting execution plan metrics for %d metrics\n", len(metrics))
 	ms := common_utils.CreateMetricSet(e, "MysqlQueryExecution", args)
 	for _, metricObject := range metrics {
-		ms.SetMetric("inside_set_metrics_loop_tens", 100, metric.GAUGE)
+		fmt.Println("Query ID -----------------------------> : ", metricObject.QueryID)
+		ms.SetMetric("inside_set_metrics_loop_tens", metricObject.QueryID, metric.GAUGE)
 
-		fmt.Println("Metric Object ---> ", metricObject)
-		fmt.Println("Metric Object Contents and Types:")
-		fmt.Printf("%+v\n", metricObject)
+		// fmt.Println("Metric Object ---> ", metricObject)
+		// fmt.Println("Metric Object Contents and Types:")
+		// fmt.Printf("%+v\n", metricObject)
 
-		metricsMap := map[string]struct {
-			Value      interface{}
-			MetricType metric.SourceType
-		}{
-			"query_id":      {metricObject.QueryID, metric.ATTRIBUTE},
-			"event_id":      {metricObject.EventID, metric.GAUGE},
-			"query_cost":    {metricObject.QueryCost, metric.GAUGE},
-			"access_type":   {metricObject.AccessType, metric.ATTRIBUTE},
-			"rows_examined": {metricObject.RowsExaminedPerScan, metric.GAUGE},
-			"rows_produced": {metricObject.RowsProducedPerJoin, metric.GAUGE},
-			"filtered":      {metricObject.Filtered, metric.GAUGE},
-			"read_cost":     {metricObject.ReadCost, metric.GAUGE},
-			"eval_cost":     {metricObject.EvalCost, metric.GAUGE},
-		}
+		// metricsMap := map[string]struct {
+		// 	Value      interface{}
+		// 	MetricType metric.SourceType
+		// }{
+		// 	"query_id":      {metricObject.QueryID, metric.ATTRIBUTE},
+		// 	"event_id":      {metricObject.EventID, metric.GAUGE},
+		// 	"query_cost":    {metricObject.QueryCost, metric.GAUGE},
+		// 	"access_type":   {metricObject.AccessType, metric.ATTRIBUTE},
+		// 	"rows_examined": {metricObject.RowsExaminedPerScan, metric.GAUGE},
+		// 	"rows_produced": {metricObject.RowsProducedPerJoin, metric.GAUGE},
+		// 	"filtered":      {metricObject.Filtered, metric.GAUGE},
+		// 	"read_cost":     {metricObject.ReadCost, metric.GAUGE},
+		// 	"eval_cost":     {metricObject.EvalCost, metric.GAUGE},
+		// }
 
-		ms.SetMetric("inside_set_metrics_loop_twenties", 200, metric.GAUGE)
+		// ms.SetMetric("inside_set_metrics_loop_twenties", 200, metric.GAUGE)
 
-		for name, metric := range metricsMap {
-			err := ms.SetMetric(name, metric.Value, metric.MetricType)
-			if err != nil {
-				log.Warn("Error setting value:  %s", err)
-				continue
-			}
-		}
+		// for name, metric := range metricsMap {
+		// 	err := ms.SetMetric(name, metric.Value, metric.MetricType)
+		// 	if err != nil {
+		// 		log.Warn("Error setting value:  %s", err)
+		// 		continue
+		// 	}
+		// }
 
-		ms.SetMetric("inside_set_metrics_loop_thirties", 300, metric.GAUGE)
+		// ms.SetMetric("inside_set_metrics_loop_thirties", 300, metric.GAUGE)
 
-		common_utils.PrintMetricSet(ms)
+		// common_utils.PrintMetricSet(ms)
 	}
 
 	return nil
