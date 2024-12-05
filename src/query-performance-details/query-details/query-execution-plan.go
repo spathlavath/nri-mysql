@@ -33,24 +33,25 @@ type DBPerformanceEvent struct {
 
 func PopulateExecutionPlans(db performance_database.DataSource, queries []performance_data_model.QueryPlanMetrics, e *integration.Entity, args arguments.ArgumentList) ([]DBPerformanceEvent, error) {
 	var events []DBPerformanceEvent
+	ms := common_utils.CreateMetricSet(e, "MysqlQueryExecution", args)
+	ms.SetMetric("query_id", "aaaaa", metric.ATTRIBUTE)
+	// for _, query := range queries {
+	// 	fmt.Printf("Query: %v\n", query)
+	// 	tableIngestionDataList := processExecutionPlanMetrics(db, query)
+	// 	events = append(events, tableIngestionDataList...)
+	// }
 
-	for _, query := range queries {
-		fmt.Printf("Query: %v\n", query)
-		tableIngestionDataList := processExecutionPlanMetrics(db, query)
-		events = append(events, tableIngestionDataList...)
-	}
+	// fmt.Printf("Total events collected: %d\n", len(events))
 
-	fmt.Printf("Total events collected: %d\n", len(events))
+	// if len(events) == 0 {
+	// 	return make([]DBPerformanceEvent, 0), nil
+	// }
 
-	if len(events) == 0 {
-		return make([]DBPerformanceEvent, 0), nil
-	}
-
-	err := SetExecutionPlanMetrics(e, args, events)
-	if err != nil {
-		log.Error("Error setting execution plan metrics: %v", err)
-		return nil, err
-	}
+	// err := SetExecutionPlanMetrics(e, args, events)
+	// if err != nil {
+	// 	log.Error("Error setting execution plan metrics: %v", err)
+	// 	return nil, err
+	// }
 
 	return events, nil
 }
