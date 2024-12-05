@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/bitly/go-simplejson"
 	"github.com/newrelic/infra-integrations-sdk/v3/data/metric"
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
@@ -17,8 +19,20 @@ import (
 	performance_database "github.com/newrelic/nri-mysql/src/query-performance-details/performance-database"
 )
 
-func PopulateExecutionPlans(db performance_database.DataSource, queries []performance_data_model.QueryPlanMetrics, e *integration.Entity, args arguments.ArgumentList) ([]performance_data_model.Event, error) {
-	var events []performance_data_model.Event
+type DBPerformanceEvent struct {
+	TableName           string `json:"table_name"`
+	AccessType          string `json:"access_type"`
+	RowsExaminedPerScan int64  `json:"rows_examined_per_scan"`
+	RowsProducedPerJoin int64  `json:"rows_produced_per_join"`
+	Filtered            string `json:"filtered"`
+	ReadCost            string `json:"read_cost"`
+	EvalCost            string `json:"eval_cost"`
+}
+
+// func PopulateExecutionPlans(db performance_database.DataSource, queries []performance_data_model.QueryPlanMetrics, e *integration.Entity, args arguments.ArgumentList) ([]performance_data_model.Event, error) {
+func PopulateExecutionPlans(db performance_database.DataSource, queries []performance_data_model.QueryPlanMetrics, e *integration.Entity, args arguments.ArgumentList) ([]DBPerformanceEvent, error) {
+	// var events []performance_data_model.Event
+	var events []DBPerformanceEvent
 	ms := e.NewMetricSet("MysqlTest")
 	ms.Metrics["name"] = "p1"
 	for _, query := range queries {
@@ -27,19 +41,24 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 		fmt.Printf("Query: %v\n", query)
 		tableIngestionDataList := processExecutionPlanMetrics(e, args, db, query)
 		events = append(events, tableIngestionDataList...)
+		// events = append(events, tableIngestionDataList...)
 	}
 
 	// Debugging: Log the number of events collected
 	fmt.Printf("Total events collected: %d\n", len(events))
 
 	if len(events) == 0 {
-		return make([]performance_data_model.Event, 0), nil
+		// return make([]performance_data_model.Event, 0), nil
+		return make([]DBPerformanceEvent, 0), nil
 	}
 
 	// Create and set metrics for MysqlTest2
 	ms2 := e.NewMetricSet("MysqlTest2")
 	ms2.Metrics["name"] = "p3"
 	ms2.Metrics["total_events"] = len(events)
+
+	// Debugging: Print the metric set for MysqlTest2
+	fmt.Printf("MysqlTest2 Metric Set: %+v\n", ms2.Metrics)
 
 	// Set execution plan metrics
 	err := SetExecutionPlanMetrics(e, args, events)
@@ -51,7 +70,8 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 	return events, nil
 }
 
-func processExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, db performance_database.DataSource, query performance_data_model.QueryPlanMetrics) []performance_data_model.Event {
+// func processExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, db performance_database.DataSource, query performance_data_model.QueryPlanMetrics) []performance_data_model.Event {
+func processExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, db performance_database.DataSource, query performance_data_model.QueryPlanMetrics) []DBPerformanceEvent {
 	supportedStatements := map[string]bool{"SELECT": true, "INSERT": true, "UPDATE": true, "DELETE": true, "WITH": true}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -86,6 +106,7 @@ func processExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentL
 	var execPlanJSON string
 	if rows.Next() {
 		err := rows.Scan(&execPlanJSON)
+
 		if err != nil {
 			log.Error("Failed to scan execution plan: %v", err)
 			rows.Close()
@@ -102,20 +123,32 @@ func processExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentL
 	fmt.Println("Execution Plan JSON:")
 	fmt.Println(execPlanJSON)
 
-	var execPlan map[string]interface{}
-	err = json.Unmarshal([]byte(execPlanJSON), &execPlan)
+	// var execPlan map[string]interface{}
+	// err = json.Unmarshal([]byte(execPlanJSON), &execPlan)
+	// if err != nil {
+	// 	log.Error("Failed to unmarshal execution plan: %v", err)
+	// 	return nil
+	// }
+
+	// // Debugging: Print the unmarshaled execution plan
+	// fmt.Println("Unmarshaled Execution Plan:")
+	// fmt.Printf("%+v\n", execPlan)
+
+	dbPerformanceEvents, err := extractMetricsFromJSONString(execPlanJSON)
+
+	return dbPerformanceEvents
+}
+
+func extractMetricsFromJSONString(jsonString string) ([]DBPerformanceEvent, error) {
+	js, err := simplejson.NewJson([]byte(jsonString))
 	if err != nil {
-		log.Error("Failed to unmarshal execution plan: %v", err)
-		return nil
+		return nil, err
 	}
 
-	// Debugging: Print the unmarshaled execution plan
-	fmt.Println("Unmarshaled Execution Plan:")
-	fmt.Printf("%+v\n", execPlan)
+	dbPerformanceEvents := make([]DBPerformanceEvent, 0)
+	dbPerformanceEvents = extractMetrics(js, dbPerformanceEvents)
 
-	metrics := extractMetricsFromPlan(execPlan, query.QueryID, query.AnonymizedQueryText, query.EventID)
-
-	return metrics
+	return dbPerformanceEvents, nil
 }
 
 func extractMetricsFromPlan(plan map[string]interface{}, queryID, queryText string, eventID uint64) []performance_data_model.Event {
@@ -311,7 +344,8 @@ func extractTableMetrics(tableInfo map[string]interface{}, stepID int, queryID, 
 	return tableMetrics, stepID
 }
 
-func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []performance_data_model.Event) error {
+// func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []performance_data_model.Event) error {
+func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []DBPerformanceEvent) error {
 	// Debugging: Log the number of metrics to process
 	fmt.Printf("Setting execution plan metrics for %d metrics\n", len(metrics))
 	for _, metricObject := range metrics {
@@ -325,20 +359,21 @@ func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 		fmt.Println("Metric Object Contents and Types:")
 		fmt.Printf("%+v\n", metricObject)
 
-		ms.SetMetric("query_id", metricObject.QueryID, metric.ATTRIBUTE)
-		ms.SetMetric("query_text", metricObject.QueryText, metric.ATTRIBUTE)
-		ms.SetMetric("event_id", metricObject.EventID, metric.GAUGE)
-		ms.SetMetric("total_cost", metricObject.TotalCost, metric.GAUGE)
-		ms.SetMetric("step_id", metricObject.StepID, metric.GAUGE)
-		ms.SetMetric("execution_step", metricObject.ExecutionStep, metric.ATTRIBUTE)
+		// ms.SetMetric("query_id", metricObject.QueryID, metric.ATTRIBUTE)
+		// ms.SetMetric("query_text", metricObject.QueryText, metric.ATTRIBUTE)
+		// ms.SetMetric("event_id", metricObject.EventID, metric.GAUGE)
+		// ms.SetMetric("total_cost", metricObject.TotalCost, metric.GAUGE)
+		// ms.SetMetric("step_id", metricObject.StepID, metric.GAUGE)
+		// ms.SetMetric("execution_step", metricObject.ExecutionStep, metric.ATTRIBUTE)
 		ms.SetMetric("access_type", metricObject.AccessType, metric.ATTRIBUTE)
-		ms.SetMetric("rows_examined", metricObject.RowsExamined, metric.GAUGE)
-		ms.SetMetric("rows_produced", metricObject.RowsProduced, metric.GAUGE)
+		// ms.SetMetric("rows_examined", metricObject.RowsExamined, metric.GAUGE)
+		ms.SetMetric("rows_produced", metricObject.RowsExaminedPerScan, metric.GAUGE)
+		ms.SetMetric("rows_produced", metricObject.RowsProducedPerJoin, metric.GAUGE)
 		ms.SetMetric("filtered", metricObject.Filtered, metric.GAUGE)
 		ms.SetMetric("read_cost", metricObject.ReadCost, metric.GAUGE)
 		ms.SetMetric("eval_cost", metricObject.EvalCost, metric.GAUGE)
-		ms.SetMetric("data_read", metricObject.DataRead, metric.GAUGE)
-		ms.SetMetric("extra_info", metricObject.ExtraInfo, metric.ATTRIBUTE)
+		// ms.SetMetric("data_read", metricObject.DataRead, metric.GAUGE)
+		// ms.SetMetric("extra_info", metricObject.ExtraInfo, metric.ATTRIBUTE)
 
 		// Print the metric set for debugging
 		common_utils.PrintMetricSet(ms)
@@ -364,3 +399,101 @@ func getCostSafely(costInfo map[string]interface{}, key string) float64 {
 	}
 	return 0.0 // Default to 0.0 if key doesn't exist or type doesn't match
 }
+
+func extractMetrics(js *simplejson.Json, dbPerformanceEvents []DBPerformanceEvent) []DBPerformanceEvent {
+	tableName, _ := js.Get("table_name").String()
+	accessType, _ := js.Get("access_type").String()
+	rowsExaminedPerScan, _ := js.Get("rows_examined_per_scan").Int64()
+	rowsProducedPerJoin, _ := js.Get("rows_produced_per_join").Int64()
+	filtered, _ := js.Get("filtered").String()
+	readCost, _ := js.Get("cost_info").Get("read_cost").String()
+	evalCost, _ := js.Get("cost_info").Get("eval_cost").String()
+
+	if tableName != "" || accessType != "" || rowsExaminedPerScan != 0 || rowsProducedPerJoin != 0 || filtered != "" || readCost != "" || evalCost != "" {
+		dbPerformanceEvents = append(dbPerformanceEvents, DBPerformanceEvent{
+			TableName:           tableName,
+			AccessType:          accessType,
+			RowsExaminedPerScan: rowsExaminedPerScan,
+			RowsProducedPerJoin: rowsProducedPerJoin,
+			Filtered:            filtered,
+			ReadCost:            readCost,
+			EvalCost:            evalCost,
+		})
+		return dbPerformanceEvents
+	}
+
+	if jsMap, _ := js.Map(); jsMap != nil {
+		for _, value := range jsMap {
+			if value != nil {
+				t := reflect.TypeOf(value)
+				// fmt.Printf("Value %T \n", value)
+
+				if t.Kind() == reflect.Map {
+					if t.Key().Kind() == reflect.String && t.Elem().Kind() == reflect.Interface {
+						jsBytes, err := json.Marshal(value)
+						if err != nil {
+							log.Error("Error marshalling map: %v", err)
+						}
+
+						convertedSimpleJson, err := simplejson.NewJson(jsBytes)
+						if err != nil {
+							log.Error("Error creating simplejson from byte slice: %v", err)
+						}
+
+						dbPerformanceEvents = extractMetrics(convertedSimpleJson, dbPerformanceEvents)
+					}
+				} else if t.Kind() == reflect.Slice {
+					for _, element := range value.([]interface{}) {
+						if elementJson, ok := element.(map[string]interface{}); ok {
+							jsBytes, err := json.Marshal(elementJson)
+							if err != nil {
+								log.Error("Error marshalling map: %v", err)
+							}
+
+							convertedSimpleJson, err := simplejson.NewJson(jsBytes)
+							if err != nil {
+								log.Error("Error creating simplejson from byte slice: %v", err)
+							}
+
+							dbPerformanceEvents = extractMetrics(convertedSimpleJson, dbPerformanceEvents)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return dbPerformanceEvents
+}
+
+// func extractMetricsFromJSONString(jsonString string) ([]Metric, error) {
+// 	js, err := simplejson.NewJson([]byte(jsonString))
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	var metrics []Metric
+// 	metrics = extractMetrics(js, metrics)
+
+// 	return metrics, nil
+// }
+
+// func main() {
+// 	explainJson := ``
+
+// 	metrics, err := extractMetricsFromJSONString(explainJson)
+// 	if err != nil {
+// 		log.Fatal("Error extracting metrics: ", err)
+// 	}
+
+// 	if len(metrics) == 0 {
+// 		fmt.Println("No metrics extracted.")
+// 		return
+// 	}
+// 	fmt.Println("Metrcics, ", metrics)
+
+// 	for _, metric := range metrics {
+// 		fmt.Printf("Table: %s, Access Type: %s, Rows Examined Per Scan: %d, Rows Produced Per Join: %d, Filtered: %s, Read Cost: %s, Eval Cost: %s\n",
+// 			metric.TableName, metric.AccessType, metric.RowsExaminedPerScan, metric.RowsProducedPerJoin, metric.Filtered, metric.ReadCost, metric.EvalCost)
+// 	}
+// }
