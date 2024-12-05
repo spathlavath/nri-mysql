@@ -32,7 +32,7 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 	fmt.Printf("Total events collected: %d\n", len(events))
 
 	if len(events) == 0 {
-		return []map[string]interface{}{}, nil
+		return make([]map[string]interface{}, 0), nil
 	}
 	ms2 := e.NewMetricSet("MysqlTest2")
 	ms2.Metrics["name"] = "p3"
