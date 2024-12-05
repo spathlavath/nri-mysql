@@ -137,18 +137,16 @@ func extractMetricsFromJSONString(jsonString, queryID string, eventID uint64) ([
 
 func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []DBPerformanceEvent) error {
 	fmt.Printf("Setting execution plan metrics for %d metrics\n", len(metrics))
-	ms := common_utils.CreateMetricSet(e, "MysqlQueryExecution", args)
-	ms.SetMetric("inside_set_execution_plan_metricyyyyyyyyyyyyyyyz", 2, metric.GAUGE)
-
 	for _, metricObject := range metrics {
+		ms := common_utils.CreateMetricSet(e, "MysqlQueryExecution", args)
 
-		// fmt.Println("Metric Object ---> ", metricObject)
-		// fmt.Println("Metric Object Contents and Types:")
-		// fmt.Printf("%+v\n", metricObject)
+		fmt.Println("Metric Object ---> ", metricObject)
+		fmt.Println("Metric Object Contents and Types:")
+		fmt.Printf("%+v\n", metricObject)
 
 		publishQueryPerformanceMetrics(metricObject, ms)
 
-		// common_utils.PrintMetricSet(ms)
+		common_utils.PrintMetricSet(ms)
 	}
 	return nil
 }
@@ -161,6 +159,7 @@ func publishQueryPerformanceMetrics(metricObject DBPerformanceEvent, ms *metric.
 		MetricType metric.SourceType
 	}{
 		"query_id":      {metricObject.QueryID, metric.ATTRIBUTE},
+		"query_text":    {metricObject.QueryText, metric.ATTRIBUTE},
 		"event_id":      {metricObject.EventID, metric.GAUGE},
 		"query_cost":    {metricObject.QueryCost, metric.GAUGE},
 		"access_type":   {metricObject.AccessType, metric.ATTRIBUTE},
@@ -172,7 +171,7 @@ func publishQueryPerformanceMetrics(metricObject DBPerformanceEvent, ms *metric.
 	}
 
 	for metricName, metricData := range metricsMap {
-		fmt.Println("metricName =========> ", metricName)
+		fmt.Println("Setting metric:", metricName, "with value:", metricData.Value)
 		err := ms.SetMetric(metricName, metricData.Value, metricData.MetricType)
 		if err != nil {
 			log.Error("Error setting metric %s: %v", metricName, err)
