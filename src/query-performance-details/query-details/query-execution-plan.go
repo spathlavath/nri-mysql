@@ -31,7 +31,8 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 	if len(events) == 0 {
 		return []map[string]interface{}{}, nil
 	}
-
+	ms := common_utils.CreateMetricSet(e, "MysqlTest", args)
+	ms.SetMetric("name", "prashanth", metric.ATTRIBUTE)
 	// Set execution plan metrics
 	err := SetExecutionPlanMetrics(e, args, events)
 	if err != nil {
@@ -136,70 +137,71 @@ func processExecutionPlanMetrics(db performance_database.DataSource, query perfo
 func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []map[string]interface{}) error {
 	// Debugging: Log the number of metrics to process
 	fmt.Printf("Setting execution plan metrics for %d metrics\n", len(metrics))
+	ms := common_utils.CreateMetricSet(e, "MysqlTestPlan", args)
+	ms.SetMetric("name", "srikanth", metric.ATTRIBUTE)
+	// for _, metricObject := range metrics {
+	// 	// Create a new metric set for each metricObject
+	// 	ms := common_utils.CreateMetricSet(e, "MysqlQueryExecution", args)
 
-	for _, metricObject := range metrics {
-		// Create a new metric set for each metricObject
-		ms := common_utils.CreateMetricSet(e, "MysqlQueryExecution", args)
+	// 	// Debugging: Print the contents of metricObject
+	// 	fmt.Println("Metric Object ---> ", metricObject)
 
-		// Debugging: Print the contents of metricObject
-		fmt.Println("Metric Object ---> ", metricObject)
+	// 	// Print the contents and types of metricObject
+	// 	fmt.Println("Metric Object Contents and Types:")
+	// 	for k, v := range metricObject {
+	// 		fmt.Printf("Key: %s, Value: %v, Type: %T\n", k, v, v)
+	// 	}
+	// 	ms.SetMetric("query_id", metricObject["query_id"], metric.ATTRIBUTE)
+	// 	ms.SetMetric("query_text", metricObject["query_text"], metric.ATTRIBUTE)
+	// 	// Debugging: Print the contents of metricObject
+	// 	fmt.Println("query_id & query_text ---> ", metricObject["query_id"], metricObject["query_text"])
+	// 	// Proceed to set metrics as before
+	// 	// metricsMap := map[string]struct {
+	// 	// 	Value      interface{}
+	// 	// 	MetricType metric.SourceType
+	// 	// }{
+	// 	// 	"query_id":       {common_utils.GetStringValueSafe(metricObject["query_id"]), metric.ATTRIBUTE},
+	// 	// 	"query_text":     {common_utils.GetStringValueSafe(metricObject["query_text"]), metric.ATTRIBUTE},
+	// 	// 	"event_id":       {common_utils.GetInt64ValueSafe(metricObject["event_id"]), metric.GAUGE},
+	// 	// 	"total_cost":     {common_utils.GetFloat64ValueSafe(metricObject["total_cost"]), metric.GAUGE},
+	// 	// 	"step_id":        {common_utils.GetInt64ValueSafe(metricObject["step_id"]), metric.GAUGE},
+	// 	// 	"execution_step": {common_utils.GetStringValueSafe(metricObject["execution_step"]), metric.ATTRIBUTE},
+	// 	// 	"access_type":    {common_utils.GetStringValueSafe(metricObject["access_type"]), metric.ATTRIBUTE},
+	// 	// 	"rows_examined":  {common_utils.GetInt64ValueSafe(metricObject["rows_examined"]), metric.GAUGE},
+	// 	// 	"rows_produced":  {common_utils.GetInt64ValueSafe(metricObject["rows_produced"]), metric.GAUGE},
+	// 	// 	"filtered":       {common_utils.GetFloat64ValueSafe(metricObject["filtered"]), metric.GAUGE},
+	// 	// 	"read_cost":      {common_utils.GetFloat64ValueSafe(metricObject["read_cost"]), metric.GAUGE},
+	// 	// 	"eval_cost":      {common_utils.GetFloat64ValueSafe(metricObject["eval_cost"]), metric.GAUGE},
+	// 	// 	"data_read":      {common_utils.GetFloat64ValueSafe(metricObject["data_read"]), metric.GAUGE},
+	// 	// 	"extra_info":     {common_utils.GetStringValueSafe(metricObject["extra_info"]), metric.ATTRIBUTE},
+	// 	// }
 
-		// Print the contents and types of metricObject
-		fmt.Println("Metric Object Contents and Types:")
-		for k, v := range metricObject {
-			fmt.Printf("Key: %s, Value: %v, Type: %T\n", k, v, v)
-		}
-		ms.SetMetric("query_id", metricObject["query_id"], metric.ATTRIBUTE)
-		ms.SetMetric("query_text", metricObject["query_text"], metric.ATTRIBUTE)
-		// Debugging: Print the contents of metricObject
-		fmt.Println("query_id & query_text ---> ", metricObject["query_id"], metricObject["query_text"])
-		// Proceed to set metrics as before
-		// metricsMap := map[string]struct {
-		// 	Value      interface{}
-		// 	MetricType metric.SourceType
-		// }{
-		// 	"query_id":       {common_utils.GetStringValueSafe(metricObject["query_id"]), metric.ATTRIBUTE},
-		// 	"query_text":     {common_utils.GetStringValueSafe(metricObject["query_text"]), metric.ATTRIBUTE},
-		// 	"event_id":       {common_utils.GetInt64ValueSafe(metricObject["event_id"]), metric.GAUGE},
-		// 	"total_cost":     {common_utils.GetFloat64ValueSafe(metricObject["total_cost"]), metric.GAUGE},
-		// 	"step_id":        {common_utils.GetInt64ValueSafe(metricObject["step_id"]), metric.GAUGE},
-		// 	"execution_step": {common_utils.GetStringValueSafe(metricObject["execution_step"]), metric.ATTRIBUTE},
-		// 	"access_type":    {common_utils.GetStringValueSafe(metricObject["access_type"]), metric.ATTRIBUTE},
-		// 	"rows_examined":  {common_utils.GetInt64ValueSafe(metricObject["rows_examined"]), metric.GAUGE},
-		// 	"rows_produced":  {common_utils.GetInt64ValueSafe(metricObject["rows_produced"]), metric.GAUGE},
-		// 	"filtered":       {common_utils.GetFloat64ValueSafe(metricObject["filtered"]), metric.GAUGE},
-		// 	"read_cost":      {common_utils.GetFloat64ValueSafe(metricObject["read_cost"]), metric.GAUGE},
-		// 	"eval_cost":      {common_utils.GetFloat64ValueSafe(metricObject["eval_cost"]), metric.GAUGE},
-		// 	"data_read":      {common_utils.GetFloat64ValueSafe(metricObject["data_read"]), metric.GAUGE},
-		// 	"extra_info":     {common_utils.GetStringValueSafe(metricObject["extra_info"]), metric.ATTRIBUTE},
-		// }
+	// 	// for name, metricData := range metricsMap {
+	// 	// 	fmt.Println("name:", name)
+	// 	// 	fmt.Println("metricData:", metricData.Value)
+	// 	// 	fmt.Printf("Type of metricData.Value: %T\n", metricData.Value)
 
-		// for name, metricData := range metricsMap {
-		// 	fmt.Println("name:", name)
-		// 	fmt.Println("metricData:", metricData.Value)
-		// 	fmt.Printf("Type of metricData.Value: %T\n", metricData.Value)
+	// 	// 	// Convert uint64 to int64 or float64 if necessary
+	// 	// 	if val, ok := metricData.Value.(uint64); ok {
+	// 	// 		if val <= uint64(math.MaxInt64) {
+	// 	// 			metricData.Value = int64(val)
+	// 	// 		} else {
+	// 	// 			// If it doesn't fit, convert to float64
+	// 	// 			metricData.Value = float64(val)
+	// 	// 		}
+	// 	// 	}
+	// 	// 	fmt.Println("Before setting the metrics")
+	// 	// 	err := ms.SetMetric(name, metricData.Value, metricData.MetricType)
+	// 	// 	fmt.Println("After setting the metrics")
+	// 	// 	if err != nil {
+	// 	// 		log.Error("Error setting value for %s: %v", name, err)
+	// 	// 		continue
+	// 	// 	}
+	// 	// }
 
-		// 	// Convert uint64 to int64 or float64 if necessary
-		// 	if val, ok := metricData.Value.(uint64); ok {
-		// 		if val <= uint64(math.MaxInt64) {
-		// 			metricData.Value = int64(val)
-		// 		} else {
-		// 			// If it doesn't fit, convert to float64
-		// 			metricData.Value = float64(val)
-		// 		}
-		// 	}
-		// 	fmt.Println("Before setting the metrics")
-		// 	err := ms.SetMetric(name, metricData.Value, metricData.MetricType)
-		// 	fmt.Println("After setting the metrics")
-		// 	if err != nil {
-		// 		log.Error("Error setting value for %s: %v", name, err)
-		// 		continue
-		// 	}
-		// }
-
-		// Print the metric set for debugging
-		fmt.Println("Metric Set:", ms)
-	}
+	// 	// Print the metric set for debugging
+	// 	fmt.Println("Metric Set:", ms)
+	// }
 
 	return nil
 }
