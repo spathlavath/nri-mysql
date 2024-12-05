@@ -153,11 +153,13 @@ func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 		// 	"eval_cost":     {metricObject.EvalCost, metric.GAUGE},
 		// }
 
+		fmt.Println("Before PUblish Data...")
 		err := ms.SetMetric("query_id", metricObject.QueryID, metric.ATTRIBUTE)
 		if err != nil {
-			log.Warn("Error setting value:  %s", err)
+			log.Warn("Error setting value: ----------------------->  %s", err)
 			continue
 		}
+		fmt.Println("After PUblish Data...")
 
 		// for name, metric := range metricsMap {
 		// 	err := ms.SetMetric(name, metric.Value, metric.MetricType)
@@ -167,7 +169,7 @@ func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 		// 	}
 		// }
 
-		common_utils.PrintMetricSet(ms)
+		// common_utils.PrintMetricSet(ms)
 	}
 
 	return nil
