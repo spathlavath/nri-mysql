@@ -23,8 +23,9 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 	for _, query := range queries {
 		ms1 := e.NewMetricSet("MysqlTest1")
 		ms1.Metrics["name"] = "p2"
-		tableIngestionDataList := processExecutionPlanMetrics(e, args, db, query)
-		events = append(events, tableIngestionDataList...)
+		fmt.Printf("Query: %v\n", query)
+		// tableIngestionDataList := processExecutionPlanMetrics(e, args, db, query)
+		// events = append(events, tableIngestionDataList...)
 	}
 
 	// Debugging: Log the number of events collected
@@ -33,7 +34,7 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 	if len(events) == 0 {
 		return []map[string]interface{}{}, nil
 	}
-	ms2 := e.NewMetricSet("MysqlTest1")
+	ms2 := e.NewMetricSet("MysqlTest2")
 	ms2.Metrics["name"] = "p3"
 	// Set execution plan metrics
 	// err := SetExecutionPlanMetrics(e, args, events)
@@ -132,7 +133,7 @@ func processExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentL
 
 		tableIngestionDataList = append(tableIngestionDataList, tableIngestionData)
 	}
-	ms := e.NewMetricSet("MysqlTest1")
+	ms := e.NewMetricSet("MysqlTest3")
 	ms.Metrics["name"] = "ramana"
 	return tableIngestionDataList
 }
