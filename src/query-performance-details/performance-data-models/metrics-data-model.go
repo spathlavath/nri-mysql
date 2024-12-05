@@ -47,23 +47,6 @@ type TableMetrics struct {
 	ExtraInfo     string  `json:"extra_info"`
 }
 
-type Event struct {
-	QueryID       string  `json:"query_id"`
-	QueryText     string  `json:"query_text"`
-	EventID       uint64  `json:"event_id"`
-	TotalCost     float64 `json:"total_cost"`
-	StepID        int     `json:"step_id"`
-	ExecutionStep string  `json:"execution_step"`
-	AccessType    string  `json:"access_type"`
-	RowsExamined  int64   `json:"rows_examined"`
-	RowsProduced  int64   `json:"rows_produced"`
-	Filtered      float64 `json:"filtered"`
-	ReadCost      float64 `json:"read_cost"`
-	EvalCost      float64 `json:"eval_cost"`
-	DataRead      float64 `json:"data_read"`
-	ExtraInfo     string  `json:"extra_info"`
-}
-
 type WaitEventQueryMetrics struct {
 	TotalWaitTimeMs     float64        `json:"total_wait_time_ms" db:"total_wait_time_ms"`
 	QueryID             sql.NullString `json:"query_id" db:"query_id"`
