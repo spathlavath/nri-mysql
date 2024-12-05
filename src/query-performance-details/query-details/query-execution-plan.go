@@ -51,11 +51,11 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 
 	ms.SetMetric("query_id_3", "aaaaa...3", metric.ATTRIBUTE)
 
-	err := SetExecutionPlanMetrics(e, args, events)
-	if err != nil {
-		log.Error("Error setting execution plan metrics: %v", err)
-		return nil, err
-	}
+	// err := SetExecutionPlanMetrics(e, args, events)
+	// if err != nil {
+	// 	log.Error("Error setting execution plan metrics: %v", err)
+	// 	return nil, err
+	// }
 
 	ms.SetMetric("query_id_4", "aaaaa...4", metric.ATTRIBUTE)
 
