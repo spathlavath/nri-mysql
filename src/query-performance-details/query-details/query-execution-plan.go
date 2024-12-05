@@ -154,7 +154,7 @@ func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 		// }
 
 		fmt.Println("Before PUblish Data...")
-		err := ms.SetMetric("query_id", metricObject.QueryID, metric.ATTRIBUTE)
+		err := ms.SetMetric("query_id_123", metricObject.QueryID, metric.ATTRIBUTE)
 		if err != nil {
 			log.Warn("Error setting value: ----------------------->  %s", err)
 			continue
