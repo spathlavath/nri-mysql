@@ -141,7 +141,7 @@ func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 
 	// 	common_utils.PrintMetricSet(ms)
 	// }
-	// return nil
+	return nil
 }
 
 func publishQueryPerformanceMetrics(metricObject DBPerformanceEvent, ms *metric.Set) {
