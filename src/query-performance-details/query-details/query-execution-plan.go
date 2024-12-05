@@ -18,8 +18,11 @@ import (
 
 func PopulateExecutionPlans(db performance_database.DataSource, queries []performance_data_model.QueryPlanMetrics, e *integration.Entity, args arguments.ArgumentList) ([]map[string]interface{}, error) {
 	var events []map[string]interface{}
-
+	ms := e.NewMetricSet("MysqlTest")
+	ms.Metrics["name"] = "p1"
 	for _, query := range queries {
+		ms1 := e.NewMetricSet("MysqlTest1")
+		ms1.Metrics["name"] = "p2"
 		tableIngestionDataList := processExecutionPlanMetrics(e, args, db, query)
 		events = append(events, tableIngestionDataList...)
 	}
@@ -30,8 +33,8 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 	if len(events) == 0 {
 		return []map[string]interface{}{}, nil
 	}
-	ms := e.NewMetricSet("MysqlTest")
-	ms.Metrics["name"] = "prashanth"
+	ms2 := e.NewMetricSet("p3")
+	ms2.Metrics["name"] = "prashanth"
 	// Set execution plan metrics
 	// err := SetExecutionPlanMetrics(e, args, events)
 	// if err != nil {
