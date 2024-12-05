@@ -13,6 +13,7 @@ import (
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	arguments "github.com/newrelic/nri-mysql/src/args"
+	common_utils "github.com/newrelic/nri-mysql/src/query-performance-details/common-utils"
 	performance_data_model "github.com/newrelic/nri-mysql/src/query-performance-details/performance-data-models"
 	performance_database "github.com/newrelic/nri-mysql/src/query-performance-details/performance-database"
 )
@@ -128,20 +129,21 @@ func extractMetricsFromJSONString(jsonString, queryID string, eventID uint64) ([
 }
 
 func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []DBPerformanceEvent) error {
+	ms := common_utils.CreateMetricSet(e, "MysqlQueryExecutionPlan", args)
 	for _, metricObject := range metrics {
 		fmt.Println("Metric Object ---> ", metricObject)
 		fmt.Println("Metric Object Contents and Types:")
 		fmt.Printf("%+v\n", metricObject)
 
-		publishQueryPerformanceMetrics(metricObject, e)
+		publishQueryPerformanceMetrics(metricObject, ms)
 
 		// common_utils.PrintMetricSet(ms)
 	}
 	return nil
 }
 
-func publishQueryPerformanceMetrics(metricObject DBPerformanceEvent, e *integration.Entity) {
-	ms := e.NewMetricSet("MysqlQueryExecutionPlan")
+func publishQueryPerformanceMetrics(metricObject DBPerformanceEvent, ms *metric.Set) {
+	fmt.Println(metricObject)
 	ms.SetMetric("metricName", 1231, metric.GAUGE)
 
 	// metricsMap := map[string]struct {
