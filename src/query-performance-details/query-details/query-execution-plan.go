@@ -371,11 +371,31 @@ func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 			log.Error("Error setting access_type metric: %v", err)
 		}
 		// ms.SetMetric("rows_examined", metricObject.RowsExamined, metric.GAUGE)
-		ms.SetMetric("rows_produced", metricObject.RowsExaminedPerScan, metric.GAUGE)
-		ms.SetMetric("rows_produced", metricObject.RowsProducedPerJoin, metric.GAUGE)
-		ms.SetMetric("filtered", metricObject.Filtered, metric.GAUGE)
-		ms.SetMetric("read_cost", metricObject.ReadCost, metric.GAUGE)
-		ms.SetMetric("eval_cost", metricObject.EvalCost, metric.GAUGE)
+		err = ms.SetMetric("rows_produced", metricObject.RowsExaminedPerScan, metric.GAUGE)
+		if err != nil {
+			fmt.Println("Error setting rows_produced metric: ", err)
+			log.Error("Error setting rows_produced metric: %v", err)
+		}
+		err = ms.SetMetric("rows_produced", metricObject.RowsProducedPerJoin, metric.GAUGE)
+		if err != nil {
+			fmt.Println("Error setting rows_produced metric: ", err)
+			log.Error("Error setting rows_produced metric: %v", err)
+		}
+		err = ms.SetMetric("filtered", metricObject.Filtered, metric.GAUGE)
+		if err != nil {
+			fmt.Println("Error setting filtered metric: ", err)
+			log.Error("Error setting filtered metric: %v", err)
+		}
+		err = ms.SetMetric("read_cost", metricObject.ReadCost, metric.GAUGE)
+		if err != nil {
+			fmt.Println("Error setting read_cost metric: ", err)
+			log.Error("Error setting read_cost metric: %v", err)
+		}
+		err = ms.SetMetric("eval_cost", metricObject.EvalCost, metric.GAUGE)
+		if err != nil {
+			fmt.Println("Error setting eval_cost metric: ", err)
+			log.Error("Error setting eval_cost metric: %v", err)
+		}
 		// ms.SetMetric("data_read", metricObject.DataRead, metric.GAUGE)
 		// ms.SetMetric("extra_info", metricObject.ExtraInfo, metric.ATTRIBUTE)
 
