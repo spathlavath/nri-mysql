@@ -26,9 +26,9 @@ type DBPerformanceEvent struct {
 	AccessType          string  `json:"access_type"`
 	RowsExaminedPerScan int64   `json:"rows_examined_per_scan"`
 	RowsProducedPerJoin int64   `json:"rows_produced_per_join"`
-	Filtered            string  `json:"filtered"`
-	ReadCost            string  `json:"read_cost"`
-	EvalCost            string  `json:"eval_cost"`
+	Filtered            float64 `json:"filtered"`
+	ReadCost            float64 `json:"read_cost"`
+	EvalCost            float64 `json:"eval_cost"`
 }
 
 func PopulateExecutionPlans(db performance_database.DataSource, queries []performance_data_model.QueryPlanMetrics, e *integration.Entity, args arguments.ArgumentList) ([]DBPerformanceEvent, error) {
@@ -172,11 +172,11 @@ func extractMetrics(js *simplejson.Json, dbPerformanceEvents []DBPerformanceEven
 	accessType, _ := js.Get("access_type").String()
 	rowsExaminedPerScan, _ := js.Get("rows_examined_per_scan").Int64()
 	rowsProducedPerJoin, _ := js.Get("rows_produced_per_join").Int64()
-	filtered, _ := js.Get("filtered").String()
-	readCost, _ := js.Get("cost_info").Get("read_cost").String()
-	evalCost, _ := js.Get("cost_info").Get("eval_cost").String()
+	filtered, _ := js.Get("filtered").Float64()
+	readCost, _ := js.Get("cost_info").Get("read_cost").Float64()
+	evalCost, _ := js.Get("cost_info").Get("eval_cost").Float64()
 
-	if tableName != "" || accessType != "" || rowsExaminedPerScan != 0 || rowsProducedPerJoin != 0 || filtered != "" || readCost != "" || evalCost != "" {
+	if tableName != "" || accessType != "" || rowsExaminedPerScan != 0 || rowsProducedPerJoin != 0 || filtered != 0 || readCost != 0 || evalCost != 0 {
 		dbPerformanceEvents = append(dbPerformanceEvents, DBPerformanceEvent{
 			QueryID:             queryID,
 			EventID:             eventID,
