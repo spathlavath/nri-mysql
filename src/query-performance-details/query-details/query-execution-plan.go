@@ -33,21 +33,32 @@ type DBPerformanceEvent struct {
 
 func PopulateExecutionPlans(db performance_database.DataSource, queries []performance_data_model.QueryPlanMetrics, e *integration.Entity, args arguments.ArgumentList) ([]DBPerformanceEvent, error) {
 	var events []DBPerformanceEvent
+	ms := common_utils.CreateMetricSet(e, "MysqlQueryExecution", args)
+	ms.SetMetric("query_id_1", "aaaaa...1", metric.ATTRIBUTE)
 	for _, query := range queries {
 		fmt.Printf("Query: %v\n", query)
 		tableIngestionDataList := processExecutionPlanMetrics(db, query)
 		events = append(events, tableIngestionDataList...)
 	}
+
+	ms.SetMetric("query_id_2", "aaaaa...2", metric.ATTRIBUTE)
+
 	// fmt.Printf("Total events collected: %d\n", len(events))
 
 	// if len(events) == 0 {
 	// 	return make([]DBPerformanceEvent, 0), nil
 	// }
+
+	ms.SetMetric("query_id_3", "aaaaa...3", metric.ATTRIBUTE)
+
 	err := SetExecutionPlanMetrics(e, args, events)
 	if err != nil {
 		log.Error("Error setting execution plan metrics: %v", err)
 		return nil, err
 	}
+
+	ms.SetMetric("query_id_4", "aaaaa...4", metric.ATTRIBUTE)
+
 	return events, nil
 }
 
@@ -127,9 +138,9 @@ func extractMetricsFromJSONString(jsonString, queryID string, eventID uint64) ([
 func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []DBPerformanceEvent) error {
 	fmt.Printf("Setting execution plan metrics for %d metrics\n", len(metrics))
 	ms := common_utils.CreateMetricSet(e, "MysqlQueryExecution", args)
-	ms.SetMetric("inside_set_metriczzzzzzzzz", 2, metric.GAUGE)
-	for i, metricObject := range metrics {
-		ms.SetMetric("inside_set_metrics_loop_tens", i+10, metric.GAUGE)
+	ms.SetMetric("inside_set_execution_plan_metricszzzzzzzzzzzz", 2, metric.GAUGE)
+	for _, metricObject := range metrics {
+		ms := common_utils.CreateMetricSet(e, "MysqlQueryExecution", args)
 
 		fmt.Println("Metric Object ---> ", metricObject)
 		fmt.Println("Metric Object Contents and Types:")
@@ -150,8 +161,6 @@ func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 			"eval_cost":     {metricObject.EvalCost, metric.GAUGE},
 		}
 
-		ms.SetMetric("inside_set_metrics_loop_twenties", i+20, metric.GAUGE)
-
 		for name, metric := range metricsMap {
 			err := ms.SetMetric(name, metric.Value, metric.MetricType)
 			if err != nil {
@@ -159,8 +168,6 @@ func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 				continue
 			}
 		}
-
-		ms.SetMetric("inside_set_metrics_loop_thirties", i+30, metric.GAUGE)
 
 		common_utils.PrintMetricSet(ms)
 	}
