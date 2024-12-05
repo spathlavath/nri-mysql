@@ -127,9 +127,8 @@ func extractMetricsFromJSONString(jsonString, queryID string, eventID uint64) ([
 func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []DBPerformanceEvent) error {
 	fmt.Printf("Setting execution plan metrics for %d metrics\n", len(metrics))
 	ms := common_utils.CreateMetricSet(e, "MysqlQueryExecution", args)
-	ms.SetMetric("inside_set_metricsss", 2, metric.GAUGE)
-	for i, metricObject := range metrics {
-		ms.SetMetric("inside_set_metrics_loop_tens", i+10, metric.GAUGE)
+	for _, metricObject := range metrics {
+		ms.SetMetric("inside_set_metrics_loop_tens", 100, metric.GAUGE)
 
 		fmt.Println("Metric Object ---> ", metricObject)
 		fmt.Println("Metric Object Contents and Types:")
@@ -150,7 +149,7 @@ func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 			"eval_cost":     {metricObject.EvalCost, metric.GAUGE},
 		}
 
-		ms.SetMetric("inside_set_metrics_loop_twenties", i+20, metric.GAUGE)
+		ms.SetMetric("inside_set_metrics_loop_twenties", 200, metric.GAUGE)
 
 		for name, metric := range metricsMap {
 			err := ms.SetMetric(name, metric.Value, metric.MetricType)
@@ -160,7 +159,7 @@ func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList,
 			}
 		}
 
-		ms.SetMetric("inside_set_metrics_loop_thirties", i+30, metric.GAUGE)
+		ms.SetMetric("inside_set_metrics_loop_thirties", 300, metric.GAUGE)
 
 		common_utils.PrintMetricSet(ms)
 	}
