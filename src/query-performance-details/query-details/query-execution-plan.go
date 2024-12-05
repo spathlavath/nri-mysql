@@ -130,15 +130,16 @@ func extractMetricsFromJSONString(jsonString, queryID string, eventID uint64) ([
 
 func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []DBPerformanceEvent) error {
 	ms := common_utils.CreateMetricSet(e, "MysqlQueryExecutionPlan", args)
-	for _, metricObject := range metrics {
-		fmt.Println("Metric Object ---> ", metricObject)
-		fmt.Println("Metric Object Contents and Types:")
-		fmt.Printf("%+v\n", metricObject)
+	ms.SetMetric("metricName", 1231, metric.GAUGE)
+	// for _, metricObject := range metrics {
+	// 	fmt.Println("Metric Object ---> ", metricObject)
+	// 	fmt.Println("Metric Object Contents and Types:")
+	// 	fmt.Printf("%+v\n", metricObject)
 
-		publishQueryPerformanceMetrics(metricObject, ms)
+	// 	publishQueryPerformanceMetrics(metricObject, ms)
 
-		// common_utils.PrintMetricSet(ms)
-	}
+	// 	// common_utils.PrintMetricSet(ms)
+	// }
 	return nil
 }
 
