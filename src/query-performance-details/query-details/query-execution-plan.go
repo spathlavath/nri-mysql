@@ -5,12 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/bitly/go-simplejson"
-	"github.com/newrelic/infra-integrations-sdk/data/attribute"
 	"github.com/newrelic/infra-integrations-sdk/v3/data/metric"
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
@@ -130,23 +128,21 @@ func extractMetricsFromJSONString(jsonString, queryID string, eventID uint64) ([
 }
 
 func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []DBPerformanceEvent) error {
-	ms := e.NewMetricSet("MysqlQueryExecutionPlan", attribute.Attr("port", strconv.Itoa(args.Port)))
-	ms.SetMetric("port", args.Port, metric.ATTRIBUTE)
+	for _, metricObject := range metrics {
+		fmt.Println("Metric Object ---> ", metricObject)
+		fmt.Println("Metric Object Contents and Types:")
+		fmt.Printf("%+v\n", metricObject)
 
-	// for _, metricObject := range metrics {
+		publishQueryPerformanceMetrics(metricObject, e)
 
-	// 	fmt.Println("Metric Object ---> ", metricObject)
-	// 	fmt.Println("Metric Object Contents and Types:")
-	// 	fmt.Printf("%+v\n", metricObject)
-
-	// 	publishQueryPerformanceMetrics(metricObject, ms)
-
-	// 	common_utils.PrintMetricSet(ms)
-	// }
+		// common_utils.PrintMetricSet(ms)
+	}
 	return nil
 }
 
-func publishQueryPerformanceMetrics(metricObject DBPerformanceEvent, ms *metric.Set) {
+func publishQueryPerformanceMetrics(metricObject DBPerformanceEvent, e *integration.Entity) {
+	ms := e.NewMetricSet("MysqlQueryExecutionPlan")
+
 	metricsMap := map[string]struct {
 		Value      interface{}
 		MetricType metric.SourceType
