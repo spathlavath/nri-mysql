@@ -109,6 +109,7 @@ func processExecutionPlanMetrics(db performance_database.DataSource, query perfo
 		return nil
 	}
 
+	fmt.Println("dbPerformanceEvents : ", dbPerformanceEvents)
 	return dbPerformanceEvents
 }
 
