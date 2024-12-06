@@ -45,6 +45,7 @@ const (
 			DIGEST_TEXT AS query_text,
 			SQL_TEXT AS query_sample_text,
 			EVENT_ID AS event_id,
+			THREAD_ID AS thread_id,
 			ROUND(TIMER_WAIT / 1000000000, 3) AS timer_wait,
 			ROWS_SENT AS rows_sent,
 			ROWS_EXAMINED AS rows_examined
@@ -69,6 +70,7 @@ const (
 			DIGEST_TEXT AS query_text,
 			SQL_TEXT AS query_sample_text,
 			EVENT_ID AS event_id,
+			THREAD_ID AS thread_id,
 			ROUND(TIMER_WAIT / 1000000000, 3) AS timer_wait,
 			ROWS_SENT AS rows_sent,
 			ROWS_EXAMINED AS rows_examined
@@ -93,6 +95,7 @@ const (
 			DIGEST_TEXT AS query_text,
 			SQL_TEXT AS query_sample_text,
 			EVENT_ID AS event_id,
+			THREAD_ID AS thread_id,
 			ROUND(TIMER_WAIT / 1000000000, 3) AS timer_wait,
 			ROWS_SENT AS rows_sent,
 			ROWS_EXAMINED AS rows_examined
