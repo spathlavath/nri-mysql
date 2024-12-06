@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/bitly/go-simplejson"
+	"github.com/google/uuid"
 	"github.com/newrelic/infra-integrations-sdk/v3/data/metric"
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
@@ -159,6 +160,7 @@ func publishQueryPerformanceMetrics(metricObject DBPerformanceEvent, ms *metric.
 
 	for metricName, metricData := range metricsMap {
 		fmt.Println("Setting metric:", metricName, "with value:", metricData.Value)
+		metricName = metricName + uuid.New().String()
 		err := ms.SetMetric(metricName, metricData.Value, metricData.MetricType)
 		if err != nil {
 			log.Error("Error setting metric %s: %v", metricName, err)
