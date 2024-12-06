@@ -19,9 +19,9 @@ import (
 )
 
 type DBPerformanceEvent struct {
-	QueryID             string  `json:"query_id"`
-	EventID             uint64  `json:"event_id"`
-	QueryCost           float64 `json:"query_cost"`
+	QueryID string `json:"query_id"`
+	EventID uint64 `json:"event_id"`
+	// QueryCost           float64 `json:"query_cost"`
 	TableName           string  `json:"table_name"`
 	AccessType          string  `json:"access_type"`
 	RowsExaminedPerScan int64   `json:"rows_examined_per_scan"`
@@ -147,9 +147,8 @@ func publishQueryPerformanceMetrics(metricObject DBPerformanceEvent, ms *metric.
 		MetricType metric.SourceType
 	}{
 		"query_id": {metricObject.QueryID, metric.ATTRIBUTE},
-		// "query_text":    {metricObject.QueryText, metric.ATTRIBUTE},
-		"event_id":      {metricObject.EventID, metric.GAUGE},
-		"query_cost":    {metricObject.QueryCost, metric.GAUGE},
+		"event_id": {metricObject.EventID, metric.GAUGE},
+		// "query_cost":    {metricObject.QueryCost, metric.GAUGE},
 		"access_type":   {metricObject.AccessType, metric.ATTRIBUTE},
 		"rows_examined": {metricObject.RowsExaminedPerScan, metric.GAUGE},
 		"rows_produced": {metricObject.RowsProducedPerJoin, metric.GAUGE},
@@ -168,7 +167,7 @@ func publishQueryPerformanceMetrics(metricObject DBPerformanceEvent, ms *metric.
 }
 
 func extractMetrics(js *simplejson.Json, dbPerformanceEvents []DBPerformanceEvent, queryID string, eventID uint64) []DBPerformanceEvent {
-	queryCost, _ := js.Get("cost_info").Get("query_cost").Float64()
+	//queryCost, _ := js.Get("cost_info").Get("query_cost").Float64()
 	tableName, _ := js.Get("table_name").String()
 	accessType, _ := js.Get("access_type").String()
 	rowsExaminedPerScan, _ := js.Get("rows_examined_per_scan").Int64()
@@ -178,10 +177,11 @@ func extractMetrics(js *simplejson.Json, dbPerformanceEvents []DBPerformanceEven
 	evalCost, _ := js.Get("cost_info").Get("eval_cost").Float64()
 
 	if tableName != "" || accessType != "" || rowsExaminedPerScan != 0 || rowsProducedPerJoin != 0 || filtered != 0 || readCost != 0 || evalCost != 0 {
+		fmt.Println("values: ------> ", filtered, tableName, filtered, readCost, evalCost)
 		dbPerformanceEvents = append(dbPerformanceEvents, DBPerformanceEvent{
-			QueryID:             queryID,
-			EventID:             eventID,
-			QueryCost:           queryCost,
+			QueryID: queryID,
+			EventID: eventID,
+			// QueryCost:           queryCost,
 			TableName:           tableName,
 			AccessType:          accessType,
 			RowsExaminedPerScan: rowsExaminedPerScan,
