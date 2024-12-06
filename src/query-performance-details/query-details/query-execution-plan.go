@@ -147,14 +147,14 @@ func publishQueryPerformanceMetrics(metricObject DBPerformanceEvent, ms *metric.
 	}{
 		"query_id": {metricObject.QueryID, metric.ATTRIBUTE},
 		// "query_text":    {metricObject.QueryText, metric.ATTRIBUTE},
-		"event_id": {metricObject.EventID, metric.GAUGE},
-		// "query_cost":    {metricObject.QueryCost, metric.GAUGE},
+		"event_id":      {metricObject.EventID, metric.GAUGE},
+		"query_cost":    {metricObject.QueryCost, metric.GAUGE},
 		"access_type":   {metricObject.AccessType, metric.ATTRIBUTE},
 		"rows_examined": {metricObject.RowsExaminedPerScan, metric.GAUGE},
 		"rows_produced": {metricObject.RowsProducedPerJoin, metric.GAUGE},
-		// "filtered":      {metricObject.Filtered, metric.GAUGE},
-		// "read_cost":     {metricObject.ReadCost, metric.GAUGE},
-		// "eval_cost":     {metricObject.EvalCost, metric.GAUGE},
+		"filtered":      {metricObject.Filtered, metric.GAUGE},
+		"read_cost":     {metricObject.ReadCost, metric.GAUGE},
+		"eval_cost":     {metricObject.EvalCost, metric.GAUGE},
 	}
 
 	for metricName, metricData := range metricsMap {
