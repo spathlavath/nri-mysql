@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/bitly/go-simplejson"
-	"github.com/google/uuid"
 	"github.com/newrelic/infra-integrations-sdk/v3/data/metric"
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
@@ -20,16 +19,16 @@ import (
 )
 
 type DBPerformanceEvent struct {
-	QueryID string `json:"query_id"`
-	EventID uint64 `json:"event_id"`
-	// QueryCost           float64 `json:"query_cost"`
-	TableName           string `json:"table_name"`
-	AccessType          string `json:"access_type"`
-	RowsExaminedPerScan int64  `json:"rows_examined_per_scan"`
-	RowsProducedPerJoin int64  `json:"rows_produced_per_join"`
-	// Filtered            float64 `json:"filtered"`
-	// ReadCost            float64 `json:"read_cost"`
-	// EvalCost            float64 `json:"eval_cost"`
+	QueryID             string  `json:"query_id"`
+	EventID             uint64  `json:"event_id"`
+	QueryCost           float64 `json:"query_cost"`
+	TableName           string  `json:"table_name"`
+	AccessType          string  `json:"access_type"`
+	RowsExaminedPerScan int64   `json:"rows_examined_per_scan"`
+	RowsProducedPerJoin int64   `json:"rows_produced_per_join"`
+	Filtered            float64 `json:"filtered"`
+	ReadCost            float64 `json:"read_cost"`
+	EvalCost            float64 `json:"eval_cost"`
 }
 
 func PopulateExecutionPlans(db performance_database.DataSource, queries []performance_data_model.QueryPlanMetrics, e *integration.Entity, args arguments.ArgumentList) ([]DBPerformanceEvent, error) {
@@ -160,7 +159,6 @@ func publishQueryPerformanceMetrics(metricObject DBPerformanceEvent, ms *metric.
 
 	for metricName, metricData := range metricsMap {
 		fmt.Println("Setting metric:", metricName, "with value:", metricData.Value)
-		metricName = metricName + uuid.New().String()
 		err := ms.SetMetric(metricName, metricData.Value, metricData.MetricType)
 		if err != nil {
 			log.Error("Error setting metric %s: %v", metricName, err)
@@ -169,7 +167,7 @@ func publishQueryPerformanceMetrics(metricObject DBPerformanceEvent, ms *metric.
 }
 
 func extractMetrics(js *simplejson.Json, dbPerformanceEvents []DBPerformanceEvent, queryID string, eventID uint64) []DBPerformanceEvent {
-	// queryCost, _ := js.Get("cost_info").Get("query_cost").Float64()
+	queryCost, _ := js.Get("cost_info").Get("query_cost").Float64()
 	tableName, _ := js.Get("table_name").String()
 	accessType, _ := js.Get("access_type").String()
 	rowsExaminedPerScan, _ := js.Get("rows_examined_per_scan").Int64()
@@ -180,16 +178,16 @@ func extractMetrics(js *simplejson.Json, dbPerformanceEvents []DBPerformanceEven
 
 	if tableName != "" || accessType != "" || rowsExaminedPerScan != 0 || rowsProducedPerJoin != 0 || filtered != 0 || readCost != 0 || evalCost != 0 {
 		dbPerformanceEvents = append(dbPerformanceEvents, DBPerformanceEvent{
-			QueryID: queryID,
-			EventID: eventID,
-			// QueryCost:           queryCost,
+			QueryID:             queryID,
+			EventID:             eventID,
+			QueryCost:           queryCost,
 			TableName:           tableName,
 			AccessType:          accessType,
 			RowsExaminedPerScan: rowsExaminedPerScan,
 			RowsProducedPerJoin: rowsProducedPerJoin,
-			// Filtered:            filtered,
-			// ReadCost:            readCost,
-			// EvalCost:            evalCost,
+			Filtered:            filtered,
+			ReadCost:            readCost,
+			EvalCost:            evalCost,
 		})
 		return dbPerformanceEvents
 	}
