@@ -112,9 +112,25 @@ func PopulateIndividualQueryDetails(db performancedatabase.DataSource, queryIdLi
 	}
 
 	queryList := append(append(currentQueryMetrics, recentQueryList...), extensiveQueryList...)
+	filteredQueryList := getUniqueQueryList(queryList)
+	fmt.Println("Filtered Query List: ", filteredQueryList)
 
-	setIndividualQueryMetrics(e, args, queryList)
-	return queryList, nil
+	setIndividualQueryMetrics(e, args, filteredQueryList)
+	return filteredQueryList, nil
+}
+
+func getUniqueQueryList(queryList []performancedatamodel.QueryPlanMetrics) []performancedatamodel.QueryPlanMetrics {
+	uniqueEvents := make(map[uint64]bool)
+	var uniqueQueryList []performancedatamodel.QueryPlanMetrics
+
+	for _, query := range queryList {
+		if _, exists := uniqueEvents[query.EventID]; !exists {
+			uniqueEvents[query.EventID] = true
+			uniqueQueryList = append(uniqueQueryList, query)
+		}
+	}
+
+	return uniqueQueryList
 }
 
 func setIndividualQueryMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []performancedatamodel.QueryPlanMetrics) error {
