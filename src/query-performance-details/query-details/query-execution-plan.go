@@ -86,22 +86,19 @@ func processExecutionPlanMetrics(db performance_database.DataSource, query perfo
 		log.Error("Error executing EXPLAIN for query '%s': %v", queryText, err)
 		return nil
 	}
+	defer rows.Close()
 
 	var execPlanJSON string
 	if rows.Next() {
 		err := rows.Scan(&execPlanJSON)
-
 		if err != nil {
 			log.Error("Failed to scan execution plan: %v", err)
-			rows.Close()
 			return nil
 		}
 	} else {
 		log.Error("No rows returned from EXPLAIN for query '%s'", queryText)
-		rows.Close()
 		return nil
 	}
-	rows.Close()
 
 	fmt.Println("Execution Plan JSON:")
 	fmt.Println(execPlanJSON)
