@@ -147,6 +147,7 @@ func setIndividualQueryMetrics(e *integration.Entity, args arguments.ArgumentLis
 			"query_id":      {metricObject.QueryID, metric.ATTRIBUTE},
 			"query_text":    {metricObject.AnonymizedQueryText, metric.ATTRIBUTE},
 			"event_id":      {metricObject.EventID, metric.GAUGE},
+			"thread_id":     {metricObject.ThreadID, metric.GAUGE},
 			"timer_wait":    {metricObject.TimerWait, metric.GAUGE},
 			"rows_sent":     {metricObject.RowsSent, metric.GAUGE},
 			"rows_examined": {metricObject.RowsExamined, metric.GAUGE},
