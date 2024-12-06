@@ -26,9 +26,9 @@ type DBPerformanceEvent struct {
 	AccessType          string  `json:"access_type"`
 	RowsExaminedPerScan int64   `json:"rows_examined_per_scan"`
 	RowsProducedPerJoin int64   `json:"rows_produced_per_join"`
-	Filtered            float64 `json:"filtered"`
-	ReadCost            float64 `json:"read_cost"`
-	EvalCost            float64 `json:"eval_cost"`
+	// Filtered            float64 `json:"filtered"`
+	// ReadCost            float64 `json:"read_cost"`
+	// EvalCost            float64 `json:"eval_cost"`
 }
 
 func PopulateExecutionPlans(db performance_database.DataSource, queries []performance_data_model.QueryPlanMetrics, e *integration.Entity, args arguments.ArgumentList) ([]DBPerformanceEvent, error) {
@@ -152,9 +152,9 @@ func publishQueryPerformanceMetrics(metricObject DBPerformanceEvent, ms *metric.
 		"access_type":   {metricObject.AccessType, metric.ATTRIBUTE},
 		"rows_examined": {metricObject.RowsExaminedPerScan, metric.GAUGE},
 		"rows_produced": {metricObject.RowsProducedPerJoin, metric.GAUGE},
-		"filtered":      {metricObject.Filtered, metric.GAUGE},
-		"read_cost":     {metricObject.ReadCost, metric.GAUGE},
-		"eval_cost":     {metricObject.EvalCost, metric.GAUGE},
+		// "filtered":      {metricObject.Filtered, metric.GAUGE},
+		// "read_cost":     {metricObject.ReadCost, metric.GAUGE},
+		// "eval_cost":     {metricObject.EvalCost, metric.GAUGE},
 	}
 
 	for metricName, metricData := range metricsMap {
@@ -185,9 +185,9 @@ func extractMetrics(js *simplejson.Json, dbPerformanceEvents []DBPerformanceEven
 			AccessType:          accessType,
 			RowsExaminedPerScan: rowsExaminedPerScan,
 			RowsProducedPerJoin: rowsProducedPerJoin,
-			Filtered:            filtered,
-			ReadCost:            readCost,
-			EvalCost:            evalCost,
+			// Filtered:            filtered,
+			// ReadCost:            readCost,
+			// EvalCost:            evalCost,
 		})
 		return dbPerformanceEvents
 	}
