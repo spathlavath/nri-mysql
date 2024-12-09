@@ -19,16 +19,19 @@ import (
 )
 
 type DBPerformanceEvent struct {
-	QueryID string `json:"query_id"`
-	EventID uint64 `json:"event_id"`
-	// QueryCost           float64 `json:"query_cost"`
-	TableName           string  `json:"table_name"`
-	AccessType          string  `json:"access_type"`
-	RowsExaminedPerScan int64   `json:"rows_examined_per_scan"`
-	RowsProducedPerJoin int64   `json:"rows_produced_per_join"`
-	Filtered            float64 `json:"filtered"`
-	ReadCost            float64 `json:"read_cost"`
-	EvalCost            float64 `json:"eval_cost"`
+	EventID             uint64 `json:"event_id"`
+	QueryCost           string `json:"query_cost"`
+	TableName           string `json:"table_name"`
+	AccessType          string `json:"access_type"`
+	RowsExaminedPerScan int64  `json:"rows_examined_per_scan"`
+	RowsProducedPerJoin int64  `json:"rows_produced_per_join"`
+	Filtered            string `json:"filtered"`
+	ReadCost            string `json:"read_cost"`
+	EvalCost            string `json:"eval_cost"`
+}
+
+type Memo struct {
+	QueryCost string `json:"query_cost"`
 }
 
 func PopulateExecutionPlans(db performance_database.DataSource, queries []performance_data_model.QueryPlanMetrics, e *integration.Entity, args arguments.ArgumentList) ([]DBPerformanceEvent, error) {
@@ -103,7 +106,7 @@ func processExecutionPlanMetrics(db performance_database.DataSource, query perfo
 	fmt.Println("Execution Plan JSON:")
 	fmt.Println(execPlanJSON)
 
-	dbPerformanceEvents, err := extractMetricsFromJSONString(execPlanJSON, query.QueryID, query.EventID)
+	dbPerformanceEvents, err := extractMetricsFromJSONString(execPlanJSON, query.EventID)
 	if err != nil {
 		log.Error("Error extracting metrics from JSON: %v", err)
 		return nil
@@ -113,15 +116,16 @@ func processExecutionPlanMetrics(db performance_database.DataSource, query perfo
 	return dbPerformanceEvents
 }
 
-func extractMetricsFromJSONString(jsonString, queryID string, eventID uint64) ([]DBPerformanceEvent, error) {
+func extractMetricsFromJSONString(jsonString string, eventID uint64) ([]DBPerformanceEvent, error) {
 	js, err := simplejson.NewJson([]byte(jsonString))
 	if err != nil {
 		log.Error("Error creating simplejson from byte slice: %v", err)
 		return nil, err
 	}
 
+	memo := Memo{QueryCost: ""}
 	dbPerformanceEvents := make([]DBPerformanceEvent, 0)
-	dbPerformanceEvents = extractMetrics(js, dbPerformanceEvents, queryID, eventID)
+	dbPerformanceEvents = extractMetrics(js, dbPerformanceEvents, eventID, memo)
 
 	return dbPerformanceEvents, nil
 }
@@ -146,9 +150,9 @@ func publishQueryPerformanceMetrics(metricObject DBPerformanceEvent, ms *metric.
 		Value      interface{}
 		MetricType metric.SourceType
 	}{
-		"query_id": {metricObject.QueryID, metric.ATTRIBUTE},
-		"event_id": {metricObject.EventID, metric.GAUGE},
-		// "query_cost":    {metricObject.QueryCost, metric.GAUGE},
+		"event_id":      {metricObject.EventID, metric.GAUGE},
+		"table_name":    {metricObject.TableName, metric.ATTRIBUTE},
+		"query_cost":    {metricObject.QueryCost, metric.GAUGE},
 		"access_type":   {metricObject.AccessType, metric.ATTRIBUTE},
 		"rows_examined": {metricObject.RowsExaminedPerScan, metric.GAUGE},
 		"rows_produced": {metricObject.RowsProducedPerJoin, metric.GAUGE},
@@ -166,22 +170,25 @@ func publishQueryPerformanceMetrics(metricObject DBPerformanceEvent, ms *metric.
 	}
 }
 
-func extractMetrics(js *simplejson.Json, dbPerformanceEvents []DBPerformanceEvent, queryID string, eventID uint64) []DBPerformanceEvent {
-	//queryCost, _ := js.Get("cost_info").Get("query_cost").Float64()
+func extractMetrics(js *simplejson.Json, dbPerformanceEvents []DBPerformanceEvent, eventID uint64, memo Memo) []DBPerformanceEvent {
 	tableName, _ := js.Get("table_name").String()
+	queryCost, _ := js.Get("cost_info").Get("query_cost").String()
 	accessType, _ := js.Get("access_type").String()
 	rowsExaminedPerScan, _ := js.Get("rows_examined_per_scan").Int64()
 	rowsProducedPerJoin, _ := js.Get("rows_produced_per_join").Int64()
-	filtered, _ := js.Get("filtered").Float64()
-	readCost, _ := js.Get("cost_info").Get("read_cost").Float64()
-	evalCost, _ := js.Get("cost_info").Get("eval_cost").Float64()
+	filtered, _ := js.Get("filtered").String()
+	readCost, _ := js.Get("cost_info").Get("read_cost").String()
+	evalCost, _ := js.Get("cost_info").Get("eval_cost").String()
 
-	if tableName != "" || accessType != "" || rowsExaminedPerScan != 0 || rowsProducedPerJoin != 0 || filtered != 0 || readCost != 0 || evalCost != 0 {
+	if queryCost != "" {
+		memo.QueryCost = queryCost
+	}
+
+	if tableName != "" || accessType != "" || rowsExaminedPerScan != 0 || rowsProducedPerJoin != 0 || filtered != "" || readCost != "" || evalCost != "" {
 		fmt.Println("values: ------> ", filtered, tableName, filtered, readCost, evalCost)
 		dbPerformanceEvents = append(dbPerformanceEvents, DBPerformanceEvent{
-			QueryID: queryID,
-			EventID: eventID,
-			// QueryCost:           queryCost,
+			EventID:             eventID,
+			QueryCost:           memo.QueryCost,
 			TableName:           tableName,
 			AccessType:          accessType,
 			RowsExaminedPerScan: rowsExaminedPerScan,
@@ -209,7 +216,7 @@ func extractMetrics(js *simplejson.Json, dbPerformanceEvents []DBPerformanceEven
 							log.Error("Error creating simplejson from byte slice: %v", err)
 						}
 
-						dbPerformanceEvents = extractMetrics(convertedSimpleJson, dbPerformanceEvents, queryID, eventID)
+						dbPerformanceEvents = extractMetrics(convertedSimpleJson, dbPerformanceEvents, eventID, memo)
 					}
 				} else if t.Kind() == reflect.Slice {
 					for _, element := range value.([]interface{}) {
@@ -224,7 +231,7 @@ func extractMetrics(js *simplejson.Json, dbPerformanceEvents []DBPerformanceEven
 								log.Error("Error creating simplejson from byte slice: %v", err)
 							}
 
-							dbPerformanceEvents = extractMetrics(convertedSimpleJson, dbPerformanceEvents, queryID, eventID)
+							dbPerformanceEvents = extractMetrics(convertedSimpleJson, dbPerformanceEvents, eventID, memo)
 						}
 					}
 				}
