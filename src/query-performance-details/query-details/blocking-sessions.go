@@ -49,6 +49,9 @@ func setBlockingQueryMetrics(metrics []performance_data_model.BlockingSessionMet
 	e, err := common_utils.CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
 	common_utils.FatalIfErr(err)
 	count := 0
+	if e == nil {
+		return fmt.Errorf("entity is nil")
+	}
 	for _, metricData := range metrics {
 		// Create a new metric set for each row
 		ms := common_utils.CreateMetricSet(e, "MysqlBlockingSessionSample", args)
