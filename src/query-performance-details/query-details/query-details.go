@@ -50,7 +50,7 @@ func collectPerformanceSchemaMetrics(db performancedatabase.DataSource, slowQuer
 		qIdList = append(qIdList, qId)
 		metrics = append(metrics, metric)
 	}
-	fmt.Println("Query Id List: ", qIdList)
+
 	if err := rows.Err(); err != nil {
 		log.Error("Error iterating over query metrics rows: %v", err)
 		return nil, []string{}, err

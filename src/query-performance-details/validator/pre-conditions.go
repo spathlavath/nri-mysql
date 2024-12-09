@@ -164,29 +164,18 @@ func LogEnablePerformanceSchemaInstructions(db performance_database.DataSource) 
 
 	if IsVersion8OrGreater(version) {
 		log.Info("To enable the Performance Schema, add the following lines to your MySQL configuration file (my.cnf or my.ini) in the [mysqld] section and restart the MySQL server:")
-		fmt.Println("To enable the Performance Schema, add the following lines to your MySQL configuration file (my.cnf or my.ini) in the [mysqld] section and restart the MySQL server:")
 		log.Info("performance_schema=ON")
-		fmt.Println("performance_schema=ON")
 
 		log.Info("For MySQL 8.0 and higher, you may also need to set the following variables:")
-		fmt.Println("For MySQL 8.0 and higher, you may also need to set the following variables:")
 		log.Info("performance_schema_instrument='%%=ON'")
-		fmt.Println("performance_schema_instrument='%=ON'")
 		log.Info("performance_schema_consumer_events_statements_current=ON")
-		fmt.Println("performance_schema_consumer_events_statements_current=ON")
 		log.Info("performance_schema_consumer_events_statements_history=ON")
-		fmt.Println("performance_schema_consumer_events_statements_history=ON")
 		log.Info("performance_schema_consumer_events_statements_history_long=ON")
-		fmt.Println("performance_schema_consumer_events_statements_history_long=ON")
 		log.Info("performance_schema_consumer_events_waits_current=ON")
-		fmt.Println("performance_schema_consumer_events_waits_current=ON")
 		log.Info("performance_schema_consumer_events_waits_history=ON")
-		fmt.Println("performance_schema_consumer_events_waits_history=ON")
 		log.Info("performance_schema_consumer_events_waits_history_long=ON")
-		fmt.Println("performance_schema_consumer_events_waits_history_long=ON")
 	} else {
 		log.Error("MySQL version %s is not supported. Only version 8.0+ is supported.", version)
-		fmt.Printf("MySQL version %s is not supported. Only version 8.0+ is supported.\n", version)
 	}
 
 }
