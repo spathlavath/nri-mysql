@@ -3,6 +3,8 @@ package query_details
 import (
 	"context"
 
+	"fmt"
+
 	"github.com/newrelic/infra-integrations-sdk/v3/data/metric"
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
@@ -41,6 +43,9 @@ func PopulateWaitEventMetrics(db performance_database.DataSource, e *integration
 }
 
 func setWaitEventMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []performance_data_model.WaitEventQueryMetrics) error {
+	if e == nil {
+		return fmt.Errorf("entity is nil")
+	}
 	for _, metricData := range metrics {
 		// Create a new metric set for each row
 		ms := common_utils.CreateMetricSet(e, "MysqlWaitEvents", args)

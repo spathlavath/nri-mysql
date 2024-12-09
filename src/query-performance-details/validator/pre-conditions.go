@@ -22,7 +22,7 @@ func ValidatePreconditions(db performance_database.DataSource) bool {
 
 	if !performanceSchemaEnabled {
 		log.Error("Performance Schema is not enabled. Skipping validation.")
-		logEnablePerformanceSchemaInstructions(db)
+		LogEnablePerformanceSchemaInstructions(db)
 		return false
 	}
 
@@ -155,14 +155,14 @@ func checkEssentialInstruments(db performance_database.DataSource) error {
 	return nil
 }
 
-func logEnablePerformanceSchemaInstructions(db performance_database.DataSource) {
+func LogEnablePerformanceSchemaInstructions(db performance_database.DataSource) {
 	version, err := getMySQLVersion(db)
 	if err != nil {
 		log.Error("Failed to get MySQL version: %v", err)
 		return
 	}
 
-	if isVersion8OrGreater(version) {
+	if IsVersion8OrGreater(version) {
 		log.Info("To enable the Performance Schema, add the following lines to your MySQL configuration file (my.cnf or my.ini) in the [mysqld] section and restart the MySQL server:")
 		fmt.Println("To enable the Performance Schema, add the following lines to your MySQL configuration file (my.cnf or my.ini) in the [mysqld] section and restart the MySQL server:")
 		log.Info("performance_schema=ON")
@@ -213,13 +213,13 @@ func getMySQLVersion(db performance_database.DataSource) (string, error) {
 	return version, nil
 }
 
-func isVersion8OrGreater(version string) bool {
-	majorVersion, minorVersion := parseVersion(version)
+func IsVersion8OrGreater(version string) bool {
+	majorVersion, minorVersion := ParseVersion(version)
 	return (majorVersion > 8) || (majorVersion == 8 && minorVersion >= 0)
 }
 
 // parseVersion extracts the major and minor version numbers from the version string
-func parseVersion(version string) (int, int) {
+func ParseVersion(version string) (int, int) {
 	parts := strings.Split(version, ".")
 	if len(parts) < 2 {
 		return 0, 0 // Return 0 if the version string is improperly formatted

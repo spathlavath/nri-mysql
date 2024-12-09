@@ -12,7 +12,10 @@ require (
 	github.com/xeipuuv/gojsonschema v1.2.0
 )
 
-require github.com/mattn/go-runewidth v0.0.9 // indirect
+require (
+	github.com/DATA-DOG/go-sqlmock v1.5.2 // indirect
+	github.com/mattn/go-runewidth v0.0.9 // indirect
+)
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
