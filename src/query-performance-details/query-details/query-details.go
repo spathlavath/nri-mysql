@@ -137,7 +137,7 @@ func setIndividualQueryMetrics(e *integration.Entity, args arguments.ArgumentLis
 	for _, metricObject := range metrics {
 
 		// Create a new metric set for each row
-		ms := common_utils.CreateMetricSet(e, "MysqlIndividualQueriesV1", args)
+		ms := common_utils.CreateMetricSet(e, "MysqlIndividualQueries", args)
 
 		metricsMap := map[string]struct {
 			Value      interface{}
