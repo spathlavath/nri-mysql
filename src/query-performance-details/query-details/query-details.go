@@ -68,18 +68,19 @@ func setSlowQueryMetrics(e *integration.Entity, metrics []performancedatamodel.S
 			Value      interface{}
 			MetricType metric.SourceType
 		}{
-			"query_id":             {metricObject.QueryID, metric.ATTRIBUTE},
-			"query_text":           {common_utils.GetStringValue(metricObject.QueryText), metric.ATTRIBUTE},
-			"database_name":        {common_utils.GetStringValue(metricObject.DatabaseName), metric.ATTRIBUTE},
-			"schema_name":          {metricObject.SchemaName, metric.ATTRIBUTE},
-			"execution_count":      {metricObject.ExecutionCount, metric.GAUGE},
-			"avg_cpu_time_ms":      {metricObject.AvgCPUTimeMs, metric.GAUGE},
-			"avg_elapsed_time_ms":  {metricObject.AvgElapsedTimeMs, metric.GAUGE},
-			"avg_disk_reads":       {metricObject.AvgDiskReads, metric.GAUGE},
-			"avg_disk_writes":      {metricObject.AvgDiskWrites, metric.GAUGE},
-			"has_full_table_scan":  {metricObject.HasFullTableScan, metric.ATTRIBUTE},
-			"statement_type":       {metricObject.StatementType, metric.ATTRIBUTE},
-			"collection_timestamp": {metricObject.CollectionTimestamp, metric.ATTRIBUTE},
+			"query_id":                 {metricObject.QueryID, metric.ATTRIBUTE},
+			"query_text":               {common_utils.GetStringValue(metricObject.QueryText), metric.ATTRIBUTE},
+			"database_name":            {common_utils.GetStringValue(metricObject.DatabaseName), metric.ATTRIBUTE},
+			"schema_name":              {metricObject.SchemaName, metric.ATTRIBUTE},
+			"execution_count":          {metricObject.ExecutionCount, metric.GAUGE},
+			"avg_cpu_time_ms":          {metricObject.AvgCPUTimeMs, metric.GAUGE},
+			"avg_elapsed_time_ms":      {metricObject.AvgElapsedTimeMs, metric.GAUGE},
+			"avg_disk_reads":           {metricObject.AvgDiskReads, metric.GAUGE},
+			"avg_disk_writes":          {metricObject.AvgDiskWrites, metric.GAUGE},
+			"has_full_table_scan":      {metricObject.HasFullTableScan, metric.ATTRIBUTE},
+			"statement_type":           {metricObject.StatementType, metric.ATTRIBUTE},
+			"last_execution_timestamp": {metricObject.LastExecutionTimestamp, metric.ATTRIBUTE},
+			"collection_timestamp":     {metricObject.CollectionTimestamp, metric.ATTRIBUTE},
 		}
 		for name, metric := range metricsMap {
 			err := ms.SetMetric(name, metric.Value, metric.MetricType)
@@ -143,13 +144,13 @@ func setIndividualQueryMetrics(e *integration.Entity, args arguments.ArgumentLis
 			MetricType metric.SourceType
 		}{
 
-			"query_id":      {metricObject.QueryID, metric.ATTRIBUTE},
-			"query_text":    {metricObject.AnonymizedQueryText, metric.ATTRIBUTE},
-			"event_id":      {metricObject.EventID, metric.GAUGE},
-			"thread_id":     {metricObject.ThreadID, metric.GAUGE},
-			"timer_wait":    {metricObject.TimerWait, metric.GAUGE},
-			"rows_sent":     {metricObject.RowsSent, metric.GAUGE},
-			"rows_examined": {metricObject.RowsExamined, metric.GAUGE},
+			"query_id":          {metricObject.QueryID, metric.ATTRIBUTE},
+			"query_text":        {metricObject.AnonymizedQueryText, metric.ATTRIBUTE},
+			"event_id":          {metricObject.EventID, metric.GAUGE},
+			"thread_id":         {metricObject.ThreadID, metric.GAUGE},
+			"execution_time_ms": {metricObject.ExecutionTimeMs, metric.GAUGE},
+			"rows_sent":         {metricObject.RowsSent, metric.GAUGE},
+			"rows_examined":     {metricObject.RowsExamined, metric.GAUGE},
 		}
 
 		for name, metric := range metricsMap {
