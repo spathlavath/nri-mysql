@@ -4,7 +4,7 @@ import (
 	"database/sql"
 )
 
-type QueryMetrics struct {
+type SlowQueryMetrics struct {
 	QueryID             string         `json:"query_id" db:"query_id"`
 	QueryText           sql.NullString `json:"query_text" db:"query_text"`
 	DatabaseName        sql.NullString `json:"database_name" db:"database_name"`
@@ -19,7 +19,7 @@ type QueryMetrics struct {
 	CollectionTimestamp string         `json:"collection_timestamp" db:"collection_timestamp"`
 }
 
-type QueryPlanMetrics struct {
+type IndividualQueryMetrics struct {
 	QueryID             string  `json:"query_id" db:"query_id"`
 	AnonymizedQueryText string  `json:"query_text" db:"query_text"`
 	QueryText           string  `json:"query_sample_text" db:"query_sample_text"`
@@ -30,22 +30,20 @@ type QueryPlanMetrics struct {
 	RowsExamined        int64   `json:"rows_examined" db:"rows_examined"`
 }
 
-type ExecutionPlan struct {
-	TableMetrics []TableMetrics `json:"table_metrics"`
-	TotalCost    float64        `json:"total_cost"`
+type QueryPlanMetrics struct {
+	EventID             uint64 `json:"event_id"`
+	QueryCost           string `json:"query_cost"`
+	TableName           string `json:"table_name"`
+	AccessType          string `json:"access_type"`
+	RowsExaminedPerScan int64  `json:"rows_examined_per_scan"`
+	RowsProducedPerJoin int64  `json:"rows_produced_per_join"`
+	Filtered            string `json:"filtered"`
+	ReadCost            string `json:"read_cost"`
+	EvalCost            string `json:"eval_cost"`
 }
 
-type TableMetrics struct {
-	StepID        int     `json:"step_id"`
-	ExecutionStep string  `json:"execution_step"`
-	AccessType    string  `json:"access_type"`
-	RowsExamined  int64   `json:"rows_examined"`
-	RowsProduced  int64   `json:"rows_produced"`
-	Filtered      float64 `json:"filtered (%)"`
-	ReadCost      float64 `json:"read_cost"`
-	EvalCost      float64 `json:"eval_cost"`
-	DataRead      float64 `json:"data_read"`
-	ExtraInfo     string  `json:"extra_info"`
+type Memo struct {
+	QueryCost string `json:"query_cost"`
 }
 
 type WaitEventQueryMetrics struct {
