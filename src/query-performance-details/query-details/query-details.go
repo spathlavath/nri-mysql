@@ -26,7 +26,7 @@ func PopulateSlowQueryMetrics(e *integration.Entity, db performancedatabase.Data
 	return queryIdList
 }
 
-func collectPerformanceSchemaMetrics(db performancedatabase.DataSource, slowQueryInterval int) ([]performancedatamodel.QueryMetrics, []string, error) {
+func collectPerformanceSchemaMetrics(db performancedatabase.DataSource, slowQueryInterval int) ([]performancedatamodel.SlowQueryMetrics, []string, error) {
 	query := queries.SlowQueries
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -37,10 +37,10 @@ func collectPerformanceSchemaMetrics(db performancedatabase.DataSource, slowQuer
 	}
 	defer rows.Close()
 
-	var metrics []performancedatamodel.QueryMetrics
+	var metrics []performancedatamodel.SlowQueryMetrics
 	var qIdList []string
 	for rows.Next() {
-		var metric performancedatamodel.QueryMetrics
+		var metric performancedatamodel.SlowQueryMetrics
 		var qId string
 		if err := rows.StructScan(&metric); err != nil {
 			log.Error("Failed to scan query metrics row: %v", err)
@@ -58,7 +58,7 @@ func collectPerformanceSchemaMetrics(db performancedatabase.DataSource, slowQuer
 	return metrics, qIdList, nil
 }
 
-func setSlowQueryMetrics(e *integration.Entity, metrics []performancedatamodel.QueryMetrics, args arguments.ArgumentList) error {
+func setSlowQueryMetrics(e *integration.Entity, metrics []performancedatamodel.SlowQueryMetrics, args arguments.ArgumentList) error {
 	for _, metricObject := range metrics {
 		ms := common_utils.CreateMetricSet(e, "MysqlSlowQueriesSampleV1", args)
 		if ms == nil {
@@ -92,7 +92,7 @@ func setSlowQueryMetrics(e *integration.Entity, metrics []performancedatamodel.Q
 	return nil
 }
 
-func PopulateIndividualQueryDetails(db performancedatabase.DataSource, queryIdList []string, e *integration.Entity, args arguments.ArgumentList) ([]performancedatamodel.QueryPlanMetrics, error) {
+func PopulateIndividualQueryDetails(db performancedatabase.DataSource, queryIdList []string, e *integration.Entity, args arguments.ArgumentList) ([]performancedatamodel.IndividualQueryMetrics, error) {
 	currentQueryMetrics, currentQueryMetricsErr := currentQueryMetrics(db, queryIdList, args.IndividualQueryThreshold)
 	if currentQueryMetricsErr != nil {
 		log.Error("Failed to collect current query metrics: %v", currentQueryMetricsErr)
@@ -113,15 +113,14 @@ func PopulateIndividualQueryDetails(db performancedatabase.DataSource, queryIdLi
 
 	queryList := append(append(currentQueryMetrics, recentQueryList...), extensiveQueryList...)
 	filteredQueryList := getUniqueQueryList(queryList)
-	fmt.Println("Filtered Query List: ", filteredQueryList)
 
 	setIndividualQueryMetrics(e, args, filteredQueryList)
 	return filteredQueryList, nil
 }
 
-func getUniqueQueryList(queryList []performancedatamodel.QueryPlanMetrics) []performancedatamodel.QueryPlanMetrics {
+func getUniqueQueryList(queryList []performancedatamodel.IndividualQueryMetrics) []performancedatamodel.IndividualQueryMetrics {
 	uniqueEvents := make(map[uint64]bool)
-	var uniqueQueryList []performancedatamodel.QueryPlanMetrics
+	var uniqueQueryList []performancedatamodel.IndividualQueryMetrics
 
 	for _, query := range queryList {
 		if _, exists := uniqueEvents[query.EventID]; !exists {
@@ -133,7 +132,7 @@ func getUniqueQueryList(queryList []performancedatamodel.QueryPlanMetrics) []per
 	return uniqueQueryList
 }
 
-func setIndividualQueryMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []performancedatamodel.QueryPlanMetrics) error {
+func setIndividualQueryMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []performancedatamodel.IndividualQueryMetrics) error {
 	for _, metricObject := range metrics {
 
 		// Create a new metric set for each row
@@ -164,7 +163,7 @@ func setIndividualQueryMetrics(e *integration.Entity, args arguments.ArgumentLis
 	return nil
 }
 
-func currentQueryMetrics(db performancedatabase.DataSource, QueryIDList []string, individualQueryThreshold int) ([]performancedatamodel.QueryPlanMetrics, error) {
+func currentQueryMetrics(db performancedatabase.DataSource, QueryIDList []string, individualQueryThreshold int) ([]performancedatamodel.IndividualQueryMetrics, error) {
 	// Check Performance Schema availability
 	metrics, err := collectCurrentQueryMetrics(db, QueryIDList, individualQueryThreshold)
 	if err != nil {
@@ -175,7 +174,7 @@ func currentQueryMetrics(db performancedatabase.DataSource, QueryIDList []string
 	return metrics, nil
 }
 
-func recentQueryMetrics(db performancedatabase.DataSource, QueryIDList []string, individualQueryThreshold int) ([]performancedatamodel.QueryPlanMetrics, error) {
+func recentQueryMetrics(db performancedatabase.DataSource, QueryIDList []string, individualQueryThreshold int) ([]performancedatamodel.IndividualQueryMetrics, error) {
 	// Check Performance Schema availability
 	metrics, err := collectRecentQueryMetrics(db, QueryIDList, individualQueryThreshold)
 	if err != nil {
@@ -186,7 +185,7 @@ func recentQueryMetrics(db performancedatabase.DataSource, QueryIDList []string,
 	return metrics, nil
 }
 
-func extensiveQueryMetrics(db performancedatabase.DataSource, QueryIDList []string, individualQueryThreshold int) ([]performancedatamodel.QueryPlanMetrics, error) {
+func extensiveQueryMetrics(db performancedatabase.DataSource, QueryIDList []string, individualQueryThreshold int) ([]performancedatamodel.IndividualQueryMetrics, error) {
 	// Check Performance Schema availability
 	metrics, err := collectExtensiveQueryMetrics(db, QueryIDList, individualQueryThreshold)
 	if err != nil {
@@ -197,7 +196,7 @@ func extensiveQueryMetrics(db performancedatabase.DataSource, QueryIDList []stri
 	return metrics, nil
 }
 
-func collectCurrentQueryMetrics(db performancedatabase.DataSource, queryIDList []string, individualQueryThreshold int) ([]performancedatamodel.QueryPlanMetrics, error) {
+func collectCurrentQueryMetrics(db performancedatabase.DataSource, queryIDList []string, individualQueryThreshold int) ([]performancedatamodel.IndividualQueryMetrics, error) {
 	if len(queryIDList) == 0 {
 		log.Warn("queryIDList is empty")
 		return nil, nil
@@ -224,9 +223,9 @@ func collectCurrentQueryMetrics(db performancedatabase.DataSource, queryIDList [
 		return nil, err
 	}
 	defer rows.Close()
-	var metrics []performancedatamodel.QueryPlanMetrics
+	var metrics []performancedatamodel.IndividualQueryMetrics
 	for rows.Next() {
-		var metric performancedatamodel.QueryPlanMetrics
+		var metric performancedatamodel.IndividualQueryMetrics
 		if err := rows.StructScan(&metric); err != nil {
 			log.Error("Failed to scan query metrics row: %v", err)
 			return nil, err
@@ -241,7 +240,7 @@ func collectCurrentQueryMetrics(db performancedatabase.DataSource, queryIDList [
 	return metrics, nil
 }
 
-func collectRecentQueryMetrics(db performancedatabase.DataSource, queryIDList []string, individualQueryThreshold int) ([]performancedatamodel.QueryPlanMetrics, error) {
+func collectRecentQueryMetrics(db performancedatabase.DataSource, queryIDList []string, individualQueryThreshold int) ([]performancedatamodel.IndividualQueryMetrics, error) {
 	if len(queryIDList) == 0 {
 		log.Warn("queryIDList is empty")
 		return nil, nil
@@ -265,9 +264,9 @@ func collectRecentQueryMetrics(db performancedatabase.DataSource, queryIDList []
 		return nil, err
 	}
 	defer rows.Close()
-	var metrics []performancedatamodel.QueryPlanMetrics
+	var metrics []performancedatamodel.IndividualQueryMetrics
 	for rows.Next() {
-		var metric performancedatamodel.QueryPlanMetrics
+		var metric performancedatamodel.IndividualQueryMetrics
 		if err := rows.StructScan(&metric); err != nil {
 			log.Error("Failed to scan query metrics row: %v", err)
 			return nil, err
@@ -283,7 +282,7 @@ func collectRecentQueryMetrics(db performancedatabase.DataSource, queryIDList []
 	return metrics, nil
 }
 
-func collectExtensiveQueryMetrics(db performancedatabase.DataSource, queryIDList []string, individualQueryThreshold int) ([]performancedatamodel.QueryPlanMetrics, error) {
+func collectExtensiveQueryMetrics(db performancedatabase.DataSource, queryIDList []string, individualQueryThreshold int) ([]performancedatamodel.IndividualQueryMetrics, error) {
 	if len(queryIDList) == 0 {
 		log.Warn("queryIDList is empty")
 		return nil, nil
@@ -311,9 +310,9 @@ func collectExtensiveQueryMetrics(db performancedatabase.DataSource, queryIDList
 		return nil, err
 	}
 	defer rows.Close()
-	var metrics []performancedatamodel.QueryPlanMetrics
+	var metrics []performancedatamodel.IndividualQueryMetrics
 	for rows.Next() {
-		var metric performancedatamodel.QueryPlanMetrics
+		var metric performancedatamodel.IndividualQueryMetrics
 		if err := rows.StructScan(&metric); err != nil {
 			log.Error("Failed to scan query metrics row: %v", err)
 			return nil, err
