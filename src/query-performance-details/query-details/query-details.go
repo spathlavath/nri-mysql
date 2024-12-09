@@ -60,7 +60,7 @@ func collectPerformanceSchemaMetrics(db performancedatabase.DataSource, slowQuer
 
 func setSlowQueryMetrics(e *integration.Entity, metrics []performancedatamodel.SlowQueryMetrics, args arguments.ArgumentList) error {
 	for _, metricObject := range metrics {
-		ms := common_utils.CreateMetricSet(e, "MysqlSlowQueriesSampleV1", args)
+		ms := common_utils.CreateMetricSet(e, "MysqlSlowQueriesSample", args)
 		if ms == nil {
 			return fmt.Errorf("failed to create metric set")
 		}

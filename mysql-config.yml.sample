@@ -34,6 +34,13 @@ integrations:
     # versus remote entities:
     # https://github.com/newrelic/infra-integrations-sdk/blob/master/docs/entity-definition.md
     REMOTE_MONITORING: true
+    
+    # Enable query performance monitoring
+    enable_query_performance_monitoring: true
+    # Slow Queries Interval(sec) for query performance monitoring. it should be same as interval
+    slow_query_interval: 30
+    # Individual Query Threshold(ms) for for fetching query performance metrics              
+	  individual_query_threshold: 2000         
   interval: 30s
   labels:
     env: production
