@@ -23,7 +23,7 @@ const (
                 WHEN DIGEST_TEXT LIKE 'DELETE%' THEN 'DELETE'
                 ELSE 'OTHER'
             END AS statement_type,
-			LAST_SEEN AS last_execution_timestamp,
+			DATE_FORMAT(LAST_SEEN, '%Y-%m-%dT%H:%i:%sZ') AS last_execution_timestamp,
             DATE_FORMAT(UTC_TIMESTAMP(), '%Y-%m-%dT%H:%i:%sZ') AS collection_timestamp
         FROM performance_schema.events_statements_summary_by_digest
         WHERE LAST_SEEN >= UTC_TIMESTAMP() - INTERVAL ? SECOND
