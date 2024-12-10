@@ -23,6 +23,7 @@ const (
                 WHEN DIGEST_TEXT LIKE 'DELETE%' THEN 'DELETE'
                 ELSE 'OTHER'
             END AS statement_type,
+			DATE_FORMAT(LAST_SEEN, '%Y-%m-%dT%H:%i:%sZ') AS last_execution_timestamp,
             DATE_FORMAT(UTC_TIMESTAMP(), '%Y-%m-%dT%H:%i:%sZ') AS collection_timestamp
         FROM performance_schema.events_statements_summary_by_digest
         WHERE LAST_SEEN >= UTC_TIMESTAMP() - INTERVAL ? SECOND
@@ -46,7 +47,7 @@ const (
 			SQL_TEXT AS query_sample_text,
 			EVENT_ID AS event_id,
 			THREAD_ID AS thread_id,
-			ROUND(TIMER_WAIT / 1000000000, 3) AS timer_wait,
+			ROUND(TIMER_WAIT / 1000000000, 3) AS execution_time_ms,
 			ROWS_SENT AS rows_sent,
 			ROWS_EXAMINED AS rows_examined
 		FROM performance_schema.events_statements_current
@@ -61,7 +62,7 @@ const (
 			AND SQL_TEXT NOT LIKE '%%DIGEST_TEXT%%'
 			AND SQL_TEXT NOT LIKE 'START %%'
             AND SQL_TEXT NOT LIKE 'EXPLAIN %%'
-			AND TIMER_WAIT / 1000000 > ?
+			AND TIMER_WAIT / 1000000000 > ?
 		ORDER BY TIMER_WAIT DESC;
 	`
 	RecentQueriesSearch = `
@@ -71,7 +72,7 @@ const (
 			SQL_TEXT AS query_sample_text,
 			EVENT_ID AS event_id,
 			THREAD_ID AS thread_id,
-			ROUND(TIMER_WAIT / 1000000000, 3) AS timer_wait,
+			ROUND(TIMER_WAIT / 1000000000, 3) AS execution_time_ms,
 			ROWS_SENT AS rows_sent,
 			ROWS_EXAMINED AS rows_examined
 		FROM performance_schema.events_statements_history
@@ -86,7 +87,7 @@ const (
 			AND SQL_TEXT NOT LIKE '%%DIGEST_TEXT%%'
 			AND SQL_TEXT NOT LIKE 'START %%'
             AND SQL_TEXT NOT LIKE 'EXPLAIN %%'
-			AND TIMER_WAIT / 1000000 > ?
+			AND TIMER_WAIT / 1000000000 > ?
 		ORDER BY TIMER_WAIT DESC;
 	`
 	PastQueriesSearch = `
@@ -96,7 +97,7 @@ const (
 			SQL_TEXT AS query_sample_text,
 			EVENT_ID AS event_id,
 			THREAD_ID AS thread_id,
-			ROUND(TIMER_WAIT / 1000000000, 3) AS timer_wait,
+			ROUND(TIMER_WAIT / 1000000000, 3) AS execution_time_ms,
 			ROWS_SENT AS rows_sent,
 			ROWS_EXAMINED AS rows_examined
 		FROM performance_schema.events_statements_history_long
@@ -111,7 +112,7 @@ const (
 			AND SQL_TEXT NOT LIKE '%%DIGEST_TEXT%%'
 			AND SQL_TEXT NOT LIKE 'START %%'
             AND SQL_TEXT NOT LIKE 'EXPLAIN %%'
-			AND TIMER_WAIT / 1000000 > ?
+			AND TIMER_WAIT / 1000000000 > ?
 		ORDER BY TIMER_WAIT DESC;
 	`
 	WaitEventsQuery = `
@@ -132,6 +133,7 @@ const (
 				ELSE 'Other'
 			END AS wait_category,
 			ROUND(IFNULL(SUM(wait_data.TIMER_WAIT),0) / 1000000000, 3) AS total_wait_time_ms,
+			'N/A' AS avg_wait_time_ms,
 			SUM(ewsg.COUNT_STAR) AS wait_event_count,
 			ROUND((IFNULL(SUM(wait_data.TIMER_WAIT), 0) / 1000000000) / IFNULL(SUM(ewsg.COUNT_STAR), 1), 3) AS avg_wait_time_ms,
 			schema_data.query_text,

@@ -4,48 +4,47 @@ import (
 	"database/sql"
 )
 
-type QueryMetrics struct {
-	QueryID             string         `json:"query_id" db:"query_id"`
-	QueryText           sql.NullString `json:"query_text" db:"query_text"`
-	DatabaseName        sql.NullString `json:"database_name" db:"database_name"`
-	SchemaName          string         `json:"schema_name" db:"schema_name"`
-	ExecutionCount      uint64         `json:"execution_count" db:"execution_count"`
-	AvgCPUTimeMs        float64        `json:"avg_cpu_time_ms" db:"avg_cpu_time_ms"`
-	AvgElapsedTimeMs    float64        `json:"avg_elapsed_time_ms" db:"avg_elapsed_time_ms"`
-	AvgDiskReads        float64        `json:"avg_disk_reads" db:"avg_disk_reads"`
-	AvgDiskWrites       float64        `json:"avg_disk_writes" db:"avg_disk_writes"`
-	HasFullTableScan    string         `json:"has_full_table_scan" db:"has_full_table_scan"`
-	StatementType       string         `json:"statement_type" db:"statement_type"`
-	CollectionTimestamp string         `json:"collection_timestamp" db:"collection_timestamp"`
+type SlowQueryMetrics struct {
+	QueryID                string         `json:"query_id" db:"query_id"`
+	QueryText              sql.NullString `json:"query_text" db:"query_text"`
+	DatabaseName           sql.NullString `json:"database_name" db:"database_name"`
+	SchemaName             string         `json:"schema_name" db:"schema_name"`
+	ExecutionCount         uint64         `json:"execution_count" db:"execution_count"`
+	AvgCPUTimeMs           float64        `json:"avg_cpu_time_ms" db:"avg_cpu_time_ms"`
+	AvgElapsedTimeMs       float64        `json:"avg_elapsed_time_ms" db:"avg_elapsed_time_ms"`
+	AvgDiskReads           float64        `json:"avg_disk_reads" db:"avg_disk_reads"`
+	AvgDiskWrites          float64        `json:"avg_disk_writes" db:"avg_disk_writes"`
+	HasFullTableScan       string         `json:"has_full_table_scan" db:"has_full_table_scan"`
+	StatementType          string         `json:"statement_type" db:"statement_type"`
+	LastExecutionTimestamp string         `json:"last_execution_timestamp" db:"last_execution_timestamp"`
+	CollectionTimestamp    string         `json:"collection_timestamp" db:"collection_timestamp"`
 }
 
-type QueryPlanMetrics struct {
+type IndividualQueryMetrics struct {
 	QueryID             string  `json:"query_id" db:"query_id"`
 	AnonymizedQueryText string  `json:"query_text" db:"query_text"`
 	QueryText           string  `json:"query_sample_text" db:"query_sample_text"`
 	EventID             uint64  `json:"event_id" db:"event_id"`
 	ThreadID            uint64  `json:"thread_id" db:"thread_id"`
-	TimerWait           float64 `json:"timer_wait" db:"timer_wait"`
+	ExecutionTimeMs     float64 `json:"execution_time_ms" db:"execution_time_ms"`
 	RowsSent            int64   `json:"rows_sent" db:"rows_sent"`
 	RowsExamined        int64   `json:"rows_examined" db:"rows_examined"`
 }
 
-type ExecutionPlan struct {
-	TableMetrics []TableMetrics `json:"table_metrics"`
-	TotalCost    float64        `json:"total_cost"`
+type QueryPlanMetrics struct {
+	EventID             uint64 `json:"event_id"`
+	QueryCost           string `json:"query_cost"`
+	TableName           string `json:"table_name"`
+	AccessType          string `json:"access_type"`
+	RowsExaminedPerScan int64  `json:"rows_examined_per_scan"`
+	RowsProducedPerJoin int64  `json:"rows_produced_per_join"`
+	Filtered            string `json:"filtered"`
+	ReadCost            string `json:"read_cost"`
+	EvalCost            string `json:"eval_cost"`
 }
 
-type TableMetrics struct {
-	StepID        int     `json:"step_id"`
-	ExecutionStep string  `json:"execution_step"`
-	AccessType    string  `json:"access_type"`
-	RowsExamined  int64   `json:"rows_examined"`
-	RowsProduced  int64   `json:"rows_produced"`
-	Filtered      float64 `json:"filtered (%)"`
-	ReadCost      float64 `json:"read_cost"`
-	EvalCost      float64 `json:"eval_cost"`
-	DataRead      float64 `json:"data_read"`
-	ExtraInfo     string  `json:"extra_info"`
+type Memo struct {
+	QueryCost string `json:"query_cost"`
 }
 
 type WaitEventQueryMetrics struct {
@@ -58,7 +57,7 @@ type WaitEventQueryMetrics struct {
 	InstanceID          string         `json:"instance_id" db:"instance_id"`
 	WaitEventName       string         `json:"wait_event_name" db:"wait_event_name"`
 	WaitEventCount      uint64         `json:"wait_event_count" db:"wait_event_count"`
-	AvgWaitTimeMs       float64        `json:"avg_wait_time_ms" db:"avg_wait_time_ms"`
+	AvgWaitTimeMs       string         `json:"avg_wait_time_ms" db:"avg_wait_time_ms"`
 }
 
 type BlockingSessionMetrics struct {

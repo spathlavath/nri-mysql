@@ -21,5 +21,5 @@ type ArgumentList struct {
 	ShowVersion                      bool   `default:"false" help:"Print build information and exit"`
 	EnableQueryPerformanceMonitoring bool   `default:"true" help:"Enable query performance monitoring"`
 	SlowQueryInterval                int    `default:"30" help:"Slow Queries Interval(sec) for query performance monitoring. it should be same as mysql-config.yml interval"`
-	IndividualQueryThreshold         int    `default:"1000" help:"Individual Query Threshold(ms) for for fetching query performance metrics"`
+	IndividualQueryThreshold         int    `default:"1" help:"Individual Query Threshold(ms) for for fetching query performance metrics"`
 }

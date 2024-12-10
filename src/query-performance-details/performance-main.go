@@ -1,8 +1,6 @@
 package query_performance_details
 
 import (
-	"fmt"
-
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	arguments "github.com/newrelic/nri-mysql/src/args"
@@ -32,29 +30,25 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 		log.Error("Error populating individual query details: %v", individualQueryDetailsErr)
 		return
 	}
-	// fmt.Println("Individual Query details collected successfully.", individualQueryDetails)
 
-	// Query Execution Plan
+	// Execution Plan details
 	_, executionPlanMetricsErr := query_details.PopulateExecutionPlans(db, individualQueryDetails, e, args)
 	if executionPlanMetricsErr != nil {
 		log.Error("Error populating execution plan details: %v", executionPlanMetricsErr)
 		return
 	}
-	// fmt.Println("Execution Plan details collected successfully.", executionPlanMetrics)
 
 	// Wait Events
-	waitEventMetrics, waitEventError := query_details.PopulateWaitEventMetrics(db, e, args)
+	_, waitEventError := query_details.PopulateWaitEventMetrics(db, e, args)
 	if waitEventError != nil {
 		log.Error("Error populating wait event metrics: %v", waitEventError)
 		return
 	}
-	fmt.Println("Wait Event Metrics collected successfully.", waitEventMetrics)
 
 	// Blocking Sessions
-	blockingSessionMetrics, populateBlockingSessionMetricsError := query_details.PopulateBlockingSessionMetrics(db, e, args)
+	_, populateBlockingSessionMetricsError := query_details.PopulateBlockingSessionMetrics(db, e, args)
 	if populateBlockingSessionMetricsError != nil {
 		log.Error("Error populating blocking session metrics: %v", populateBlockingSessionMetricsError)
 		return
 	}
-	fmt.Println("Blocking Session Metrics collected successfully.", blockingSessionMetrics)
 }
