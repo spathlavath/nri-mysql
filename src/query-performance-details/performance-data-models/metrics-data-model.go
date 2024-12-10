@@ -26,7 +26,7 @@ type IndividualQueryMetrics struct {
 	QueryText           string  `json:"query_sample_text" db:"query_sample_text"`
 	EventID             uint64  `json:"event_id" db:"event_id"`
 	ThreadID            uint64  `json:"thread_id" db:"thread_id"`
-	ExecutionTimeMs           float64 `json:"execution_time_ms" db:"execution_time_ms"`
+	ExecutionTimeMs     float64 `json:"execution_time_ms" db:"execution_time_ms"`
 	RowsSent            int64   `json:"rows_sent" db:"rows_sent"`
 	RowsExamined        int64   `json:"rows_examined" db:"rows_examined"`
 }
@@ -57,7 +57,7 @@ type WaitEventQueryMetrics struct {
 	InstanceID          string         `json:"instance_id" db:"instance_id"`
 	WaitEventName       string         `json:"wait_event_name" db:"wait_event_name"`
 	WaitEventCount      uint64         `json:"wait_event_count" db:"wait_event_count"`
-	AvgWaitTimeMs       float64        `json:"avg_wait_time_ms" db:"avg_wait_time_ms"`
+	AvgWaitTimeMs       string         `json:"avg_wait_time_ms" db:"avg_wait_time_ms"`
 }
 
 type BlockingSessionMetrics struct {
