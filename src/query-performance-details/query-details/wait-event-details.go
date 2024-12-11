@@ -13,7 +13,7 @@ import (
 	query_performance_details "github.com/newrelic/nri-mysql/src/query-performance-details/queries"
 )
 
-func PopulateWaitEventMetrics(db performance_database.DataSource, e *integration.Entity, args arguments.ArgumentList) ([]performance_data_model.WaitEventQueryMetrics, error) {
+func PopulateWaitEventMetrics(db performance_database.DataSource, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList) ([]performance_data_model.WaitEventQueryMetrics, error) {
 	query := query_performance_details.WaitEventsQuery
 
 	rows, err := db.QueryxContext(context.Background(), query)
@@ -36,14 +36,17 @@ func PopulateWaitEventMetrics(db performance_database.DataSource, e *integration
 		log.Error("Error iterating over query metrics rows: %v", err)
 		return nil, err
 	}
-	setWaitEventMetrics(e, args, metrics)
+	setWaitEventMetrics(i, args, metrics)
 	return metrics, nil
 }
 
-func setWaitEventMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []performance_data_model.WaitEventQueryMetrics) error {
+func setWaitEventMetrics(i *integration.Integration, args arguments.ArgumentList, metrics []performance_data_model.WaitEventQueryMetrics) error {
+	e, err := common_utils.CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
+	common_utils.FatalIfErr(err)
+	count := 0
 	for _, metricData := range metrics {
 		// Create a new metric set for each row
-		ms := common_utils.CreateMetricSet(e, "MysqlWaitEvents", args)
+		ms := common_utils.CreateMetricSet(e, "MysqlWaitEventsSample", args)
 		metricsMap := map[string]struct {
 			Value      interface{}
 			MetricType metric.SourceType
@@ -66,6 +69,19 @@ func setWaitEventMetrics(e *integration.Entity, args arguments.ArgumentList, met
 				continue
 			}
 		}
+
+		count++
+		if count >= common_utils.MetricSetLimit {
+			common_utils.FatalIfErr(i.Publish())
+
+			e, err = common_utils.CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
+			common_utils.FatalIfErr(err)
+			count = 0
+		}
+	}
+
+	if count > 0 {
+		common_utils.FatalIfErr(i.Publish())
 	}
 	return nil
 }

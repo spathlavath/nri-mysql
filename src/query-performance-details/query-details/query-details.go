@@ -16,13 +16,13 @@ import (
 	queries "github.com/newrelic/nri-mysql/src/query-performance-details/queries"
 )
 
-func PopulateSlowQueryMetrics(e *integration.Entity, db performancedatabase.DataSource, args arguments.ArgumentList) []string {
+func PopulateSlowQueryMetrics(i *integration.Integration, e *integration.Entity, db performancedatabase.DataSource, args arguments.ArgumentList) []string {
 	rawMetrics, queryIdList, err := collectPerformanceSchemaMetrics(db, args.SlowQueryInterval)
 	if err != nil {
 		log.Error("Failed to collect query metrics: %v", err)
 		return nil
 	}
-	setSlowQueryMetrics(e, rawMetrics, args)
+	setSlowQueryMetrics(i, rawMetrics, args)
 	return queryIdList
 }
 
@@ -58,7 +58,10 @@ func collectPerformanceSchemaMetrics(db performancedatabase.DataSource, slowQuer
 	return metrics, qIdList, nil
 }
 
-func setSlowQueryMetrics(e *integration.Entity, metrics []performancedatamodel.SlowQueryMetrics, args arguments.ArgumentList) error {
+func setSlowQueryMetrics(i *integration.Integration, metrics []performancedatamodel.SlowQueryMetrics, args arguments.ArgumentList) error {
+	e, err := common_utils.CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
+	common_utils.FatalIfErr(err)
+	count := 0
 	for _, metricObject := range metrics {
 		ms := common_utils.CreateMetricSet(e, "MysqlSlowQueriesSample", args)
 		if ms == nil {
@@ -89,11 +92,24 @@ func setSlowQueryMetrics(e *integration.Entity, metrics []performancedatamodel.S
 				continue
 			}
 		}
+
+		count++
+		if count >= common_utils.MetricSetLimit {
+			common_utils.FatalIfErr(i.Publish())
+
+			e, err = common_utils.CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
+			common_utils.FatalIfErr(err)
+			count = 0
+		}
+	}
+
+	if count > 0 {
+		common_utils.FatalIfErr(i.Publish())
 	}
 	return nil
 }
 
-func PopulateIndividualQueryDetails(db performancedatabase.DataSource, queryIdList []string, e *integration.Entity, args arguments.ArgumentList) ([]performancedatamodel.IndividualQueryMetrics, error) {
+func PopulateIndividualQueryDetails(db performancedatabase.DataSource, queryIdList []string, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList) ([]performancedatamodel.IndividualQueryMetrics, error) {
 	currentQueryMetrics, currentQueryMetricsErr := currentQueryMetrics(db, queryIdList, args.IndividualQueryThreshold)
 	if currentQueryMetricsErr != nil {
 		log.Error("Failed to collect current query metrics: %v", currentQueryMetricsErr)
@@ -115,7 +131,7 @@ func PopulateIndividualQueryDetails(db performancedatabase.DataSource, queryIdLi
 	queryList := append(append(currentQueryMetrics, recentQueryList...), extensiveQueryList...)
 	filteredQueryList := getUniqueQueryList(queryList)
 
-	setIndividualQueryMetrics(e, args, filteredQueryList)
+	setIndividualQueryMetrics(i, args, filteredQueryList)
 	return filteredQueryList, nil
 }
 
@@ -133,11 +149,14 @@ func getUniqueQueryList(queryList []performancedatamodel.IndividualQueryMetrics)
 	return uniqueQueryList
 }
 
-func setIndividualQueryMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []performancedatamodel.IndividualQueryMetrics) error {
+func setIndividualQueryMetrics(i *integration.Integration, args arguments.ArgumentList, metrics []performancedatamodel.IndividualQueryMetrics) error {
+	e, err := common_utils.CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
+	common_utils.FatalIfErr(err)
+	count := 0
 	for _, metricObject := range metrics {
 
 		// Create a new metric set for each row
-		ms := common_utils.CreateMetricSet(e, "MysqlIndividualQueries", args)
+		ms := common_utils.CreateMetricSet(e, "MysqlIndividualQueriesSample", args)
 
 		metricsMap := map[string]struct {
 			Value      interface{}
@@ -160,6 +179,19 @@ func setIndividualQueryMetrics(e *integration.Entity, args arguments.ArgumentLis
 				continue
 			}
 		}
+
+		count++
+		if count >= common_utils.MetricSetLimit {
+			common_utils.FatalIfErr(i.Publish())
+
+			e, err = common_utils.CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
+			common_utils.FatalIfErr(err)
+			count = 0
+		}
+	}
+
+	if count > 0 {
+		common_utils.FatalIfErr(i.Publish())
 	}
 	return nil
 }
