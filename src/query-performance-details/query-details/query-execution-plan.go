@@ -24,7 +24,7 @@ const (
 )
 
 // PopulateExecutionPlans populates execution plans for the given queries.
-func PopulateExecutionPlans(db performance_database.DataSource, queries []performance_data_model.IndividualQueryMetrics, e *integration.Entity, args arguments.ArgumentList) ([]performance_data_model.QueryPlanMetrics, error) {
+func PopulateExecutionPlans(db performance_database.DataSource, queries []performance_data_model.IndividualQueryMetrics, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList) ([]performance_data_model.QueryPlanMetrics, error) {
 	var events []performance_data_model.QueryPlanMetrics
 
 	for _, query := range queries {
@@ -36,7 +36,7 @@ func PopulateExecutionPlans(db performance_database.DataSource, queries []perfor
 		return make([]performance_data_model.QueryPlanMetrics, 0), nil
 	}
 
-	err := SetExecutionPlanMetrics(e, args, events)
+	err := SetExecutionPlanMetrics(i, args, events)
 	if err != nil {
 		log.Error("Error setting execution plan metrics: %v", err)
 		return nil, err
@@ -112,11 +112,27 @@ func extractMetricsFromJSONString(jsonString string, eventID uint64) ([]performa
 	return dbPerformanceEvents, nil
 }
 
-func SetExecutionPlanMetrics(e *integration.Entity, args arguments.ArgumentList, metrics []performance_data_model.QueryPlanMetrics) error {
+func SetExecutionPlanMetrics(i *integration.Integration, args arguments.ArgumentList, metrics []performance_data_model.QueryPlanMetrics) error {
+	e, err := common_utils.CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
+	common_utils.FatalIfErr(err)
+	count := 0
 	for _, metricObject := range metrics {
-		ms := common_utils.CreateMetricSet(e, "MysqlQueryExecution", args)
+		ms := common_utils.CreateMetricSet(e, "MysqlQueryExecutionSample", args)
 
 		publishQueryPerformanceMetrics(metricObject, ms)
+
+		count++
+		if count >= common_utils.MetricSetLimit {
+			common_utils.FatalIfErr(i.Publish())
+
+			e, err = common_utils.CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
+			common_utils.FatalIfErr(err)
+			count = 0
+		}
+	}
+
+	if count > 0 {
+		common_utils.FatalIfErr(i.Publish())
 	}
 	return nil
 }

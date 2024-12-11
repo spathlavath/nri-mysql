@@ -118,12 +118,11 @@ func main() {
 		)
 		populateMetrics(ms, rawMetrics)
 	}
+	fatalIfErr(i.Publish())
 	// New functionality
 	if args.EnableQueryPerformanceMonitoring {
-		query_performance_details.PopulateQueryPerformanceMetrics(args, e)
+		query_performance_details.PopulateQueryPerformanceMetrics(args, e, i)
 	}
-	
-	fatalIfErr(i.Publish())
 }
 
 func metricSet(e *integration.Entity, eventType, hostname string, port int, remoteMonitoring bool) *metric.Set {
