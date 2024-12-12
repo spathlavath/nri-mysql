@@ -5,7 +5,7 @@ const (
         SELECT
             DIGEST AS query_id,
             CASE
-				WHEN CHAR_LENGTH(DIGEST_TEXT) > 4000 THEN CONCAT(LEFT(DIGEST_TEXT, 3997), '...')
+				WHEN CHAR_LENGTH(DIGEST_TEXT) > 2000 THEN CONCAT(LEFT(DIGEST_TEXT, 1997), '...')
 				ELSE DIGEST_TEXT
 			END AS query_text,
             SCHEMA_NAME AS database_name,
@@ -48,7 +48,7 @@ const (
 		SELECT
 			DIGEST AS query_id,
 			CASE
-				WHEN CHAR_LENGTH(DIGEST_TEXT) > 4000 THEN CONCAT(LEFT(DIGEST_TEXT, 3997), '...')
+				WHEN CHAR_LENGTH(DIGEST_TEXT) > 2000 THEN CONCAT(LEFT(DIGEST_TEXT, 1997), '...')
 				ELSE DIGEST_TEXT
 			END AS query_text,
 			SQL_TEXT AS query_sample_text,
@@ -77,7 +77,7 @@ const (
 		SELECT
 			DIGEST AS query_id,
 			CASE
-				WHEN CHAR_LENGTH(DIGEST_TEXT) > 4000 THEN CONCAT(LEFT(DIGEST_TEXT, 3997), '...')
+				WHEN CHAR_LENGTH(DIGEST_TEXT) > 2000 THEN CONCAT(LEFT(DIGEST_TEXT, 1997), '...')
 				ELSE DIGEST_TEXT
 			END AS query_text,
 			SQL_TEXT AS query_sample_text,
@@ -106,7 +106,7 @@ const (
 		SELECT
 			DIGEST AS query_id,
 			CASE
-				WHEN CHAR_LENGTH(DIGEST_TEXT) > 4000 THEN CONCAT(LEFT(DIGEST_TEXT, 3997), '...')
+				WHEN CHAR_LENGTH(DIGEST_TEXT) > 2000 THEN CONCAT(LEFT(DIGEST_TEXT, 1997), '...')
 				ELSE DIGEST_TEXT
 			END AS query_text,
 			SQL_TEXT AS query_sample_text,
@@ -153,7 +153,7 @@ const (
 			SUM(ewsg.COUNT_STAR) AS wait_event_count,
 			ROUND((IFNULL(SUM(wait_data.TIMER_WAIT), 0) / 1000000000) / IFNULL(SUM(ewsg.COUNT_STAR), 1), 3) AS avg_wait_time_ms,
 			CASE
-				WHEN CHAR_LENGTH(schema_data.query_text) > 4000 THEN CONCAT(LEFT(schema_data.query_text, 3997), '...')
+				WHEN CHAR_LENGTH(schema_data.query_text) > 2000 THEN CONCAT(LEFT(schema_data.query_text, 1997), '...')
 				ELSE schema_data.query_text
 			END AS query_text,
 			DATE_FORMAT(UTC_TIMESTAMP(), '%Y-%m-%dT%H:%i:%sZ') AS collection_timestamp
