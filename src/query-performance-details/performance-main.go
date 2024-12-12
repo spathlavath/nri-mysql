@@ -12,7 +12,8 @@ import (
 
 // main
 func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration.Entity, i *integration.Integration) {
-	dsn := performance_database.GenerateDSN(args)
+	var database string
+	dsn := performance_database.GenerateDSN(args, database)
 	db, err := performance_database.OpenDB(dsn)
 	common_utils.FatalIfErr(err)
 	defer db.Close()
@@ -25,14 +26,14 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 	queryIdList := query_details.PopulateSlowQueryMetrics(i, e, db, args)
 
 	// Individual Queries
-	individualQueryDetails, individualQueryDetailsErr := query_details.PopulateIndividualQueryDetails(db, queryIdList, i, e, args)
+	groupQueriesByDatabase, individualQueryDetailsErr := query_details.PopulateIndividualQueryDetails(db, queryIdList, i, e, args)
 	if individualQueryDetailsErr != nil {
 		log.Error("Error populating individual query details: %v", individualQueryDetailsErr)
 		return
 	}
 
 	// Execution Plan details
-	_, executionPlanMetricsErr := query_details.PopulateExecutionPlans(db, individualQueryDetails, i, e, args)
+	_, executionPlanMetricsErr := query_details.PopulateExecutionPlans(db, groupQueriesByDatabase, i, e, args)
 	if executionPlanMetricsErr != nil {
 		log.Error("Error populating execution plan details: %v", executionPlanMetricsErr)
 		return

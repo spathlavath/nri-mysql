@@ -56,7 +56,8 @@ const (
 			THREAD_ID AS thread_id,
 			ROUND(TIMER_WAIT / 1000000000, 3) AS execution_time_ms,
 			ROWS_SENT AS rows_sent,
-			ROWS_EXAMINED AS rows_examined
+			ROWS_EXAMINED AS rows_examined,
+			CURRENT_SCHEMA AS database_name
 		FROM performance_schema.events_statements_current
 		WHERE DIGEST IN (%s)
 			AND CURRENT_SCHEMA NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
@@ -85,7 +86,8 @@ const (
 			THREAD_ID AS thread_id,
 			ROUND(TIMER_WAIT / 1000000000, 3) AS execution_time_ms,
 			ROWS_SENT AS rows_sent,
-			ROWS_EXAMINED AS rows_examined
+			ROWS_EXAMINED AS rows_examined,
+			CURRENT_SCHEMA AS database_name
 		FROM performance_schema.events_statements_history
 		WHERE DIGEST IN (%s)
 			AND CURRENT_SCHEMA NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
@@ -114,7 +116,8 @@ const (
 			THREAD_ID AS thread_id,
 			ROUND(TIMER_WAIT / 1000000000, 3) AS execution_time_ms,
 			ROWS_SENT AS rows_sent,
-			ROWS_EXAMINED AS rows_examined
+			ROWS_EXAMINED AS rows_examined,
+			CURRENT_SCHEMA AS database_name
 		FROM performance_schema.events_statements_history_long
 		WHERE DIGEST IN (%s)
 			AND CURRENT_SCHEMA NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')

@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/url"
 	"strconv"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
@@ -28,6 +29,12 @@ func OpenDB(dsn string) (DataSource, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error opening %s: %v", dsn, err)
 	}
+
+	// Set connection pool configurations
+	source.SetMaxOpenConns(25)                 // Set maximum number of open connections
+	source.SetMaxIdleConns(25)                 // Maintain up to 25 connections in the idle pool
+	source.SetConnMaxLifetime(5 * time.Minute) // Limit the lifetime of each connection
+
 	db := Database{
 		source: source,
 	}
@@ -55,7 +62,7 @@ func (db *Database) QueryxContext(ctx context.Context, query string, args ...int
 	return db.source.QueryxContext(ctx, query, args...)
 }
 
-func GenerateDSN(args arguments.ArgumentList) string {
+func GenerateDSN(args arguments.ArgumentList, database string) string {
 	query := url.Values{}
 	if args.OldPasswords {
 		query.Add("allowOldPasswords", "true")
@@ -76,11 +83,19 @@ func GenerateDSN(args arguments.ArgumentList) string {
 	}
 	if args.Socket != "" {
 		log.Info("Socket parameter is defined, ignoring host and port parameters")
-		return fmt.Sprintf("%s:%s@unix(%s)/%s?%s", args.Username, args.Password, args.Socket, args.Database, query.Encode())
+		return fmt.Sprintf("%s:%s@unix(%s)/%s?%s", args.Username, args.Password, args.Socket, determineDatabase(args, database), query.Encode())
 	}
 
 	// Convert hostname and port to DSN address format
 	mysqlURL := net.JoinHostPort(args.Hostname, strconv.Itoa(args.Port))
 
-	return fmt.Sprintf("%s:%s@tcp(%s)/%s?%s", args.Username, args.Password, mysqlURL, args.Database, query.Encode())
+	return fmt.Sprintf("%s:%s@tcp(%s)/%s?%s", args.Username, args.Password, mysqlURL, determineDatabase(args, database), query.Encode())
+}
+
+// determineDatabase determines which database name to use for the DSN.
+func determineDatabase(args arguments.ArgumentList, database string) string {
+	if database != "" {
+		return database
+	}
+	return args.Database
 }

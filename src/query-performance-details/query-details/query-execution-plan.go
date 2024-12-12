@@ -24,12 +24,20 @@ const (
 )
 
 // PopulateExecutionPlans populates execution plans for the given queries.
-func PopulateExecutionPlans(db performance_database.DataSource, queries []performance_data_model.IndividualQueryMetrics, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList) ([]performance_data_model.QueryPlanMetrics, error) {
+func PopulateExecutionPlans(db performance_database.DataSource, queryGroups []performance_data_model.QueryGroup, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList) ([]performance_data_model.QueryPlanMetrics, error) {
 	var events []performance_data_model.QueryPlanMetrics
 
-	for _, query := range queries {
-		tableIngestionDataList := processExecutionPlanMetrics(db, query)
-		events = append(events, tableIngestionDataList...)
+	for _, group := range queryGroups {
+		dsn := performance_database.GenerateDSN(args, group.Database)
+		// Open the DB connection
+		db, err := performance_database.OpenDB(dsn)
+		common_utils.FatalIfErr(err)
+		defer db.Close()
+
+		for _, query := range group.Queries {
+			tableIngestionDataList := processExecutionPlanMetrics(db, query)
+			events = append(events, tableIngestionDataList...)
+		}
 	}
 
 	if len(events) == 0 {

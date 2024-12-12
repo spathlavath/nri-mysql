@@ -109,7 +109,7 @@ func setSlowQueryMetrics(i *integration.Integration, metrics []performancedatamo
 	return nil
 }
 
-func PopulateIndividualQueryDetails(db performancedatabase.DataSource, queryIdList []string, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList) ([]performancedatamodel.IndividualQueryMetrics, error) {
+func PopulateIndividualQueryDetails(db performancedatabase.DataSource, queryIdList []string, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList) ([]performancedatamodel.QueryGroup, error) {
 	currentQueryMetrics, currentQueryMetricsErr := currentQueryMetrics(db, queryIdList, args.IndividualQueryThreshold)
 	if currentQueryMetricsErr != nil {
 		log.Error("Failed to collect current query metrics: %v", currentQueryMetricsErr)
@@ -130,9 +130,9 @@ func PopulateIndividualQueryDetails(db performancedatabase.DataSource, queryIdLi
 
 	queryList := append(append(currentQueryMetrics, recentQueryList...), extensiveQueryList...)
 	filteredQueryList := getUniqueQueryList(queryList)
-
 	setIndividualQueryMetrics(i, args, filteredQueryList)
-	return filteredQueryList, nil
+	groupQueriesByDatabase := groupQueriesByDatabase(filteredQueryList)
+	return groupQueriesByDatabase, nil
 }
 
 func getUniqueQueryList(queryList []performancedatamodel.IndividualQueryMetrics) []performancedatamodel.IndividualQueryMetrics {
@@ -147,6 +147,24 @@ func getUniqueQueryList(queryList []performancedatamodel.IndividualQueryMetrics)
 	}
 
 	return uniqueQueryList
+}
+
+func groupQueriesByDatabase(filteredList []performancedatamodel.IndividualQueryMetrics) []performancedatamodel.QueryGroup {
+	groupMap := make(map[string][]performancedatamodel.IndividualQueryMetrics)
+
+	for _, query := range filteredList {
+		groupMap[query.DatabaseName] = append(groupMap[query.DatabaseName], query)
+	}
+
+	var groupedQueries []performancedatamodel.QueryGroup
+	for dbName, queries := range groupMap {
+		groupedQueries = append(groupedQueries, performancedatamodel.QueryGroup{
+			Database: dbName,
+			Queries:  queries,
+		})
+	}
+
+	return groupedQueries
 }
 
 func setIndividualQueryMetrics(i *integration.Integration, args arguments.ArgumentList, metrics []performancedatamodel.IndividualQueryMetrics) error {
@@ -170,6 +188,7 @@ func setIndividualQueryMetrics(i *integration.Integration, args arguments.Argume
 			"execution_time_ms": {metricObject.ExecutionTimeMs, metric.GAUGE},
 			"rows_sent":         {metricObject.RowsSent, metric.GAUGE},
 			"rows_examined":     {metricObject.RowsExamined, metric.GAUGE},
+			"database_name":     {metricObject.DatabaseName, metric.ATTRIBUTE},
 		}
 
 		for name, metric := range metricsMap {

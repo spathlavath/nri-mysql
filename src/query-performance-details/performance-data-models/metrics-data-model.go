@@ -29,6 +29,12 @@ type IndividualQueryMetrics struct {
 	ExecutionTimeMs     float64 `json:"execution_time_ms" db:"execution_time_ms"`
 	RowsSent            int64   `json:"rows_sent" db:"rows_sent"`
 	RowsExamined        int64   `json:"rows_examined" db:"rows_examined"`
+	DatabaseName        string  `json:"database_name" db:"database_name"`
+}
+
+type QueryGroup struct {
+	Database string
+	Queries  []IndividualQueryMetrics
 }
 
 type QueryPlanMetrics struct {
