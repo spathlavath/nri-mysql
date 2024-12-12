@@ -13,7 +13,7 @@ import (
 	query_performance_details "github.com/newrelic/nri-mysql/src/query-performance-details/queries"
 )
 
-func PopulateBlockingSessionMetrics(db performance_database.DataSource, e *integration.Entity, args arguments.ArgumentList) ([]performance_data_model.BlockingSessionMetrics, error) {
+func PopulateBlockingSessionMetrics(db performance_database.DataSource, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList) ([]performance_data_model.BlockingSessionMetrics, error) {
 	query := query_performance_details.BlockingSessionsQuery
 	rows, err := db.QueryxContext(context.Background(), query)
 	if err != nil {
@@ -36,14 +36,17 @@ func PopulateBlockingSessionMetrics(db performance_database.DataSource, e *integ
 		return nil, err
 	}
 
-	setBlockingQueryMetrics(metrics, e, args)
+	setBlockingQueryMetrics(metrics, i, args)
 	return metrics, nil
 }
 
-func setBlockingQueryMetrics(metrics []performance_data_model.BlockingSessionMetrics, e *integration.Entity, args arguments.ArgumentList) error {
+func setBlockingQueryMetrics(metrics []performance_data_model.BlockingSessionMetrics, i *integration.Integration, args arguments.ArgumentList) error {
+	e, err := common_utils.CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
+	common_utils.FatalIfErr(err)
+	count := 0
 	for _, metricData := range metrics {
 		// Create a new metric set for each row
-		ms := common_utils.CreateMetricSet(e, "MysqlBlocking", args)
+		ms := common_utils.CreateMetricSet(e, "MysqlBlockingSessionSample", args)
 		metricsMap := map[string]struct {
 			Value      interface{}
 			MetricType metric.SourceType
@@ -74,7 +77,19 @@ func setBlockingQueryMetrics(metrics []performance_data_model.BlockingSessionMet
 				continue
 			}
 		}
+
+		count++
+		if count >= common_utils.MetricSetLimit {
+			common_utils.FatalIfErr(i.Publish())
+
+			e, err = common_utils.CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
+			common_utils.FatalIfErr(err)
+			count = 0
+		}
 	}
 
+	if count > 0 {
+		common_utils.FatalIfErr(i.Publish())
+	}
 	return nil
 }

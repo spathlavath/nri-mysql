@@ -11,7 +11,7 @@ import (
 )
 
 // main
-func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration.Entity) {
+func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration.Entity, i *integration.Integration) {
 	dsn := performance_database.GenerateDSN(args)
 	db, err := performance_database.OpenDB(dsn)
 	common_utils.FatalIfErr(err)
@@ -22,31 +22,31 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 		return
 	}
 	// Slow Queries
-	queryIdList := query_details.PopulateSlowQueryMetrics(e, db, args)
+	queryIdList := query_details.PopulateSlowQueryMetrics(i, e, db, args)
 
 	// Individual Queries
-	individualQueryDetails, individualQueryDetailsErr := query_details.PopulateIndividualQueryDetails(db, queryIdList, e, args)
+	individualQueryDetails, individualQueryDetailsErr := query_details.PopulateIndividualQueryDetails(db, queryIdList, i, e, args)
 	if individualQueryDetailsErr != nil {
 		log.Error("Error populating individual query details: %v", individualQueryDetailsErr)
 		return
 	}
 
 	// Execution Plan details
-	_, executionPlanMetricsErr := query_details.PopulateExecutionPlans(db, individualQueryDetails, e, args)
+	_, executionPlanMetricsErr := query_details.PopulateExecutionPlans(db, individualQueryDetails, i, e, args)
 	if executionPlanMetricsErr != nil {
 		log.Error("Error populating execution plan details: %v", executionPlanMetricsErr)
 		return
 	}
 
 	// Wait Events
-	_, waitEventError := query_details.PopulateWaitEventMetrics(db, e, args)
+	_, waitEventError := query_details.PopulateWaitEventMetrics(db, i, e, args)
 	if waitEventError != nil {
 		log.Error("Error populating wait event metrics: %v", waitEventError)
 		return
 	}
 
 	// Blocking Sessions
-	_, populateBlockingSessionMetricsError := query_details.PopulateBlockingSessionMetrics(db, e, args)
+	_, populateBlockingSessionMetricsError := query_details.PopulateBlockingSessionMetrics(db, i, e, args)
 	if populateBlockingSessionMetricsError != nil {
 		log.Error("Error populating blocking session metrics: %v", populateBlockingSessionMetricsError)
 		return

@@ -14,6 +14,25 @@ import (
 	arguments "github.com/newrelic/nri-mysql/src/args"
 )
 
+const (
+	IntegrationName = "com.newrelic.mysql"
+	NodeEntityType  = "node"
+	MetricSetLimit  = 800
+)
+
+func CreateNodeEntity(
+	i *integration.Integration,
+	remoteMonitoring bool,
+	hostname string,
+	port int,
+) (*integration.Entity, error) {
+
+	if remoteMonitoring {
+		return i.Entity(fmt.Sprint(hostname, ":", port), NodeEntityType)
+	}
+	return i.LocalEntity(), nil
+}
+
 func GetStringValue(ns sql.NullString) string {
 	if ns.Valid {
 		return ns.String
