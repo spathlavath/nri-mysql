@@ -46,7 +46,7 @@ func TestPopulateWaitEventMetrics(t *testing.T) {
 		InstanceID:          "1",
 		WaitEventName:       "wait_event",
 		WaitEventCount:      10,
-		AvgWaitTimeMs:       1.23,
+		AvgWaitTimeMs:       "1.23",
 		TotalWaitTimeMs:     12.3,
 	}
 
@@ -70,7 +70,7 @@ func TestSetWaitEventMetrics_ValidMetrics(t *testing.T) {
 			InstanceID:          "1",
 			WaitEventName:       "wait_event",
 			WaitEventCount:      10,
-			AvgWaitTimeMs:       1.23,
+			AvgWaitTimeMs:       "1.23",
 			TotalWaitTimeMs:     12.3,
 		},
 	}
@@ -116,7 +116,7 @@ func TestSetWaitEventMetrics_NilEntity(t *testing.T) {
 			InstanceID:          "1",
 			WaitEventName:       "wait_event",
 			WaitEventCount:      10,
-			AvgWaitTimeMs:       1.23,
+			AvgWaitTimeMs:       "1.23",
 			TotalWaitTimeMs:     12.3,
 		},
 	}
