@@ -5,7 +5,7 @@ const (
         SELECT
             DIGEST AS query_id,
             CASE
-				WHEN CHAR_LENGTH(DIGEST_TEXT) > 4000 THEN CONCAT(LEFT(DIGEST_TEXT, 3997), '...')
+				WHEN CHAR_LENGTH(DIGEST_TEXT) > 2000 THEN CONCAT(LEFT(DIGEST_TEXT, 1997), '...')
 				ELSE DIGEST_TEXT
 			END AS query_text,
             SCHEMA_NAME AS database_name,
@@ -41,13 +41,14 @@ const (
 			AND QUERY_SAMPLE_TEXT NOT LIKE '%DIGEST_TEXT%'
 			AND QUERY_SAMPLE_TEXT NOT LIKE 'EXPLAIN %'
 			AND QUERY_SAMPLE_TEXT NOT LIKE 'START %'
+			AND QUERY_SAMPLE_TEXT NOT LIKE 'GRANT %'
         ORDER BY avg_elapsed_time_ms DESC;
     `
 	CurrentRunningQueriesSearch = `
 		SELECT
 			DIGEST AS query_id,
 			CASE
-				WHEN CHAR_LENGTH(DIGEST_TEXT) > 4000 THEN CONCAT(LEFT(DIGEST_TEXT, 3997), '...')
+				WHEN CHAR_LENGTH(DIGEST_TEXT) > 2000 THEN CONCAT(LEFT(DIGEST_TEXT, 1997), '...')
 				ELSE DIGEST_TEXT
 			END AS query_text,
 			SQL_TEXT AS query_sample_text,
@@ -68,6 +69,7 @@ const (
 			AND SQL_TEXT NOT LIKE '%%DIGEST_TEXT%%'
 			AND SQL_TEXT NOT LIKE 'START %%'
             AND SQL_TEXT NOT LIKE 'EXPLAIN %%'
+			AND SQL_TEXT NOT LIKE 'GRANT %%'
 			AND TIMER_WAIT / 1000000000 > ?
 		ORDER BY TIMER_WAIT DESC;
 	`
@@ -75,7 +77,7 @@ const (
 		SELECT
 			DIGEST AS query_id,
 			CASE
-				WHEN CHAR_LENGTH(DIGEST_TEXT) > 4000 THEN CONCAT(LEFT(DIGEST_TEXT, 3997), '...')
+				WHEN CHAR_LENGTH(DIGEST_TEXT) > 2000 THEN CONCAT(LEFT(DIGEST_TEXT, 1997), '...')
 				ELSE DIGEST_TEXT
 			END AS query_text,
 			SQL_TEXT AS query_sample_text,
@@ -96,6 +98,7 @@ const (
 			AND SQL_TEXT NOT LIKE '%%DIGEST_TEXT%%'
 			AND SQL_TEXT NOT LIKE 'START %%'
             AND SQL_TEXT NOT LIKE 'EXPLAIN %%'
+			AND SQL_TEXT NOT LIKE 'GRANT %%'
 			AND TIMER_WAIT / 1000000000 > ?
 		ORDER BY TIMER_WAIT DESC;
 	`
@@ -103,7 +106,7 @@ const (
 		SELECT
 			DIGEST AS query_id,
 			CASE
-				WHEN CHAR_LENGTH(DIGEST_TEXT) > 4000 THEN CONCAT(LEFT(DIGEST_TEXT, 3997), '...')
+				WHEN CHAR_LENGTH(DIGEST_TEXT) > 2000 THEN CONCAT(LEFT(DIGEST_TEXT, 1997), '...')
 				ELSE DIGEST_TEXT
 			END AS query_text,
 			SQL_TEXT AS query_sample_text,
@@ -124,6 +127,7 @@ const (
 			AND SQL_TEXT NOT LIKE '%%DIGEST_TEXT%%'
 			AND SQL_TEXT NOT LIKE 'START %%'
             AND SQL_TEXT NOT LIKE 'EXPLAIN %%'
+			AND SQL_TEXT NOT LIKE 'GRANT %%'
 			AND TIMER_WAIT / 1000000000 > ?
 		ORDER BY TIMER_WAIT DESC;
 	`
@@ -149,7 +153,7 @@ const (
 			SUM(ewsg.COUNT_STAR) AS wait_event_count,
 			ROUND((IFNULL(SUM(wait_data.TIMER_WAIT), 0) / 1000000000) / IFNULL(SUM(ewsg.COUNT_STAR), 1), 3) AS avg_wait_time_ms,
 			CASE
-				WHEN CHAR_LENGTH(schema_data.query_text) > 4000 THEN CONCAT(LEFT(schema_data.query_text, 3997), '...')
+				WHEN CHAR_LENGTH(schema_data.query_text) > 2000 THEN CONCAT(LEFT(schema_data.query_text, 1997), '...')
 				ELSE schema_data.query_text
 			END AS query_text,
 			DATE_FORMAT(UTC_TIMESTAMP(), '%Y-%m-%dT%H:%i:%sZ') AS collection_timestamp
@@ -185,6 +189,7 @@ const (
 				AND SQL_TEXT NOT LIKE '%DIGEST_TEXT%'
 				AND SQL_TEXT NOT LIKE 'START %'
 				AND SQL_TEXT NOT LIKE 'EXPLAIN %'
+				AND SQL_TEXT NOT LIKE 'GRANT %'
 			UNION ALL
 			SELECT 
 				THREAD_ID,
@@ -202,6 +207,7 @@ const (
 				AND SQL_TEXT NOT LIKE '%DIGEST_TEXT%'
 				AND SQL_TEXT NOT LIKE 'START %'
 				AND SQL_TEXT NOT LIKE 'EXPLAIN %'
+				AND SQL_TEXT NOT LIKE 'GRANT %'
 		) AS schema_data
 		ON wait_data.THREAD_ID = schema_data.THREAD_ID
 		LEFT JOIN performance_schema.events_waits_summary_global_by_event_name ewsg
