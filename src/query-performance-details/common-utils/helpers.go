@@ -86,6 +86,7 @@ func FatalIfErr(err error) {
 
 // SetMetric sets a metric in the given metric set.
 func SetMetric(metricSet *metric.Set, name string, value interface{}, sourceType string) {
+	fmt.Printf("Setting metric: %s, value: %v\n", name, value)
 	switch sourceType {
 	case "gauge":
 		err := metricSet.SetMetric(name, value, metric.GAUGE)
