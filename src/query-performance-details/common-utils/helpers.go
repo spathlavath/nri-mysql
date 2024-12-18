@@ -3,9 +3,8 @@ package common_utils
 import (
 	"database/sql"
 	"fmt"
-	"math"
+	"reflect"
 	"strconv"
-	"strings"
 
 	"github.com/newrelic/infra-integrations-sdk/v3/data/attribute"
 	"github.com/newrelic/infra-integrations-sdk/v3/data/metric"
@@ -65,156 +64,9 @@ func MetricSet(e *integration.Entity, eventType, hostname string, port int, remo
 	)
 }
 
-func GetString(m map[string]interface{}, key string) string {
-	if val, ok := m[key]; ok {
-		if strVal, ok := val.(string); ok {
-			return strVal
-		}
-		// Log unexpected types
-		log.Error("Unexpected type for %q: %T", key, val)
-	}
-	return "" // Default to empty string if nil or type doesn't match
-}
-
-func GetFloat64(m map[string]interface{}, key string) float64 {
-	if val, ok := m[key]; ok {
-		switch v := val.(type) {
-		case float64:
-			return v
-		case string:
-			parsedVal, err := parseSpecialFloat(v)
-			if err == nil {
-				return parsedVal
-			}
-			log.Error("Failed to parse string to float64 for key %q: %v", key, err)
-		default:
-			log.Error("Unhandled type for key %q: %T", key, val)
-		}
-	}
-	return 0.0 // Default to 0.0 if nil or type doesn't match
-}
-
-func GetInt64(m map[string]interface{}, key string) int64 {
-	if val, ok := m[key]; ok {
-		switch v := val.(type) {
-		case float64:
-			return int64(v)
-		case string:
-			parsedVal, err := strconv.ParseInt(v, 10, 64)
-			if err == nil {
-				return parsedVal
-			}
-			log.Error("Failed to parse string to int64 for key %q: %v", key, err)
-		default:
-			log.Error("Unhandled type for key %q: %T", key, val)
-		}
-	}
-	return 0 // Default to 0 if nil or type doesn't match
-}
-
-func parseSpecialFloat(value string) (float64, error) {
-	multipliers := map[string]float64{
-		"K": 1e3,
-		"M": 1e6,
-		"G": 1e9,
-		"T": 1e12,
-	}
-
-	for suffix, multiplier := range multipliers {
-		if strings.HasSuffix(value, suffix) {
-			baseValue := strings.TrimSuffix(value, suffix)
-			parsedVal, err := strconv.ParseFloat(baseValue, 64)
-			if err != nil {
-				return 0, err
-			}
-			return parsedVal * multiplier, nil
-		}
-	}
-
-	return strconv.ParseFloat(value, 64)
-}
-
-func ConvertToStringArray(arr []interface{}) string {
-	parts := make([]string, len(arr))
-	for i, v := range arr {
-		if str, ok := v.(string); ok {
-			parts[i] = str
-		} else {
-			log.Error("Unexpected type in array at index %d: %T", i, v)
-		}
-	}
-	return strings.Join(parts, ", ")
-}
-
-func GetStringValueSafe(value interface{}) string {
-	if value == nil {
-		return "hei"
-	}
-	switch v := value.(type) {
-	case string:
-		return v
-	case sql.NullString:
-		if v.Valid {
-			return v.String
-		}
-		return "hell"
-	default:
-		log.Error("Unexpected type for value: %T", value)
-		return "wwww"
-	}
-}
-
-func GetFloat64ValueSafe(value interface{}) float64 {
-	if value == nil {
-		return 0.0
-	}
-	switch v := value.(type) {
-	case float64:
-		return v
-	case string:
-		parsedVal, err := parseSpecialFloat(v)
-		if err == nil {
-			return parsedVal
-		}
-		log.Error("Failed to parse string to float64: %v", err)
-	case sql.NullString:
-		if v.Valid {
-			parsedVal, err := parseSpecialFloat(v.String)
-			if err == nil {
-				return parsedVal
-			}
-			log.Error("Failed to parse sql.NullString to float64: %v", err)
-		}
-	default:
-		log.Error("Unexpected type for value: %T", value)
-	}
-	return 0.0
-}
-
-func GetInt64ValueSafe(val interface{}) int64 {
-	switch v := val.(type) {
-	case int64:
-		return v
-	case int:
-		return int64(v)
-	case uint64:
-		if v <= uint64(math.MaxInt64) {
-			return int64(v)
-		}
-		fmt.Printf("Value %v overflows int64, returning 0", v)
-		return 0
-	case float64:
-		return int64(v)
-	case float32:
-		return int64(v)
-	case string:
-		parsedVal, err := strconv.ParseInt(v, 10, 64)
-		if err == nil {
-			return parsedVal
-		}
-		fmt.Printf("Failed to parse string to int64: %v", err)
-	default:
-		fmt.Printf("Unhandled type in GetInt64ValueSafe: %T", val)
+func GetInt64Value(ni sql.NullInt64) int64 {
+	if ni.Valid {
+		return ni.Int64
 	}
 	return 0
 }
@@ -226,15 +78,91 @@ func PrintMetricSet(ms *metric.Set) {
 	}
 }
 
-func GetInt64Value(ni sql.NullInt64) int64 {
-	if ni.Valid {
-		return ni.Int64
-	}
-	return 0
-}
-
 func FatalIfErr(err error) {
 	if err != nil {
 		log.Fatal(err)
+	}
+}
+
+// SetMetric sets a metric in the given metric set.
+func SetMetric(metricSet *metric.Set, name string, value interface{}, sourceType string) {
+	switch sourceType {
+	case "gauge":
+		err := metricSet.SetMetric(name, value, metric.GAUGE)
+		if err != nil {
+			log.Warn("Error setting gauge metric: %v", err)
+		}
+	case "attribute":
+		err := metricSet.SetMetric(name, value, metric.ATTRIBUTE)
+		if err != nil {
+			log.Warn("Error setting attribute metric: %v", err)
+		}
+	default:
+		err := metricSet.SetMetric(name, value, metric.GAUGE)
+		if err != nil {
+			log.Warn("Error setting default gauge metric: %v", err)
+		}
+	}
+}
+
+// IngestMetric ingests a list of metrics into the integration.
+func IngestMetric(metricList []interface{}, eventName string, i *integration.Integration, args arguments.ArgumentList) {
+	metricCount := 0
+	lenOfMetricList := len(metricList)
+	e, err := CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
+	if err != nil {
+		log.Error("Error creating entity: %v", err)
+		return
+	}
+
+	for _, model := range metricList {
+		if model == nil {
+			continue
+		}
+		metricCount++
+		metricSet := CreateMetricSet(e, eventName, args)
+
+		modelValue := reflect.ValueOf(model)
+		if modelValue.Kind() == reflect.Ptr {
+			modelValue = modelValue.Elem()
+		}
+		if !modelValue.IsValid() || modelValue.Kind() != reflect.Struct {
+			continue
+		}
+
+		modelType := reflect.TypeOf(model)
+
+		for i := 0; i < modelValue.NumField(); i++ {
+			field := modelValue.Field(i)
+			fieldType := modelType.Field(i)
+			metricName := fieldType.Tag.Get("metric_name")
+			sourceType := fieldType.Tag.Get("source_type")
+
+			if field.Kind() == reflect.Ptr && !field.IsNil() {
+				SetMetric(metricSet, metricName, field.Elem().Interface(), sourceType)
+			} else if field.Kind() != reflect.Ptr {
+				SetMetric(metricSet, metricName, field.Interface(), sourceType)
+			}
+		}
+
+		if metricCount == MetricSetLimit || metricCount == lenOfMetricList {
+			metricCount = 0
+			err := i.Publish()
+			if err != nil {
+				log.Error("Error publishing metrics: %v", err)
+				return
+			}
+			e, err = CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
+			if err != nil {
+				log.Error("Error creating entity: %v", err)
+				return
+			}
+		}
+	}
+
+	err = i.Publish()
+	if err != nil {
+		log.Error("Error publishing metrics: %v", err)
+		return
 	}
 }

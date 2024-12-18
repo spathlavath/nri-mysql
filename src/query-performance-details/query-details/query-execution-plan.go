@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/bitly/go-simplejson"
-	"github.com/newrelic/infra-integrations-sdk/v3/data/metric"
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	arguments "github.com/newrelic/nri-mysql/src/args"
@@ -46,7 +45,7 @@ func PopulateExecutionPlans(db performance_database.DataSource, queryGroups []pe
 
 	err := SetExecutionPlanMetrics(i, args, events)
 	if err != nil {
-		log.Error("Error setting execution plan metrics: %v", err)
+		log.Error("Error publishing execution plan metrics: %v", err)
 		return nil, err
 	}
 
@@ -127,54 +126,14 @@ func extractMetricsFromJSONString(jsonString string, eventID uint64) ([]performa
 
 // SetExecutionPlanMetrics sets the execution plan metrics.
 func SetExecutionPlanMetrics(i *integration.Integration, args arguments.ArgumentList, metrics []performance_data_model.QueryPlanMetrics) error {
-	e, err := common_utils.CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
-	common_utils.FatalIfErr(err)
-	count := 0
-	for _, metricObject := range metrics {
-		ms := common_utils.CreateMetricSet(e, "MysqlQueryExecutionSample", args)
-
-		// Publish query performance metrics
-		publishQueryPerformanceMetrics(metricObject, ms)
-
-		count++
-		if count >= common_utils.MetricSetLimit {
-			common_utils.FatalIfErr(i.Publish())
-
-			e, err = common_utils.CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
-			common_utils.FatalIfErr(err)
-			count = 0
-		}
+	var metricList []interface{}
+	for _, metricData := range metrics {
+		metricList = append(metricList, metricData)
 	}
 
-	if count > 0 {
-		common_utils.FatalIfErr(i.Publish())
-	}
+	common_utils.IngestMetric(metricList, "MysqlQueryExecutionSample", i, args)
+
 	return nil
-}
-
-// publishQueryPerformanceMetrics publishes the query performance metrics.
-func publishQueryPerformanceMetrics(metricObject performance_data_model.QueryPlanMetrics, ms *metric.Set) {
-	metricsMap := map[string]struct {
-		Value      interface{}
-		MetricType metric.SourceType
-	}{
-		"event_id":      {metricObject.EventID, metric.GAUGE},
-		"table_name":    {metricObject.TableName, metric.ATTRIBUTE},
-		"query_cost":    {metricObject.QueryCost, metric.GAUGE},
-		"access_type":   {metricObject.AccessType, metric.ATTRIBUTE},
-		"rows_examined": {metricObject.RowsExaminedPerScan, metric.GAUGE},
-		"rows_produced": {metricObject.RowsProducedPerJoin, metric.GAUGE},
-		"filtered":      {metricObject.Filtered, metric.GAUGE},
-		"read_cost":     {metricObject.ReadCost, metric.GAUGE},
-		"eval_cost":     {metricObject.EvalCost, metric.GAUGE},
-	}
-
-	for metricName, metricData := range metricsMap {
-		err := ms.SetMetric(metricName, metricData.Value, metricData.MetricType)
-		if err != nil {
-			log.Error("Error setting metric %s: %v", metricName, err)
-		}
-	}
 }
 
 // extractMetrics recursively extracts metrics from a simplejson.Json object.

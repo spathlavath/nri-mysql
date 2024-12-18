@@ -3,7 +3,6 @@ package query_details
 import (
 	"context"
 
-	"github.com/newrelic/infra-integrations-sdk/v3/data/metric"
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	arguments "github.com/newrelic/nri-mysql/src/args"
@@ -44,59 +43,12 @@ func PopulateBlockingSessionMetrics(db performance_database.DataSource, i *integ
 
 // setBlockingQueryMetrics sets the blocking session metrics into the integration entity.
 func setBlockingQueryMetrics(metrics []performance_data_model.BlockingSessionMetrics, i *integration.Integration, args arguments.ArgumentList) error {
-	e, err := common_utils.CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
-	common_utils.FatalIfErr(err)
-	count := 0
+	var metricList []interface{}
 	for _, metricData := range metrics {
-		// Create a new metric set for each row
-		ms := common_utils.CreateMetricSet(e, "MysqlBlockingSessionSample", args)
-		metricsMap := map[string]struct {
-			Value      interface{}
-			MetricType metric.SourceType
-		}{
-			"blocked_txn_id":     {common_utils.GetStringValue(metricData.BlockedTxnID), metric.ATTRIBUTE},
-			"blocked_pid":        {common_utils.GetStringValue(metricData.BlockedPID), metric.ATTRIBUTE},
-			"blocked_thread_id":  {common_utils.GetInt64Value(metricData.BlockedThreadID), metric.GAUGE},
-			"blocked_query_id":   {common_utils.GetStringValue(metricData.BlockedQueryID), metric.ATTRIBUTE},
-			"blocked_query":      {common_utils.GetStringValue(metricData.BlockedQuery), metric.ATTRIBUTE},
-			"blocked_status":     {common_utils.GetStringValue(metricData.BlockedQuery), metric.ATTRIBUTE},
-			"blocked_user":       {common_utils.GetStringValue(metricData.BlockedUser), metric.ATTRIBUTE},
-			"blocked_host":       {common_utils.GetStringValue(metricData.BlockedHost), metric.ATTRIBUTE},
-			"database_name":      {common_utils.GetStringValue(metricData.BlockedDB), metric.ATTRIBUTE},
-			"blocking_txn_id":    {common_utils.GetStringValue(metricData.BlockingTxnID), metric.ATTRIBUTE},
-			"blocking_pid":       {common_utils.GetStringValue(metricData.BlockingPID), metric.ATTRIBUTE},
-			"blocking_thread_id": {common_utils.GetInt64Value(metricData.BlockingThreadID), metric.GAUGE},
-			"blocking_user":      {common_utils.GetStringValue(metricData.BlockingUser), metric.ATTRIBUTE},
-			"blocking_host":      {common_utils.GetStringValue(metricData.BlockingHost), metric.ATTRIBUTE},
-			"blocking_query_id":  {common_utils.GetStringValue(metricData.BlockingQueryID), metric.ATTRIBUTE},
-			"blocking_query":     {common_utils.GetStringValue(metricData.BlockingQuery), metric.ATTRIBUTE},
-			"blocking_status":    {common_utils.GetStringValue(metricData.BlockingQuery), metric.ATTRIBUTE},
-		}
-
-		// Set each metric in the metric set
-		for metricName, data := range metricsMap {
-			err := ms.SetMetric(metricName, data.Value, data.MetricType)
-			if err != nil {
-				log.Warn("Error setting value:  %s", err)
-				continue
-			}
-		}
-
-		count++
-		// Publish the metrics if the count reaches the limit
-		if count >= common_utils.MetricSetLimit {
-			common_utils.FatalIfErr(i.Publish())
-
-			// Create a new node entity for the next batch of metrics
-			e, err = common_utils.CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
-			common_utils.FatalIfErr(err)
-			count = 0
-		}
+		metricList = append(metricList, metricData)
 	}
 
-	// Publish any remaining metrics
-	if count > 0 {
-		common_utils.FatalIfErr(i.Publish())
-	}
+	common_utils.IngestMetric(metricList, "MysqlBlockingSessionSample", i, args)
+
 	return nil
 }

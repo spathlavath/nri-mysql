@@ -3,47 +3,38 @@ package queries
 const (
 	SlowQueries = `
         SELECT
-            DIGEST AS query_id,
-            CASE
+			DIGEST AS query_id,
+			CASE
 				WHEN CHAR_LENGTH(DIGEST_TEXT) > 4000 THEN CONCAT(LEFT(DIGEST_TEXT, 3997), '...')
 				ELSE DIGEST_TEXT
 			END AS query_text,
-            SCHEMA_NAME AS database_name,
-            'N/A' AS schema_name,
-            COUNT_STAR AS execution_count,
-            ROUND((SUM_CPU_TIME / COUNT_STAR) / 1000000000, 3) AS avg_cpu_time_ms,
+			SCHEMA_NAME AS database_name,
+			'N/A' AS schema_name,
+			COUNT_STAR AS execution_count,
+			ROUND((SUM_CPU_TIME / COUNT_STAR) / 1000000000, 3) AS avg_cpu_time_ms,
 			ROUND((SUM_TIMER_WAIT / COUNT_STAR) / 1000000000, 3) AS avg_elapsed_time_ms,
-            SUM_ROWS_EXAMINED / COUNT_STAR AS avg_disk_reads,
-            SUM_ROWS_AFFECTED / COUNT_STAR AS avg_disk_writes,
-            CASE
-                WHEN SUM_NO_INDEX_USED > 0 THEN 'Yes'
-                ELSE 'No'
-            END AS has_full_table_scan,
-            CASE
-                WHEN DIGEST_TEXT LIKE 'SELECT%' THEN 'SELECT'
-                WHEN DIGEST_TEXT LIKE 'INSERT%' THEN 'INSERT'
-                WHEN DIGEST_TEXT LIKE 'UPDATE%' THEN 'UPDATE'
-                WHEN DIGEST_TEXT LIKE 'DELETE%' THEN 'DELETE'
-                ELSE 'OTHER'
-            END AS statement_type,
+			SUM_ROWS_EXAMINED / COUNT_STAR AS avg_disk_reads,
+			SUM_ROWS_AFFECTED / COUNT_STAR AS avg_disk_writes,
+			CASE
+				WHEN SUM_NO_INDEX_USED > 0 THEN 'Yes'
+				ELSE 'No'
+			END AS has_full_table_scan,
+			CASE
+				WHEN DIGEST_TEXT LIKE 'SELECT%' THEN 'SELECT'
+				WHEN DIGEST_TEXT LIKE 'INSERT%' THEN 'INSERT'
+				WHEN DIGEST_TEXT LIKE 'UPDATE%' THEN 'UPDATE'
+				WHEN DIGEST_TEXT LIKE 'DELETE%' THEN 'DELETE'
+				ELSE 'OTHER'
+			END AS statement_type,
 			DATE_FORMAT(LAST_SEEN, '%Y-%m-%dT%H:%i:%sZ') AS last_execution_timestamp,
-            DATE_FORMAT(UTC_TIMESTAMP(), '%Y-%m-%dT%H:%i:%sZ') AS collection_timestamp
-        FROM performance_schema.events_statements_summary_by_digest
-        WHERE LAST_SEEN >= UTC_TIMESTAMP() - INTERVAL ? SECOND
+			DATE_FORMAT(UTC_TIMESTAMP(), '%Y-%m-%dT%H:%i:%sZ') AS collection_timestamp
+		FROM performance_schema.events_statements_summary_by_digest
+		WHERE LAST_SEEN >= UTC_TIMESTAMP() - INTERVAL ? SECOND
+			AND SCHEMA_NAME IS NOT NULL
 			AND SCHEMA_NAME NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
-            AND QUERY_SAMPLE_TEXT NOT LIKE '%SET %'
-            AND QUERY_SAMPLE_TEXT NOT LIKE '%SHOW %'
-            AND QUERY_SAMPLE_TEXT NOT LIKE '%INFORMATION_SCHEMA%'
-            AND QUERY_SAMPLE_TEXT NOT LIKE '%PERFORMANCE_SCHEMA%'
-            AND QUERY_SAMPLE_TEXT NOT LIKE '%mysql%'
-            AND QUERY_SAMPLE_TEXT NOT LIKE 'EXPLAIN %'
-			AND QUERY_SAMPLE_TEXT NOT LIKE '%DIGEST%'
+			AND QUERY_SAMPLE_TEXT RLIKE '^(SELECT|INSERT|UPDATE|DELETE|WITH)'
 			AND QUERY_SAMPLE_TEXT NOT LIKE '%DIGEST_TEXT%'
-			AND QUERY_SAMPLE_TEXT NOT LIKE 'EXPLAIN %'
-			AND QUERY_SAMPLE_TEXT NOT LIKE 'START %'
-			AND QUERY_SAMPLE_TEXT NOT LIKE 'GRANT %'
-			AND QUERY_SAMPLE_TEXT NOT LIKE 'CREATE %'
-        ORDER BY avg_elapsed_time_ms DESC
+		ORDER BY avg_elapsed_time_ms DESC
 		LIMIT ?;
     `
 	CurrentRunningQueriesSearch = `
@@ -62,18 +53,10 @@ const (
 			CURRENT_SCHEMA AS database_name
 		FROM performance_schema.events_statements_current
 		WHERE DIGEST IN (%s)
+            AND CURRENT_SCHEMA IS NOT NULL
 			AND CURRENT_SCHEMA NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
-            AND SQL_TEXT NOT LIKE '%%SET %%'
-            AND SQL_TEXT NOT LIKE '%%SHOW %%'
-            AND SQL_TEXT NOT LIKE '%%INFORMATION_SCHEMA%%'
-            AND SQL_TEXT NOT LIKE '%%PERFORMANCE_SCHEMA%%'
-            AND SQL_TEXT NOT LIKE '%%mysql%%'
-			AND SQL_TEXT NOT LIKE '%%DIGEST%%'
-			AND SQL_TEXT NOT LIKE '%%DIGEST_TEXT%%'
-			AND SQL_TEXT NOT LIKE 'START %%'
-            AND SQL_TEXT NOT LIKE 'EXPLAIN %%'
-			AND SQL_TEXT NOT LIKE 'GRANT %%'
-			AND SQL_TEXT NOT LIKE 'CREATE %%'
+			AND SQL_TEXT RLIKE '^(SELECT|INSERT|UPDATE|DELETE|WITH)'
+			AND SQL_TEXT NOT LIKE '%DIGEST_TEXT%'
 			AND TIMER_WAIT / 1000000000 > ?
 		ORDER BY TIMER_WAIT DESC
 		LIMIT ?;
@@ -94,18 +77,10 @@ const (
 			CURRENT_SCHEMA AS database_name
 		FROM performance_schema.events_statements_history
 		WHERE DIGEST IN (%s)
+			AND CURRENT_SCHEMA IS NOT NULL
 			AND CURRENT_SCHEMA NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
-            AND SQL_TEXT NOT LIKE '%%SET %%'
-            AND SQL_TEXT NOT LIKE '%%SHOW %%'
-            AND SQL_TEXT NOT LIKE '%%INFORMATION_SCHEMA%%'
-            AND SQL_TEXT NOT LIKE '%%PERFORMANCE_SCHEMA%%'
-            AND SQL_TEXT NOT LIKE '%%mysql%%'
-			AND SQL_TEXT NOT LIKE '%%DIGEST%%'
-			AND SQL_TEXT NOT LIKE '%%DIGEST_TEXT%%'
-			AND SQL_TEXT NOT LIKE 'START %%'
-            AND SQL_TEXT NOT LIKE 'EXPLAIN %%'
-			AND SQL_TEXT NOT LIKE 'GRANT %%'
-			AND SQL_TEXT NOT LIKE 'CREATE %%'
+			AND SQL_TEXT RLIKE '^(SELECT|INSERT|UPDATE|DELETE|WITH)'
+			AND SQL_TEXT NOT LIKE '%DIGEST_TEXT%'
 			AND TIMER_WAIT / 1000000000 > ?
 		ORDER BY TIMER_WAIT DESC
 		LIMIT ?;
@@ -126,18 +101,10 @@ const (
 			CURRENT_SCHEMA AS database_name
 		FROM performance_schema.events_statements_history_long
 		WHERE DIGEST IN (%s)
+			AND CURRENT_SCHEMA IS NOT NULL
 			AND CURRENT_SCHEMA NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
-            AND SQL_TEXT NOT LIKE '%%SET %%'
-            AND SQL_TEXT NOT LIKE '%%SHOW %%'
-            AND SQL_TEXT NOT LIKE '%%INFORMATION_SCHEMA%%'
-            AND SQL_TEXT NOT LIKE '%%PERFORMANCE_SCHEMA%%'
-            AND SQL_TEXT NOT LIKE '%%mysql%%'
-			AND SQL_TEXT NOT LIKE '%%DIGEST%%'
-			AND SQL_TEXT NOT LIKE '%%DIGEST_TEXT%%'
-			AND SQL_TEXT NOT LIKE 'START %%'
-            AND SQL_TEXT NOT LIKE 'EXPLAIN %%'
-			AND SQL_TEXT NOT LIKE 'GRANT %%'
-			AND SQL_TEXT NOT LIKE 'CREATE %%'
+			AND SQL_TEXT RLIKE '^(SELECT|INSERT|UPDATE|DELETE|WITH)'
+			AND SQL_TEXT NOT LIKE '%DIGEST_TEXT%'
 			AND TIMER_WAIT / 1000000000 > ?
 		ORDER BY TIMER_WAIT DESC
 		LIMIT ?;
@@ -190,18 +157,10 @@ const (
 				CURRENT_SCHEMA AS database_name,
 				DIGEST_TEXT AS query_text
 			FROM performance_schema.events_statements_history_long
-			WHERE CURRENT_SCHEMA NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
-				AND SQL_TEXT NOT LIKE '%SET %'
-				AND SQL_TEXT NOT LIKE '%SHOW %'
-				AND SQL_TEXT NOT LIKE '%INFORMATION_SCHEMA%'
-				AND SQL_TEXT NOT LIKE '%PERFORMANCE_SCHEMA%'
-				AND SQL_TEXT NOT LIKE '%mysql%'
-				AND SQL_TEXT NOT LIKE '%DIGEST%'
+			WHERE CURRENT_SCHEMA IS NOT NULL
+				AND CURRENT_SCHEMA NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
+				AND SQL_TEXT RLIKE '^(SELECT|INSERT|UPDATE|DELETE|WITH)'
 				AND SQL_TEXT NOT LIKE '%DIGEST_TEXT%'
-				AND SQL_TEXT NOT LIKE 'START %'
-				AND SQL_TEXT NOT LIKE 'EXPLAIN %'
-				AND SQL_TEXT NOT LIKE 'GRANT %'
-				AND SQL_TEXT NOT LIKE 'CREATE %'
 			UNION ALL
 			SELECT 
 				THREAD_ID,
@@ -209,18 +168,10 @@ const (
 				CURRENT_SCHEMA AS database_name,
 				DIGEST_TEXT AS query_text
 			FROM performance_schema.events_statements_current
-			WHERE CURRENT_SCHEMA NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
-				AND SQL_TEXT NOT LIKE '%SET %'
-				AND SQL_TEXT NOT LIKE '%SHOW %'
-				AND SQL_TEXT NOT LIKE '%INFORMATION_SCHEMA%'
-				AND SQL_TEXT NOT LIKE '%PERFORMANCE_SCHEMA%'
-				AND SQL_TEXT NOT LIKE '%mysql%'
-				AND SQL_TEXT NOT LIKE '%DIGEST%'
+			WHERE CURRENT_SCHEMA IS NOT NULL
+				AND CURRENT_SCHEMA NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
+				AND SQL_TEXT RLIKE '^(SELECT|INSERT|UPDATE|DELETE|WITH)'
 				AND SQL_TEXT NOT LIKE '%DIGEST_TEXT%'
-				AND SQL_TEXT NOT LIKE 'START %'
-				AND SQL_TEXT NOT LIKE 'EXPLAIN %'
-				AND SQL_TEXT NOT LIKE 'GRANT %'
-				AND SQL_TEXT NOT LIKE 'CREATE %'
 		) AS schema_data
 		ON wait_data.THREAD_ID = schema_data.THREAD_ID
 		LEFT JOIN performance_schema.events_waits_summary_global_by_event_name ewsg
@@ -273,6 +224,9 @@ const (
                       performance_schema.events_statements_current esc_blocking ON esc_blocking.THREAD_ID = bt.THREAD_ID
                   JOIN 
                       performance_schema.events_statements_summary_by_digest es_blocking 
-                      ON esc_blocking.DIGEST = es_blocking.DIGEST;
+                      ON esc_blocking.DIGEST = es_blocking.DIGEST
+				  WHERE
+					  wt.PROCESSLIST_DB IS NOT NULL
+					  AND wt.PROCESSLIST_DB NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys');
 	`
 )
