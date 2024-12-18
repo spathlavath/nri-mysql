@@ -136,6 +136,7 @@ func groupQueriesByDatabase(filteredList []performancedatamodel.IndividualQueryM
 func setIndividualQueryMetrics(i *integration.Integration, args arguments.ArgumentList, metrics []performancedatamodel.IndividualQueryMetrics) error {
 	var metricList []interface{}
 	for _, metricData := range metrics {
+		metricData.QueryText = ""
 		metricList = append(metricList, metricData)
 	}
 
