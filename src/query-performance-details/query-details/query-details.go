@@ -192,6 +192,7 @@ func collectIndividualQueryMetrics(db performancedatabase.DataSource, queryIDLis
 	// Joining the placeholders to form the IN clause
 	inClause := strings.Join(placeholders, ", ")
 	query := fmt.Sprintf(queryString, inClause)
+	fmt.Println("query----> ", query)
 	args := make([]interface{}, len(queryIDList))
 	for i, id := range queryIDList {
 		args[i] = id
