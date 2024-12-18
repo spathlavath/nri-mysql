@@ -192,7 +192,6 @@ func collectIndividualQueryMetrics(db performancedatabase.DataSource, queryIDLis
 	// Joining the placeholders to form the IN clause
 	inClause := strings.Join(placeholders, ", ")
 	query := fmt.Sprintf(queryString, inClause)
-	fmt.Println("query----> ", query)
 	args := make([]interface{}, len(queryIDList))
 	for i, id := range queryIDList {
 		args[i] = id
@@ -200,6 +199,7 @@ func collectIndividualQueryMetrics(db performancedatabase.DataSource, queryIDLis
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	updatedArgs := append(args, queryResponseTimeThreshold, queryCountThreshold)
+	fmt.Println("query----> ", query, updatedArgs)
 	rows, err := db.QueryxContext(ctx, query, updatedArgs...)
 	if err != nil {
 		log.Error("Failed to collect query metrics from Performance Schema: %v", err)
