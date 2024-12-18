@@ -47,7 +47,7 @@ func collectGroupedSlowQueryMetrics(db performancedatabase.DataSource, fetchInte
 			log.Error("Failed to scan query metrics row: %v", err)
 			return nil, []string{}, err
 		}
-		qId = metric.QueryID
+		qId = *metric.QueryID
 		qIdList = append(qIdList, qId)
 		metrics = append(metrics, metric)
 	}
@@ -104,8 +104,8 @@ func getUniqueQueryList(queryList []performancedatamodel.IndividualQueryMetrics)
 	var uniqueQueryList []performancedatamodel.IndividualQueryMetrics
 
 	for _, query := range queryList {
-		if _, exists := uniqueEvents[query.EventID]; !exists {
-			uniqueEvents[query.EventID] = true
+		if _, exists := uniqueEvents[*query.EventID]; !exists {
+			uniqueEvents[*query.EventID] = true
 			uniqueQueryList = append(uniqueQueryList, query)
 		}
 	}
@@ -118,7 +118,7 @@ func groupQueriesByDatabase(filteredList []performancedatamodel.IndividualQueryM
 	groupMap := make(map[string][]performancedatamodel.IndividualQueryMetrics)
 
 	for _, query := range filteredList {
-		groupMap[query.DatabaseName] = append(groupMap[query.DatabaseName], query)
+		groupMap[*query.DatabaseName] = append(groupMap[*query.DatabaseName], query)
 	}
 
 	var groupedQueries []performancedatamodel.QueryGroup
@@ -136,7 +136,7 @@ func groupQueriesByDatabase(filteredList []performancedatamodel.IndividualQueryM
 func setIndividualQueryMetrics(i *integration.Integration, args arguments.ArgumentList, metrics []performancedatamodel.IndividualQueryMetrics) error {
 	var metricList []interface{}
 	for _, metricData := range metrics {
-		metricData.QueryText = ""
+		*metricData.QueryText = ""
 		metricList = append(metricList, metricData)
 	}
 

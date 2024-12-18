@@ -59,11 +59,11 @@ func processExecutionPlanMetrics(db performance_database.DataSource, query perfo
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if query.QueryText == "" {
+	if *query.QueryText == "" {
 		log.Warn("Query text is empty, skipping.")
 		return nil
 	}
-	queryText := strings.TrimSpace(query.QueryText)
+	queryText := strings.TrimSpace(*query.QueryText)
 	upperQueryText := strings.ToUpper(queryText)
 
 	// Check if the query is a supported statement
@@ -100,7 +100,7 @@ func processExecutionPlanMetrics(db performance_database.DataSource, query perfo
 	}
 
 	// Extract metrics from the JSON string
-	dbPerformanceEvents, err := extractMetricsFromJSONString(execPlanJSON, query.EventID)
+	dbPerformanceEvents, err := extractMetricsFromJSONString(execPlanJSON, *query.EventID)
 	if err != nil {
 		log.Error("Error extracting metrics from JSON: %v", err)
 		return nil
