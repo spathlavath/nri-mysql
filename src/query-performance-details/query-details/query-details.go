@@ -16,8 +16,9 @@ import (
 	queries "github.com/newrelic/nri-mysql/src/query-performance-details/queries"
 )
 
+// PopulateSlowQueryMetrics collects and sets slow query metrics
 func PopulateSlowQueryMetrics(i *integration.Integration, e *integration.Entity, db performancedatabase.DataSource, args arguments.ArgumentList) []string {
-	rawMetrics, queryIdList, err := collectPerformanceSchemaMetrics(db, args.SlowQueryInterval)
+	rawMetrics, queryIdList, err := collectGroupedSlowQueryMetrics(db, args.FetchInterval, args.QueryCountThreshold)
 	if err != nil {
 		log.Error("Failed to collect query metrics: %v", err)
 		return nil
@@ -26,11 +27,12 @@ func PopulateSlowQueryMetrics(i *integration.Integration, e *integration.Entity,
 	return queryIdList
 }
 
-func collectPerformanceSchemaMetrics(db performancedatabase.DataSource, slowQueryInterval int) ([]performancedatamodel.SlowQueryMetrics, []string, error) {
+// collectGroupedSlowQueryMetrics collects metrics from the performance schema database
+func collectGroupedSlowQueryMetrics(db performancedatabase.DataSource, fetchInterval int, queryCountThreshold int) ([]performancedatamodel.SlowQueryMetrics, []string, error) {
 	query := queries.SlowQueries
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	rows, err := db.QueryxContext(ctx, query, slowQueryInterval)
+	rows, err := db.QueryxContext(ctx, query, fetchInterval, queryCountThreshold)
 	if err != nil {
 		log.Error("Failed to collect query metrics from Performance Schema: %v", err)
 		return nil, []string{}, err
@@ -58,6 +60,7 @@ func collectPerformanceSchemaMetrics(db performancedatabase.DataSource, slowQuer
 	return metrics, qIdList, nil
 }
 
+// setSlowQueryMetrics sets the collected slow query metrics to the integration
 func setSlowQueryMetrics(i *integration.Integration, metrics []performancedatamodel.SlowQueryMetrics, args arguments.ArgumentList) error {
 	e, err := common_utils.CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
 	common_utils.FatalIfErr(err)
@@ -94,35 +97,39 @@ func setSlowQueryMetrics(i *integration.Integration, metrics []performancedatamo
 		}
 
 		count++
+		// Publish the metrics if the count reaches the limit
 		if count >= common_utils.MetricSetLimit {
 			common_utils.FatalIfErr(i.Publish())
 
+			// Create a new node entity for the next batch of metrics
 			e, err = common_utils.CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
 			common_utils.FatalIfErr(err)
 			count = 0
 		}
 	}
 
+	// Publish any remaining metrics
 	if count > 0 {
 		common_utils.FatalIfErr(i.Publish())
 	}
 	return nil
 }
 
+// PopulateIndividualQueryDetails collects and sets individual query details
 func PopulateIndividualQueryDetails(db performancedatabase.DataSource, queryIdList []string, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList) ([]performancedatamodel.QueryGroup, error) {
-	currentQueryMetrics, currentQueryMetricsErr := currentQueryMetrics(db, queryIdList, args.IndividualQueryThreshold)
+	currentQueryMetrics, currentQueryMetricsErr := currentQueryMetrics(db, queryIdList, args.QueryResponseTimeThreshold, args.QueryCountThreshold)
 	if currentQueryMetricsErr != nil {
 		log.Error("Failed to collect current query metrics: %v", currentQueryMetricsErr)
 		return nil, currentQueryMetricsErr
 	}
 
-	recentQueryList, recentQueryErr := recentQueryMetrics(db, queryIdList, args.IndividualQueryThreshold)
+	recentQueryList, recentQueryErr := recentQueryMetrics(db, queryIdList, args.QueryResponseTimeThreshold, args.QueryCountThreshold)
 	if recentQueryErr != nil {
 		log.Error("Failed to collect recent query metrics: %v", recentQueryErr)
 		return nil, recentQueryErr
 	}
 
-	extensiveQueryList, extensiveQueryErr := extensiveQueryMetrics(db, queryIdList, args.IndividualQueryThreshold)
+	extensiveQueryList, extensiveQueryErr := extensiveQueryMetrics(db, queryIdList, args.QueryResponseTimeThreshold, args.QueryCountThreshold)
 	if extensiveQueryErr != nil {
 		log.Error("Failed to collect extensive query metrics: %v", extensiveQueryErr)
 		return nil, extensiveQueryErr
@@ -135,6 +142,7 @@ func PopulateIndividualQueryDetails(db performancedatabase.DataSource, queryIdLi
 	return groupQueriesByDatabase, nil
 }
 
+// getUniqueQueryList filters out duplicate queries from the list
 func getUniqueQueryList(queryList []performancedatamodel.IndividualQueryMetrics) []performancedatamodel.IndividualQueryMetrics {
 	uniqueEvents := make(map[uint64]bool)
 	var uniqueQueryList []performancedatamodel.IndividualQueryMetrics
@@ -149,6 +157,7 @@ func getUniqueQueryList(queryList []performancedatamodel.IndividualQueryMetrics)
 	return uniqueQueryList
 }
 
+// groupQueriesByDatabase groups queries by their database name
 func groupQueriesByDatabase(filteredList []performancedatamodel.IndividualQueryMetrics) []performancedatamodel.QueryGroup {
 	groupMap := make(map[string][]performancedatamodel.IndividualQueryMetrics)
 
@@ -167,6 +176,7 @@ func groupQueriesByDatabase(filteredList []performancedatamodel.IndividualQueryM
 	return groupedQueries
 }
 
+// setIndividualQueryMetrics sets the collected individual query metrics to the integration
 func setIndividualQueryMetrics(i *integration.Integration, args arguments.ArgumentList, metrics []performancedatamodel.IndividualQueryMetrics) error {
 	e, err := common_utils.CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
 	common_utils.FatalIfErr(err)
@@ -200,24 +210,27 @@ func setIndividualQueryMetrics(i *integration.Integration, args arguments.Argume
 		}
 
 		count++
+		// Publish the metrics if the count reaches the limit
 		if count >= common_utils.MetricSetLimit {
 			common_utils.FatalIfErr(i.Publish())
 
+			// Create a new node entity for the next batch of metrics
 			e, err = common_utils.CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
 			common_utils.FatalIfErr(err)
 			count = 0
 		}
 	}
 
+	// Publish any remaining metrics
 	if count > 0 {
 		common_utils.FatalIfErr(i.Publish())
 	}
 	return nil
 }
 
-func currentQueryMetrics(db performancedatabase.DataSource, QueryIDList []string, individualQueryThreshold int) ([]performancedatamodel.IndividualQueryMetrics, error) {
-	// Check Performance Schema availability
-	metrics, err := collectCurrentQueryMetrics(db, QueryIDList, individualQueryThreshold)
+// currentQueryMetrics collects current query metrics from the performance schema database for the given query IDs
+func currentQueryMetrics(db performancedatabase.DataSource, QueryIDList []string, queryResponseTimeThreshold int, queryCountThreshold int) ([]performancedatamodel.IndividualQueryMetrics, error) {
+	metrics, err := collectCurrentQueryMetrics(db, QueryIDList, queryResponseTimeThreshold, queryCountThreshold)
 	if err != nil {
 		log.Error("Failed to collect query metrics: %v", err)
 		return nil, err
@@ -226,9 +239,9 @@ func currentQueryMetrics(db performancedatabase.DataSource, QueryIDList []string
 	return metrics, nil
 }
 
-func recentQueryMetrics(db performancedatabase.DataSource, QueryIDList []string, individualQueryThreshold int) ([]performancedatamodel.IndividualQueryMetrics, error) {
-	// Check Performance Schema availability
-	metrics, err := collectRecentQueryMetrics(db, QueryIDList, individualQueryThreshold)
+// recentQueryMetrics collects recent query metrics	from the performance schema	database for the given query IDs
+func recentQueryMetrics(db performancedatabase.DataSource, QueryIDList []string, queryResponseTimeThreshold int, queryCountThreshold int) ([]performancedatamodel.IndividualQueryMetrics, error) {
+	metrics, err := collectRecentQueryMetrics(db, QueryIDList, queryResponseTimeThreshold, queryCountThreshold)
 	if err != nil {
 		log.Error("Failed to collect query metrics: %v", err)
 		return nil, err
@@ -237,9 +250,9 @@ func recentQueryMetrics(db performancedatabase.DataSource, QueryIDList []string,
 	return metrics, nil
 }
 
-func extensiveQueryMetrics(db performancedatabase.DataSource, QueryIDList []string, individualQueryThreshold int) ([]performancedatamodel.IndividualQueryMetrics, error) {
-	// Check Performance Schema availability
-	metrics, err := collectExtensiveQueryMetrics(db, QueryIDList, individualQueryThreshold)
+// extensiveQueryMetrics collects extensive query metrics from the performance schema database for the given query IDs
+func extensiveQueryMetrics(db performancedatabase.DataSource, QueryIDList []string, queryResponseTimeThreshold int, queryCountThreshold int) ([]performancedatamodel.IndividualQueryMetrics, error) {
+	metrics, err := collectExtensiveQueryMetrics(db, QueryIDList, queryResponseTimeThreshold, queryCountThreshold)
 	if err != nil {
 		log.Error("Failed to collect query metrics: %v", err)
 		return nil, err
@@ -248,7 +261,8 @@ func extensiveQueryMetrics(db performancedatabase.DataSource, QueryIDList []stri
 	return metrics, nil
 }
 
-func collectCurrentQueryMetrics(db performancedatabase.DataSource, queryIDList []string, individualQueryThreshold int) ([]performancedatamodel.IndividualQueryMetrics, error) {
+// collectCurrentQueryMetrics collects current query metrics from the performance schema database for the given query IDs
+func collectCurrentQueryMetrics(db performancedatabase.DataSource, queryIDList []string, queryResponseTimeThreshold int, queryCountThreshold int) ([]performancedatamodel.IndividualQueryMetrics, error) {
 	if len(queryIDList) == 0 {
 		log.Warn("queryIDList is empty")
 		return nil, nil
@@ -268,7 +282,7 @@ func collectCurrentQueryMetrics(db performancedatabase.DataSource, queryIDList [
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	updatedArgs := append(args, individualQueryThreshold)
+	updatedArgs := append(args, queryResponseTimeThreshold, queryCountThreshold)
 	rows, err := db.QueryxContext(ctx, query, updatedArgs...)
 	if err != nil {
 		log.Error("Failed to collect query metrics from Performance Schema: %v", err)
@@ -292,7 +306,8 @@ func collectCurrentQueryMetrics(db performancedatabase.DataSource, queryIDList [
 	return metrics, nil
 }
 
-func collectRecentQueryMetrics(db performancedatabase.DataSource, queryIDList []string, individualQueryThreshold int) ([]performancedatamodel.IndividualQueryMetrics, error) {
+// collectRecentQueryMetrics collects recent query metrics from the performance schema database for the given query IDs
+func collectRecentQueryMetrics(db performancedatabase.DataSource, queryIDList []string, queryResponseTimeThreshold int, queryCountThreshold int) ([]performancedatamodel.IndividualQueryMetrics, error) {
 	if len(queryIDList) == 0 {
 		log.Warn("queryIDList is empty")
 		return nil, nil
@@ -309,7 +324,7 @@ func collectRecentQueryMetrics(db performancedatabase.DataSource, queryIDList []
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	updatedArgs := append(args, individualQueryThreshold)
+	updatedArgs := append(args, queryResponseTimeThreshold, queryCountThreshold)
 	rows, err := db.QueryxContext(ctx, query, updatedArgs...)
 	if err != nil {
 		log.Error("Failed to collect query metrics from Performance Schema: %v", err)
@@ -334,7 +349,8 @@ func collectRecentQueryMetrics(db performancedatabase.DataSource, queryIDList []
 	return metrics, nil
 }
 
-func collectExtensiveQueryMetrics(db performancedatabase.DataSource, queryIDList []string, individualQueryThreshold int) ([]performancedatamodel.IndividualQueryMetrics, error) {
+// collectExtensiveQueryMetrics collects extensive query metrics from the performance schema database for the given query IDs
+func collectExtensiveQueryMetrics(db performancedatabase.DataSource, queryIDList []string, queryResponseTimeThreshold int, queryCountThreshold int) ([]performancedatamodel.IndividualQueryMetrics, error) {
 	if len(queryIDList) == 0 {
 		log.Warn("queryIDList is empty")
 		return nil, nil
@@ -355,7 +371,7 @@ func collectExtensiveQueryMetrics(db performancedatabase.DataSource, queryIDList
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	updatedArgs := append(args, individualQueryThreshold)
+	updatedArgs := append(args, queryResponseTimeThreshold, queryCountThreshold)
 	rows, err := db.QueryxContext(ctx, query, updatedArgs...)
 	if err != nil {
 		log.Error("Failed to collect query metrics from Performance Schema: %v", err)

@@ -43,7 +43,8 @@ const (
 			AND QUERY_SAMPLE_TEXT NOT LIKE 'START %'
 			AND QUERY_SAMPLE_TEXT NOT LIKE 'GRANT %'
 			AND QUERY_SAMPLE_TEXT NOT LIKE 'CREATE %'
-        ORDER BY avg_elapsed_time_ms DESC;
+        ORDER BY avg_elapsed_time_ms DESC
+		LIMIT ?;
     `
 	CurrentRunningQueriesSearch = `
 		SELECT
@@ -74,7 +75,8 @@ const (
 			AND SQL_TEXT NOT LIKE 'GRANT %%'
 			AND SQL_TEXT NOT LIKE 'CREATE %%'
 			AND TIMER_WAIT / 1000000000 > ?
-		ORDER BY TIMER_WAIT DESC;
+		ORDER BY TIMER_WAIT DESC
+		LIMIT ?;
 	`
 	RecentQueriesSearch = `
 		SELECT
@@ -105,7 +107,8 @@ const (
 			AND SQL_TEXT NOT LIKE 'GRANT %%'
 			AND SQL_TEXT NOT LIKE 'CREATE %%'
 			AND TIMER_WAIT / 1000000000 > ?
-		ORDER BY TIMER_WAIT DESC;
+		ORDER BY TIMER_WAIT DESC
+		LIMIT ?;
 	`
 	PastQueriesSearch = `
 		SELECT
@@ -136,7 +139,8 @@ const (
 			AND SQL_TEXT NOT LIKE 'GRANT %%'
 			AND SQL_TEXT NOT LIKE 'CREATE %%'
 			AND TIMER_WAIT / 1000000000 > ?
-		ORDER BY TIMER_WAIT DESC;
+		ORDER BY TIMER_WAIT DESC
+		LIMIT ?;
 	`
 	WaitEventsQuery = `
 		SELECT

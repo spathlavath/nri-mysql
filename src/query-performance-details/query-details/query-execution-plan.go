@@ -67,16 +67,19 @@ func processExecutionPlanMetrics(db performance_database.DataSource, query perfo
 	queryText := strings.TrimSpace(query.QueryText)
 	upperQueryText := strings.ToUpper(queryText)
 
+	// Check if the query is a supported statement
 	if !isSupportedStatement(upperQueryText) {
 		log.Warn("Skipping unsupported query for EXPLAIN: %s", queryText)
 		return nil
 	}
 
+	// Skip queries with placeholders
 	if strings.Contains(queryText, "?") {
 		log.Warn("Skipping query with placeholders for EXPLAIN: %s", queryText)
 		return nil
 	}
 
+	// Execute the EXPLAIN query
 	execPlanQuery := fmt.Sprintf(explainQueryFormat, queryText)
 	rows, err := db.QueryxContext(ctx, execPlanQuery)
 	if err != nil {
@@ -97,6 +100,7 @@ func processExecutionPlanMetrics(db performance_database.DataSource, query perfo
 		return nil
 	}
 
+	// Extract metrics from the JSON string
 	dbPerformanceEvents, err := extractMetricsFromJSONString(execPlanJSON, query.EventID)
 	if err != nil {
 		log.Error("Error extracting metrics from JSON: %v", err)
@@ -106,6 +110,7 @@ func processExecutionPlanMetrics(db performance_database.DataSource, query perfo
 	return dbPerformanceEvents
 }
 
+// extractMetricsFromJSONString extracts metrics from a JSON string.
 func extractMetricsFromJSONString(jsonString string, eventID uint64) ([]performance_data_model.QueryPlanMetrics, error) {
 	js, err := simplejson.NewJson([]byte(jsonString))
 	if err != nil {
@@ -120,6 +125,7 @@ func extractMetricsFromJSONString(jsonString string, eventID uint64) ([]performa
 	return dbPerformanceEvents, nil
 }
 
+// SetExecutionPlanMetrics sets the execution plan metrics.
 func SetExecutionPlanMetrics(i *integration.Integration, args arguments.ArgumentList, metrics []performance_data_model.QueryPlanMetrics) error {
 	e, err := common_utils.CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
 	common_utils.FatalIfErr(err)
@@ -127,6 +133,7 @@ func SetExecutionPlanMetrics(i *integration.Integration, args arguments.Argument
 	for _, metricObject := range metrics {
 		ms := common_utils.CreateMetricSet(e, "MysqlQueryExecutionSample", args)
 
+		// Publish query performance metrics
 		publishQueryPerformanceMetrics(metricObject, ms)
 
 		count++
@@ -145,6 +152,7 @@ func SetExecutionPlanMetrics(i *integration.Integration, args arguments.Argument
 	return nil
 }
 
+// publishQueryPerformanceMetrics publishes the query performance metrics.
 func publishQueryPerformanceMetrics(metricObject performance_data_model.QueryPlanMetrics, ms *metric.Set) {
 	metricsMap := map[string]struct {
 		Value      interface{}
@@ -169,6 +177,7 @@ func publishQueryPerformanceMetrics(metricObject performance_data_model.QueryPla
 	}
 }
 
+// extractMetrics recursively extracts metrics from a simplejson.Json object.
 func extractMetrics(js *simplejson.Json, dbPerformanceEvents []performance_data_model.QueryPlanMetrics, eventID uint64, memo performance_data_model.Memo) []performance_data_model.QueryPlanMetrics {
 	tableName, _ := js.Get("table_name").String()
 	queryCost, _ := js.Get("cost_info").Get("query_cost").String()

@@ -6,7 +6,6 @@ import (
 	"net"
 	"net/url"
 	"strconv"
-	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
@@ -29,11 +28,6 @@ func OpenDB(dsn string) (DataSource, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error opening %s: %v", dsn, err)
 	}
-
-	// Set connection pool configurations
-	source.SetMaxOpenConns(25)                 // Set maximum number of open connections
-	source.SetMaxIdleConns(25)                 // Maintain up to 25 connections in the idle pool
-	source.SetConnMaxLifetime(5 * time.Minute) // Limit the lifetime of each connection
 
 	db := Database{
 		source: source,

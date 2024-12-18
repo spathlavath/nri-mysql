@@ -13,6 +13,7 @@ import (
 	query_performance_details "github.com/newrelic/nri-mysql/src/query-performance-details/queries"
 )
 
+// PopulateBlockingSessionMetrics retrieves blocking session metrics from the database and populates them into the integration entity.
 func PopulateBlockingSessionMetrics(db performance_database.DataSource, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList) ([]performance_data_model.BlockingSessionMetrics, error) {
 	query := query_performance_details.BlockingSessionsQuery
 	rows, err := db.QueryxContext(context.Background(), query)
@@ -36,10 +37,12 @@ func PopulateBlockingSessionMetrics(db performance_database.DataSource, i *integ
 		return nil, err
 	}
 
+	// Set the blocking query metrics in the integration entity
 	setBlockingQueryMetrics(metrics, i, args)
 	return metrics, nil
 }
 
+// setBlockingQueryMetrics sets the blocking session metrics into the integration entity.
 func setBlockingQueryMetrics(metrics []performance_data_model.BlockingSessionMetrics, i *integration.Integration, args arguments.ArgumentList) error {
 	e, err := common_utils.CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
 	common_utils.FatalIfErr(err)
@@ -70,6 +73,7 @@ func setBlockingQueryMetrics(metrics []performance_data_model.BlockingSessionMet
 			"blocking_status":    {common_utils.GetStringValue(metricData.BlockingQuery), metric.ATTRIBUTE},
 		}
 
+		// Set each metric in the metric set
 		for metricName, data := range metricsMap {
 			err := ms.SetMetric(metricName, data.Value, data.MetricType)
 			if err != nil {
@@ -79,15 +83,18 @@ func setBlockingQueryMetrics(metrics []performance_data_model.BlockingSessionMet
 		}
 
 		count++
+		// Publish the metrics if the count reaches the limit
 		if count >= common_utils.MetricSetLimit {
 			common_utils.FatalIfErr(i.Publish())
 
+			// Create a new node entity for the next batch of metrics
 			e, err = common_utils.CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
 			common_utils.FatalIfErr(err)
 			count = 0
 		}
 	}
 
+	// Publish any remaining metrics
 	if count > 0 {
 		common_utils.FatalIfErr(i.Publish())
 	}
