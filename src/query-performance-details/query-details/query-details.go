@@ -200,7 +200,6 @@ func collectIndividualQueryMetrics(db performancedatabase.DataSource, queryIDLis
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	updatedArgs := append(args, queryResponseTimeThreshold, queryCountThreshold)
-	fmt.Println("query----> ", query, updatedArgs)
 	rows, err := db.QueryxContext(ctx, query, updatedArgs...)
 	if err != nil {
 		log.Error("Failed to collect query metrics from Performance Schema: %v", err)
