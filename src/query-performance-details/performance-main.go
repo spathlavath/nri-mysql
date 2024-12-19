@@ -32,18 +32,20 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 	// Populate metrics for slow queries
 	queryIdList := query_details.PopulateSlowQueryMetrics(i, e, db, args)
 
-	// Populate metrics for individual queries
-	groupQueriesByDatabase, individualQueryDetailsErr := query_details.PopulateIndividualQueryDetails(db, queryIdList, i, e, args)
-	if individualQueryDetailsErr != nil {
-		log.Error("Error populating individual query details: %v", individualQueryDetailsErr)
-		return
-	}
+	if len(queryIdList) > 0 {
+		// Populate metrics for individual queries
+		groupQueriesByDatabase, individualQueryDetailsErr := query_details.PopulateIndividualQueryDetails(db, queryIdList, i, e, args)
+		if individualQueryDetailsErr != nil {
+			log.Error("Error populating individual query details: %v", individualQueryDetailsErr)
+			return
+		}
 
-	// Populate execution plan details
-	_, executionPlanMetricsErr := query_details.PopulateExecutionPlans(db, groupQueriesByDatabase, i, e, args)
-	if executionPlanMetricsErr != nil {
-		log.Error("Error populating execution plan details: %v", executionPlanMetricsErr)
-		return
+		// Populate execution plan details
+		_, executionPlanMetricsErr := query_details.PopulateExecutionPlans(db, groupQueriesByDatabase, i, e, args)
+		if executionPlanMetricsErr != nil {
+			log.Error("Error populating execution plan details: %v", executionPlanMetricsErr)
+			return
+		}
 	}
 
 	// Populate wait event metrics
