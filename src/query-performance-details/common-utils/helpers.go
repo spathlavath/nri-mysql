@@ -1,7 +1,6 @@
 package common_utils
 
 import (
-	"database/sql"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -16,7 +15,7 @@ import (
 const (
 	IntegrationName = "com.newrelic.mysql"
 	NodeEntityType  = "node"
-	MetricSetLimit  = 800
+	MetricSetLimit  = 400
 )
 
 func CreateNodeEntity(
@@ -30,13 +29,6 @@ func CreateNodeEntity(
 		return i.Entity(fmt.Sprint(hostname, ":", port), NodeEntityType)
 	}
 	return i.LocalEntity(), nil
-}
-
-func GetStringValue(ns sql.NullString) string {
-	if ns.Valid {
-		return ns.String
-	}
-	return ""
 }
 
 func CreateMetricSet(e *integration.Entity, sampleName string, args arguments.ArgumentList) *metric.Set {
@@ -62,13 +54,6 @@ func MetricSet(e *integration.Entity, eventType, hostname string, port int, remo
 		eventType,
 		attribute.Attr("port", strconv.Itoa(port)),
 	)
-}
-
-func GetInt64Value(ni sql.NullInt64) int64 {
-	if ni.Valid {
-		return ni.Int64
-	}
-	return 0
 }
 
 func PrintMetricSet(ms *metric.Set) {
@@ -108,7 +93,6 @@ func SetMetric(metricSet *metric.Set, name string, value interface{}, sourceType
 // IngestMetric ingests a list of metrics into the integration.
 func IngestMetric(metricList []interface{}, eventName string, i *integration.Integration, args arguments.ArgumentList) {
 	metricCount := 0
-	lenOfMetricList := len(metricList)
 	e, err := CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
 	if err != nil {
 		log.Error("Error creating entity: %v", err)
@@ -145,7 +129,7 @@ func IngestMetric(metricList []interface{}, eventName string, i *integration.Int
 			}
 		}
 
-		if metricCount == MetricSetLimit || metricCount == lenOfMetricList {
+		if metricCount > MetricSetLimit {
 			metricCount = 0
 			err := i.Publish()
 			if err != nil {
@@ -160,9 +144,11 @@ func IngestMetric(metricList []interface{}, eventName string, i *integration.Int
 		}
 	}
 
-	err = i.Publish()
-	if err != nil {
-		log.Error("Error publishing metrics: %v", err)
-		return
+	if metricCount > 0 {
+		err = i.Publish()
+		if err != nil {
+			log.Error("Error publishing metrics: %v", err)
+			return
+		}
 	}
 }
