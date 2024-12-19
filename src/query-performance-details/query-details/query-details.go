@@ -102,7 +102,7 @@ func PopulateIndividualQueryDetails(db performancedatabase.DataSource, queryIdLi
 		newMetricsList[i].AnonymizedQueryText = nil
 		metricList = append(metricList, newMetricsList[i])
 	}
-	//setIndividualQueryMetrics(i, args, filteredQueryList)
+
 	common_utils.IngestMetric(metricList, "MysqlIndividualQueriesSample", i, args)
 	groupQueriesByDatabase := groupQueriesByDatabase(filteredQueryList)
 
