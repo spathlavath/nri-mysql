@@ -13,6 +13,7 @@ import (
 	query_performance_details "github.com/newrelic/nri-mysql/src/query-performance-details/queries"
 )
 
+// PopulateWaitEventMetrics retrieves wait event metrics from the database and sets them in the integration.
 func PopulateWaitEventMetrics(db performance_database.DataSource, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList) ([]performance_data_model.WaitEventQueryMetrics, error) {
 	query := query_performance_details.WaitEventsQuery
 
@@ -36,10 +37,13 @@ func PopulateWaitEventMetrics(db performance_database.DataSource, i *integration
 		log.Error("Error iterating over query metrics rows: %v", err)
 		return nil, err
 	}
+
+	// Set the retrieved metrics in the integration
 	setWaitEventMetrics(i, args, metrics)
 	return metrics, nil
 }
 
+// setWaitEventMetrics sets the wait event metrics in the integration.
 func setWaitEventMetrics(i *integration.Integration, args arguments.ArgumentList, metrics []performance_data_model.WaitEventQueryMetrics) error {
 	e, err := common_utils.CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
 	common_utils.FatalIfErr(err)
@@ -71,15 +75,18 @@ func setWaitEventMetrics(i *integration.Integration, args arguments.ArgumentList
 		}
 
 		count++
+		// Publish the metrics if the count reaches the limit
 		if count >= common_utils.MetricSetLimit {
 			common_utils.FatalIfErr(i.Publish())
 
+			// Create a new node entity for the next batch of metrics
 			e, err = common_utils.CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
 			common_utils.FatalIfErr(err)
 			count = 0
 		}
 	}
 
+	// Publish any remaining metrics
 	if count > 0 {
 		common_utils.FatalIfErr(i.Publish())
 	}

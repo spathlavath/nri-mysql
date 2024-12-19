@@ -42,7 +42,9 @@ const (
 			AND QUERY_SAMPLE_TEXT NOT LIKE 'EXPLAIN %'
 			AND QUERY_SAMPLE_TEXT NOT LIKE 'START %'
 			AND QUERY_SAMPLE_TEXT NOT LIKE 'GRANT %'
-        ORDER BY avg_elapsed_time_ms DESC;
+			AND QUERY_SAMPLE_TEXT NOT LIKE 'CREATE %'
+        ORDER BY avg_elapsed_time_ms DESC
+		LIMIT ?;
     `
 	CurrentRunningQueriesSearch = `
 		SELECT
@@ -56,7 +58,8 @@ const (
 			THREAD_ID AS thread_id,
 			ROUND(TIMER_WAIT / 1000000000, 3) AS execution_time_ms,
 			ROWS_SENT AS rows_sent,
-			ROWS_EXAMINED AS rows_examined
+			ROWS_EXAMINED AS rows_examined,
+			CURRENT_SCHEMA AS database_name
 		FROM performance_schema.events_statements_current
 		WHERE DIGEST IN (%s)
 			AND CURRENT_SCHEMA NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
@@ -70,8 +73,10 @@ const (
 			AND SQL_TEXT NOT LIKE 'START %%'
             AND SQL_TEXT NOT LIKE 'EXPLAIN %%'
 			AND SQL_TEXT NOT LIKE 'GRANT %%'
+			AND SQL_TEXT NOT LIKE 'CREATE %%'
 			AND TIMER_WAIT / 1000000000 > ?
-		ORDER BY TIMER_WAIT DESC;
+		ORDER BY TIMER_WAIT DESC
+		LIMIT ?;
 	`
 	RecentQueriesSearch = `
 		SELECT
@@ -85,7 +90,8 @@ const (
 			THREAD_ID AS thread_id,
 			ROUND(TIMER_WAIT / 1000000000, 3) AS execution_time_ms,
 			ROWS_SENT AS rows_sent,
-			ROWS_EXAMINED AS rows_examined
+			ROWS_EXAMINED AS rows_examined,
+			CURRENT_SCHEMA AS database_name
 		FROM performance_schema.events_statements_history
 		WHERE DIGEST IN (%s)
 			AND CURRENT_SCHEMA NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
@@ -99,8 +105,10 @@ const (
 			AND SQL_TEXT NOT LIKE 'START %%'
             AND SQL_TEXT NOT LIKE 'EXPLAIN %%'
 			AND SQL_TEXT NOT LIKE 'GRANT %%'
+			AND SQL_TEXT NOT LIKE 'CREATE %%'
 			AND TIMER_WAIT / 1000000000 > ?
-		ORDER BY TIMER_WAIT DESC;
+		ORDER BY TIMER_WAIT DESC
+		LIMIT ?;
 	`
 	PastQueriesSearch = `
 		SELECT
@@ -114,7 +122,8 @@ const (
 			THREAD_ID AS thread_id,
 			ROUND(TIMER_WAIT / 1000000000, 3) AS execution_time_ms,
 			ROWS_SENT AS rows_sent,
-			ROWS_EXAMINED AS rows_examined
+			ROWS_EXAMINED AS rows_examined,
+			CURRENT_SCHEMA AS database_name
 		FROM performance_schema.events_statements_history_long
 		WHERE DIGEST IN (%s)
 			AND CURRENT_SCHEMA NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
@@ -128,8 +137,10 @@ const (
 			AND SQL_TEXT NOT LIKE 'START %%'
             AND SQL_TEXT NOT LIKE 'EXPLAIN %%'
 			AND SQL_TEXT NOT LIKE 'GRANT %%'
+			AND SQL_TEXT NOT LIKE 'CREATE %%'
 			AND TIMER_WAIT / 1000000000 > ?
-		ORDER BY TIMER_WAIT DESC;
+		ORDER BY TIMER_WAIT DESC
+		LIMIT ?;
 	`
 	WaitEventsQuery = `
 		SELECT
@@ -190,6 +201,7 @@ const (
 				AND SQL_TEXT NOT LIKE 'START %'
 				AND SQL_TEXT NOT LIKE 'EXPLAIN %'
 				AND SQL_TEXT NOT LIKE 'GRANT %'
+				AND SQL_TEXT NOT LIKE 'CREATE %'
 			UNION ALL
 			SELECT 
 				THREAD_ID,
@@ -208,6 +220,7 @@ const (
 				AND SQL_TEXT NOT LIKE 'START %'
 				AND SQL_TEXT NOT LIKE 'EXPLAIN %'
 				AND SQL_TEXT NOT LIKE 'GRANT %'
+				AND SQL_TEXT NOT LIKE 'CREATE %'
 		) AS schema_data
 		ON wait_data.THREAD_ID = schema_data.THREAD_ID
 		LEFT JOIN performance_schema.events_waits_summary_global_by_event_name ewsg

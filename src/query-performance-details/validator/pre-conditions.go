@@ -12,8 +12,10 @@ import (
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 )
 
+// ValidatePreconditions checks if the necessary preconditions are met for performance monitoring.
 func ValidatePreconditions(db performance_database.DataSource) bool {
 
+	// Check if Performance Schema is enabled
 	performanceSchemaEnabled, errPerformanceEnabled := isPerformanceSchemaEnabled(db)
 	if errPerformanceEnabled != nil {
 		log.Error("Failed to check Performance Schema status: %v", errPerformanceEnabled)
@@ -26,12 +28,14 @@ func ValidatePreconditions(db performance_database.DataSource) bool {
 		return false
 	}
 
+	// Check if essential consumers are enabled
 	errEssentialConsumers := checkEssentialConsumers(db)
 	if errEssentialConsumers != nil {
 		log.Error("Essential consumer check failed\n")
 		return false
 	}
 
+	// Check if essential instruments are enabled
 	errEssentialInstruments := checkEssentialInstruments(db)
 	if errEssentialInstruments != nil {
 		log.Error("Essential instruments check failed\n")
@@ -40,6 +44,7 @@ func ValidatePreconditions(db performance_database.DataSource) bool {
 	return true
 }
 
+// isPerformanceSchemaEnabled checks if the Performance Schema is enabled in the MySQL database.
 func isPerformanceSchemaEnabled(db performance_database.DataSource) (bool, error) {
 	var variableName, performanceSchemaEnabled string
 	rows, err := db.QueryX("SHOW GLOBAL VARIABLES LIKE 'performance_schema';")
@@ -59,6 +64,7 @@ func isPerformanceSchemaEnabled(db performance_database.DataSource) (bool, error
 	return performanceSchemaEnabled == "ON", nil
 }
 
+// checkEssentialConsumers checks if the essential consumers are enabled in the Performance Schema.
 func checkEssentialConsumers(db performance_database.DataSource) error {
 	consumers := []string{
 		"events_waits_current",
@@ -72,6 +78,7 @@ func checkEssentialConsumers(db performance_database.DataSource) error {
 		"events_stages_current",
 	}
 
+	// Build the query to check the status of essential consumers
 	query := "SELECT NAME, ENABLED FROM performance_schema.setup_consumers WHERE NAME IN ("
 	for i, consumer := range consumers {
 		if i > 0 {
@@ -91,6 +98,7 @@ func checkEssentialConsumers(db performance_database.DataSource) error {
 		}
 	}()
 
+	// Check if each essential consumer is enabled
 	for rows.Next() {
 		var name, enabled string
 		if err := rows.Scan(&name, &enabled); err != nil {
@@ -109,6 +117,7 @@ func checkEssentialConsumers(db performance_database.DataSource) error {
 	return nil
 }
 
+// checkEssentialInstruments checks if the essential instruments are enabled in the Performance Schema.
 func checkEssentialInstruments(db performance_database.DataSource) error {
 	instruments := []string{
 		// Add other essential instruments here
@@ -122,6 +131,7 @@ func checkEssentialInstruments(db performance_database.DataSource) error {
 		instrumentConditions = append(instrumentConditions, fmt.Sprintf("NAME LIKE '%s'", instrument))
 	}
 
+	// Build the query to check the status of essential instruments
 	query := "SELECT NAME, ENABLED, TIMED FROM performance_schema.setup_instruments WHERE "
 	query += strings.Join(instrumentConditions, " OR ")
 	query += ";"
@@ -136,6 +146,7 @@ func checkEssentialInstruments(db performance_database.DataSource) error {
 		}
 	}()
 
+	// Check if each essential instrument is enabled and timed
 	for rows.Next() {
 		var name, enabled string
 		var timed sql.NullString
@@ -155,6 +166,7 @@ func checkEssentialInstruments(db performance_database.DataSource) error {
 	return nil
 }
 
+// logEnablePerformanceSchemaInstructions logs instructions to enable the Performance Schema.
 func logEnablePerformanceSchemaInstructions(db performance_database.DataSource) {
 	version, err := getMySQLVersion(db)
 	if err != nil {
@@ -180,6 +192,7 @@ func logEnablePerformanceSchemaInstructions(db performance_database.DataSource) 
 
 }
 
+// getMySQLVersion retrieves the MySQL version from the database.
 func getMySQLVersion(db performance_database.DataSource) (string, error) {
 	query := "SELECT VERSION();"
 	rows, err := db.QueryX(query)
@@ -202,6 +215,7 @@ func getMySQLVersion(db performance_database.DataSource) (string, error) {
 	return version, nil
 }
 
+// isVersion8OrGreater checks if the MySQL version is 8.0 or greater.
 func isVersion8OrGreater(version string) bool {
 	majorVersion, minorVersion := parseVersion(version)
 	return (majorVersion > 8) || (majorVersion == 8 && minorVersion >= 0)

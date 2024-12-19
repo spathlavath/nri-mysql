@@ -36,12 +36,14 @@ integrations:
     REMOTE_MONITORING: true
     
     # Enable query performance monitoring
-    enable_query_performance_monitoring: true
-    # Slow Queries Interval(sec) for query performance monitoring. it should be same as interval
-    slow_query_interval: 30
-    # Individual Query Threshold(ms) for for fetching query performance metrics              
-	  individual_query_threshold: 2000         
-  interval: 30s
+    ENABLE_QUERY_PERFORMANCE: true
+    # Fetch interval in seconds for grouped slow queries. Should match the interval in mysql-config.yml
+    FETCH_INTERVAL: 15
+    # Threshold in milliseconds for query response time to fetch individual query performance metrics.            
+	  QUERY_RESPONSE_TIME_THRESHOLD: 500
+    # Query count limit for fetching grouped slow and individual query performance metrics.  
+    QUERY_COUNT_THRESHOLD: 20       
+  interval: 15s
   labels:
     env: production
     role: write-replica
