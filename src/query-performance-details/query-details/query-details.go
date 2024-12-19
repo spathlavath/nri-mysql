@@ -94,8 +94,8 @@ func PopulateIndividualQueryDetails(db performancedatabase.DataSource, queryIdLi
 
 	queryList := append(append(currentQueryMetrics, recentQueryList...), extensiveQueryList...)
 	filteredQueryList := getUniqueQueryList(queryList)
-	groupQueriesByDatabase := groupQueriesByDatabase(filteredQueryList)
 	setIndividualQueryMetrics(i, args, filteredQueryList)
+	groupQueriesByDatabase := groupQueriesByDatabase(filteredQueryList)
 	return groupQueriesByDatabase, nil
 }
 
@@ -135,7 +135,9 @@ func groupQueriesByDatabase(filteredList []performancedatamodel.IndividualQueryM
 // setIndividualQueryMetrics sets the collected individual query metrics to the integration
 func setIndividualQueryMetrics(i *integration.Integration, args arguments.ArgumentList, metrics []performancedatamodel.IndividualQueryMetrics) error {
 	var metricList []interface{}
-	for _, metricData := range metrics {
+	newMetricsList := make([]performancedatamodel.IndividualQueryMetrics, len(metrics))
+	copy(newMetricsList, metrics)
+	for _, metricData := range newMetricsList {
 		*metricData.QueryText = *metricData.AnonymizedQueryText
 		*metricData.AnonymizedQueryText = ""
 		metricList = append(metricList, metricData)
