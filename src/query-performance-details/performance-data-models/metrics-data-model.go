@@ -19,7 +19,7 @@ type SlowQueryMetrics struct {
 type IndividualQueryMetrics struct {
 	QueryID             *string  `json:"query_id" db:"query_id" metric_name:"query_id" source_type:"attribute"`
 	AnonymizedQueryText *string  `json:"query_text" db:"query_text" metric_name:"anonymized_query_text" source_type:"attribute"`
-	QueryText           *string  `json:"query_sample_text" db:"query_sample_text" metric_name:"query_sample_text" source_type:"attribute"`
+	QueryText           *string  `json:"query_sample_text" db:"query_sample_text" metric_name:"query_text" source_type:"attribute"`
 	EventID             *uint64  `json:"event_id" db:"event_id" metric_name:"event_id" source_type:"guage"`
 	ThreadID            *uint64  `json:"thread_id" db:"thread_id" metric_name:"thread_id" source_type:"guage"`
 	ExecutionTimeMs     *float64 `json:"execution_time_ms" db:"execution_time_ms" metric_name:"execution_time_ms" source_type:"gauge"`
