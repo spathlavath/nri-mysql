@@ -1,6 +1,8 @@
 package query_performance_details
 
 import (
+	"fmt"
+
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	arguments "github.com/newrelic/nri-mysql/src/args"
@@ -39,7 +41,7 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 			log.Error("Error populating individual query details: %v", individualQueryDetailsErr)
 			return
 		}
-
+		fmt.Println("groupQueriesByDatabase----", groupQueriesByDatabase)
 		// Populate execution plan details
 		_, executionPlanMetricsErr := query_details.PopulateExecutionPlans(db, groupQueriesByDatabase, i, e, args)
 		if executionPlanMetricsErr != nil {

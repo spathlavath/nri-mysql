@@ -94,8 +94,8 @@ func PopulateIndividualQueryDetails(db performancedatabase.DataSource, queryIdLi
 
 	queryList := append(append(currentQueryMetrics, recentQueryList...), extensiveQueryList...)
 	filteredQueryList := getUniqueQueryList(queryList)
-	setIndividualQueryMetrics(i, args, filteredQueryList)
 	groupQueriesByDatabase := groupQueriesByDatabase(filteredQueryList)
+	setIndividualQueryMetrics(i, args, filteredQueryList)
 	return groupQueriesByDatabase, nil
 }
 
