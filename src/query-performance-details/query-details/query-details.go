@@ -56,6 +56,8 @@ func collectGroupedSlowQueryMetrics(db performancedatabase.DataSource, fetchInte
 		log.Error("Error iterating over query metrics rows: %v", err)
 		return nil, []string{}, err
 	}
+	fmt.Println("metrics---->", metrics)
+	fmt.Println("qIdList---->", qIdList)
 	return metrics, qIdList, nil
 }
 
@@ -109,7 +111,7 @@ func getUniqueQueryList(queryList []performancedatamodel.IndividualQueryMetrics)
 			uniqueQueryList = append(uniqueQueryList, query)
 		}
 	}
-
+	fmt.Println("uniqueQueryList---->", uniqueQueryList)
 	return uniqueQueryList
 }
 
