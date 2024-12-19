@@ -126,7 +126,7 @@ const (
 				WHEN wait_data.wait_event_name LIKE 'wait/lock/transaction/%' THEN 'Transaction Lock'
 				ELSE 'Other'
 			END AS wait_category,
-			ROUND(IFNULL(SUM(wait_data.TIMER_WAIT),0) / 1000000000, 3) AS total_wait_time_ms,
+			ROUND(IFNULL(SUM(wait_data.TIMER_WAIT), 0) / 1000000000, 3) AS total_wait_time_ms,
 			'N/A' AS avg_wait_time_ms,
 			SUM(ewsg.COUNT_STAR) AS wait_event_count,
 			ROUND((IFNULL(SUM(wait_data.TIMER_WAIT), 0) / 1000000000) / IFNULL(SUM(ewsg.COUNT_STAR), 1), 3) AS avg_wait_time_ms,
@@ -148,6 +148,13 @@ const (
 				OBJECT_INSTANCE_BEGIN AS instance_id,
 				EVENT_NAME AS wait_event_name,
 				TIMER_WAIT
+			FROM performance_schema.events_waits_history
+			UNION ALL
+			SELECT 
+				THREAD_ID,
+				OBJECT_INSTANCE_BEGIN AS instance_id,
+				EVENT_NAME AS wait_event_name,
+				TIMER_WAIT
 			FROM performance_schema.events_waits_current
 		) AS wait_data
 		JOIN (
@@ -157,6 +164,17 @@ const (
 				CURRENT_SCHEMA AS database_name,
 				DIGEST_TEXT AS query_text
 			FROM performance_schema.events_statements_history_long
+			WHERE CURRENT_SCHEMA IS NOT NULL
+				AND CURRENT_SCHEMA NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
+				AND SQL_TEXT RLIKE '^(SELECT|INSERT|UPDATE|DELETE|WITH)'
+				AND SQL_TEXT NOT LIKE '%DIGEST_TEXT%'
+			UNION ALL
+			SELECT 
+				THREAD_ID,
+				DIGEST,
+				CURRENT_SCHEMA AS database_name,
+				DIGEST_TEXT AS query_text
+			FROM performance_schema.events_statements_history
 			WHERE CURRENT_SCHEMA IS NOT NULL
 				AND CURRENT_SCHEMA NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
 				AND SQL_TEXT RLIKE '^(SELECT|INSERT|UPDATE|DELETE|WITH)'
