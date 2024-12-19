@@ -146,6 +146,15 @@ func extractMetrics(js *simplejson.Json, dbPerformanceEvents []performance_data_
 	filtered, _ := js.Get("filtered").String()
 	readCost, _ := js.Get("cost_info").Get("read_cost").String()
 	evalCost, _ := js.Get("cost_info").Get("eval_cost").String()
+	possibleKeysArray, _ := js.Get("possible_keys").StringArray()
+	key, _ := js.Get("key").String()
+	usedKeyPartsArray, _ := js.Get("used_key_parts").StringArray()
+	refArray, _ := js.Get("ref").StringArray()
+	attachedCondition, _ := js.Get("attached_condition").String()
+
+	possibleKeys := strings.Join(possibleKeysArray, ",")
+	usedKeyParts := strings.Join(usedKeyPartsArray, ",")
+	ref := strings.Join(refArray, ",")
 
 	if queryCost != "" {
 		memo.QueryCost = queryCost
@@ -162,6 +171,11 @@ func extractMetrics(js *simplejson.Json, dbPerformanceEvents []performance_data_
 			Filtered:            filtered,
 			ReadCost:            readCost,
 			EvalCost:            evalCost,
+			PossibleKeys:        possibleKeys,
+			Key:                 key,
+			UsedKeyParts:        usedKeyParts,
+			Ref:                 ref,
+			AttachedCondition:   attachedCondition,
 		})
 		return dbPerformanceEvents
 	}

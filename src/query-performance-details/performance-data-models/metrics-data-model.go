@@ -43,6 +43,11 @@ type QueryPlanMetrics struct {
 	Filtered            string `json:"filtered" metric_name:"filtered" source_type:"attribute"`
 	ReadCost            string `json:"read_cost" metric_name:"read_cost" source_type:"attribute"`
 	EvalCost            string `json:"eval_cost" metric_name:"eval_cost" source_type:"attribute"`
+	PossibleKeys        string `json:"possible_keys" metric_name:"possible_keys" source_type:"attribute"`
+	Key                 string `json:"key" metric_name:"key" source_type:"attribute"`
+	UsedKeyParts        string `json:"used_key_parts" metric_name:"used_key_parts" source_type:"attribute"`
+	Ref                 string `json:"ref" metric_name:"ref" source_type:"attribute"`
+	AttachedCondition   string `json:"attached_condition" metric_name:"attached_condition" source_type:"attribute"`
 }
 
 type Memo struct {

@@ -15,7 +15,7 @@ import (
 const (
 	IntegrationName = "com.newrelic.mysql"
 	NodeEntityType  = "node"
-	MetricSetLimit  = 400
+	MetricSetLimit  = 100
 )
 
 func CreateNodeEntity(
