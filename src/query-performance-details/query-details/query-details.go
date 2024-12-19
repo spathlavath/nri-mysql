@@ -94,8 +94,18 @@ func PopulateIndividualQueryDetails(db performancedatabase.DataSource, queryIdLi
 
 	queryList := append(append(currentQueryMetrics, recentQueryList...), extensiveQueryList...)
 	filteredQueryList := getUniqueQueryList(queryList)
-	setIndividualQueryMetrics(i, args, filteredQueryList)
+	var metricList []interface{}
+	newMetricsList := make([]performancedatamodel.IndividualQueryMetrics, len(filteredQueryList))
+	copy(newMetricsList, filteredQueryList)
+	for i := range newMetricsList {
+		newMetricsList[i].QueryText = newMetricsList[i].AnonymizedQueryText
+		newMetricsList[i].AnonymizedQueryText = nil
+		metricList = append(metricList, newMetricsList[i])
+	}
+	//setIndividualQueryMetrics(i, args, filteredQueryList)
+	common_utils.IngestMetric(metricList, "MysqlIndividualQueriesSample", i, args)
 	groupQueriesByDatabase := groupQueriesByDatabase(filteredQueryList)
+
 	return groupQueriesByDatabase, nil
 }
 
@@ -130,22 +140,6 @@ func groupQueriesByDatabase(filteredList []performancedatamodel.IndividualQueryM
 	}
 
 	return groupedQueries
-}
-
-// setIndividualQueryMetrics sets the collected individual query metrics to the integration
-func setIndividualQueryMetrics(i *integration.Integration, args arguments.ArgumentList, metrics []performancedatamodel.IndividualQueryMetrics) error {
-	var metricList []interface{}
-	newMetricsList := make([]performancedatamodel.IndividualQueryMetrics, len(metrics))
-	copy(newMetricsList, metrics)
-	for _, metricData := range newMetricsList {
-		*metricData.QueryText = *metricData.AnonymizedQueryText
-		*metricData.AnonymizedQueryText = ""
-		metricList = append(metricList, metricData)
-	}
-
-	common_utils.IngestMetric(metricList, "MysqlIndividualQueriesSample", i, args)
-
-	return nil
 }
 
 // currentQueryMetrics collects current query metrics from the performance schema database for the given query IDs

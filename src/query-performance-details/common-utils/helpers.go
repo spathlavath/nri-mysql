@@ -93,7 +93,7 @@ func SetMetric(metricSet *metric.Set, name string, value interface{}, sourceType
 // IngestMetric ingests a list of metrics into the integration.
 func IngestMetric(metricList []interface{}, eventName string, i *integration.Integration, args arguments.ArgumentList) {
 	metricCount := 0
-	e, err := CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
+	instanceEntity, err := CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
 	if err != nil {
 		log.Error("Error creating entity: %v", err)
 		return
@@ -104,7 +104,7 @@ func IngestMetric(metricList []interface{}, eventName string, i *integration.Int
 			continue
 		}
 		metricCount++
-		metricSet := CreateMetricSet(e, eventName, args)
+		metricSet := CreateMetricSet(instanceEntity, eventName, args)
 
 		modelValue := reflect.ValueOf(model)
 		if modelValue.Kind() == reflect.Ptr {
@@ -136,7 +136,7 @@ func IngestMetric(metricList []interface{}, eventName string, i *integration.Int
 				log.Error("Error publishing metrics: %v", err)
 				return
 			}
-			e, err = CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
+			instanceEntity, err = CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
 			if err != nil {
 				log.Error("Error creating entity: %v", err)
 				return
