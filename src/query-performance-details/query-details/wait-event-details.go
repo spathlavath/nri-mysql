@@ -16,7 +16,7 @@ import (
 func PopulateWaitEventMetrics(db performance_database.DataSource, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList) ([]performance_data_model.WaitEventQueryMetrics, error) {
 	query := query_performance_details.WaitEventsQuery
 
-	rows, err := db.QueryxContext(context.Background(), query)
+	rows, err := db.QueryxContext(context.Background(), query, args.QueryCountThreshold)
 	if err != nil {
 		log.Error("Failed to execute query: %v", err)
 		return nil, err

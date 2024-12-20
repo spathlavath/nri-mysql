@@ -202,7 +202,8 @@ const (
 			schema_data.database_name,
 			schema_data.query_text
 		ORDER BY 
-			total_wait_time_ms DESC;
+			total_wait_time_ms DESC
+		LIMIT ?;
 	`
 	BlockingSessionsQuery = `
 		SELECT 
@@ -245,6 +246,7 @@ const (
                       ON esc_blocking.DIGEST = es_blocking.DIGEST
 				  WHERE
 					  wt.PROCESSLIST_DB IS NOT NULL
-					  AND wt.PROCESSLIST_DB NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys');
+					  AND wt.PROCESSLIST_DB NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
+				  LIMIT ?;
 	`
 )

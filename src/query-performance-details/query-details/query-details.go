@@ -98,8 +98,7 @@ func PopulateIndividualQueryDetails(db performancedatabase.DataSource, queryIdLi
 	newMetricsList := make([]performancedatamodel.IndividualQueryMetrics, len(filteredQueryList))
 	copy(newMetricsList, filteredQueryList)
 	for i := range newMetricsList {
-		newMetricsList[i].QueryText = newMetricsList[i].AnonymizedQueryText
-		newMetricsList[i].AnonymizedQueryText = nil
+		newMetricsList[i].QueryText = nil
 		metricList = append(metricList, newMetricsList[i])
 	}
 
