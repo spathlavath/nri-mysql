@@ -35,6 +35,7 @@ type QueryGroup struct {
 
 type QueryPlanMetrics struct {
 	EventID             uint64 `json:"event_id" metric_name:"event_id" source_type:"gauge"`
+	StepID              int    `json:"step_id" metric_name:"step_id" source_type:"gauge"`
 	QueryCost           string `json:"query_cost" metric_name:"query_cost" source_type:"attribute"`
 	TableName           string `json:"table_name" metric_name:"table_name" source_type:"attribute"`
 	AccessType          string `json:"access_type" metric_name:"access_type" source_type:"attribute"`

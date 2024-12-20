@@ -119,7 +119,7 @@ func extractMetricsFromJSONString(jsonString string, eventID uint64) ([]performa
 
 	memo := performance_data_model.Memo{QueryCost: ""}
 	dbPerformanceEvents := make([]performance_data_model.QueryPlanMetrics, 0)
-	dbPerformanceEvents = extractMetrics(js, dbPerformanceEvents, eventID, memo)
+	dbPerformanceEvents = extractMetrics(js, dbPerformanceEvents, eventID, memo, 0)
 
 	return dbPerformanceEvents, nil
 }
@@ -137,7 +137,7 @@ func SetExecutionPlanMetrics(i *integration.Integration, args arguments.Argument
 }
 
 // extractMetrics recursively extracts metrics from a simplejson.Json object.
-func extractMetrics(js *simplejson.Json, dbPerformanceEvents []performance_data_model.QueryPlanMetrics, eventID uint64, memo performance_data_model.Memo) []performance_data_model.QueryPlanMetrics {
+func extractMetrics(js *simplejson.Json, dbPerformanceEvents []performance_data_model.QueryPlanMetrics, eventID uint64, memo performance_data_model.Memo, stepID int) []performance_data_model.QueryPlanMetrics {
 	tableName, _ := js.Get("table_name").String()
 	queryCost, _ := js.Get("cost_info").Get("query_cost").String()
 	accessType, _ := js.Get("access_type").String()
@@ -176,7 +176,9 @@ func extractMetrics(js *simplejson.Json, dbPerformanceEvents []performance_data_
 			UsedKeyParts:        usedKeyParts,
 			Ref:                 ref,
 			AttachedCondition:   attachedCondition,
+			StepID:              stepID,
 		})
+		stepID++
 		return dbPerformanceEvents
 	}
 
@@ -196,7 +198,7 @@ func extractMetrics(js *simplejson.Json, dbPerformanceEvents []performance_data_
 							log.Error("Error creating simplejson from byte slice: %v", err)
 						}
 
-						dbPerformanceEvents = extractMetrics(convertedSimpleJson, dbPerformanceEvents, eventID, memo)
+						dbPerformanceEvents = extractMetrics(convertedSimpleJson, dbPerformanceEvents, eventID, memo, stepID)
 					}
 				} else if t.Kind() == reflect.Slice {
 					for _, element := range value.([]interface{}) {
@@ -211,7 +213,7 @@ func extractMetrics(js *simplejson.Json, dbPerformanceEvents []performance_data_
 								log.Error("Error creating simplejson from byte slice: %v", err)
 							}
 
-							dbPerformanceEvents = extractMetrics(convertedSimpleJson, dbPerformanceEvents, eventID, memo)
+							dbPerformanceEvents = extractMetrics(convertedSimpleJson, dbPerformanceEvents, eventID, memo, stepID)
 						}
 					}
 				}
