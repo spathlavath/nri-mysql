@@ -179,7 +179,6 @@ func extractMetrics(js *simplejson.Json, dbPerformanceEvents []performance_data_
 			StepID:              stepID,
 		})
 		stepID++
-		return dbPerformanceEvents
 	}
 
 	if jsMap, _ := js.Map(); jsMap != nil {
