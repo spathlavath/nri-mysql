@@ -118,26 +118,15 @@ func extractMetricsFromJSONString(jsonString string, eventID uint64) ([]performa
 	}
 
 	memo := performance_data_model.Memo{QueryCost: ""}
+	stepID := 0
 	dbPerformanceEvents := make([]performance_data_model.QueryPlanMetrics, 0)
-	dbPerformanceEvents = extractMetrics(js, dbPerformanceEvents, eventID, memo, 0)
+	dbPerformanceEvents = extractMetrics(js, dbPerformanceEvents, eventID, memo, &stepID)
 
 	return dbPerformanceEvents, nil
 }
 
-// SetExecutionPlanMetrics sets the execution plan metrics.
-func SetExecutionPlanMetrics(i *integration.Integration, args arguments.ArgumentList, metrics []performance_data_model.QueryPlanMetrics) error {
-	var metricList []interface{}
-	for _, metricData := range metrics {
-		metricList = append(metricList, metricData)
-	}
-
-	common_utils.IngestMetric(metricList, "MysqlQueryExecutionSample", i, args)
-
-	return nil
-}
-
 // extractMetrics recursively extracts metrics from a simplejson.Json object.
-func extractMetrics(js *simplejson.Json, dbPerformanceEvents []performance_data_model.QueryPlanMetrics, eventID uint64, memo performance_data_model.Memo, stepID int) []performance_data_model.QueryPlanMetrics {
+func extractMetrics(js *simplejson.Json, dbPerformanceEvents []performance_data_model.QueryPlanMetrics, eventID uint64, memo performance_data_model.Memo, stepID *int) []performance_data_model.QueryPlanMetrics {
 	tableName, _ := js.Get("table_name").String()
 	queryCost, _ := js.Get("cost_info").Get("query_cost").String()
 	accessType, _ := js.Get("access_type").String()
@@ -164,6 +153,7 @@ func extractMetrics(js *simplejson.Json, dbPerformanceEvents []performance_data_
 		dbPerformanceEvents = append(dbPerformanceEvents, performance_data_model.QueryPlanMetrics{
 			EventID:             eventID,
 			QueryCost:           memo.QueryCost,
+			StepID:              *stepID,
 			TableName:           tableName,
 			AccessType:          accessType,
 			RowsExaminedPerScan: rowsExaminedPerScan,
@@ -176,9 +166,8 @@ func extractMetrics(js *simplejson.Json, dbPerformanceEvents []performance_data_
 			UsedKeyParts:        usedKeyParts,
 			Ref:                 ref,
 			AttachedCondition:   attachedCondition,
-			StepID:              stepID,
 		})
-		stepID++
+		*stepID++
 	}
 
 	if jsMap, _ := js.Map(); jsMap != nil {
@@ -221,6 +210,18 @@ func extractMetrics(js *simplejson.Json, dbPerformanceEvents []performance_data_
 	}
 
 	return dbPerformanceEvents
+}
+
+// SetExecutionPlanMetrics sets the execution plan metrics.
+func SetExecutionPlanMetrics(i *integration.Integration, args arguments.ArgumentList, metrics []performance_data_model.QueryPlanMetrics) error {
+	var metricList []interface{}
+	for _, metricData := range metrics {
+		metricList = append(metricList, metricData)
+	}
+
+	common_utils.IngestMetric(metricList, "MysqlQueryExecutionSample", i, args)
+
+	return nil
 }
 
 // isSupportedStatement checks if the given query is a supported statement.
