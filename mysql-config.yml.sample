@@ -38,7 +38,7 @@ integrations:
     # Enable query performance monitoring
     ENABLE_QUERY_PERFORMANCE: true
     # Fetch interval in seconds for grouped slow queries. Should match the interval in mysql-config.yml
-    FETCH_INTERVAL: 15
+    SLOW_QUERY_FETCH_INTERVAL: 15
     # Threshold in milliseconds for query response time to fetch individual query performance metrics.            
 	  QUERY_RESPONSE_TIME_THRESHOLD: 500
     # Query count limit for fetching grouped slow and individual query performance metrics.  

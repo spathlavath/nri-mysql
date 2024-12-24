@@ -17,7 +17,7 @@ import (
 
 // PopulateSlowQueryMetrics collects and sets slow query metrics
 func PopulateSlowQueryMetrics(i *integration.Integration, e *integration.Entity, db performancedatabase.DataSource, args arguments.ArgumentList) []string {
-	rawMetrics, queryIdList, err := collectGroupedSlowQueryMetrics(db, args.FetchInterval, args.QueryCountThreshold)
+	rawMetrics, queryIdList, err := collectGroupedSlowQueryMetrics(db, args.SlowQueryFetchInterval, args.QueryCountThreshold)
 	if err != nil {
 		log.Error("Failed to collect query metrics: %v", err)
 		return nil
@@ -27,11 +27,11 @@ func PopulateSlowQueryMetrics(i *integration.Integration, e *integration.Entity,
 }
 
 // collectGroupedSlowQueryMetrics collects metrics from the performance schema database
-func collectGroupedSlowQueryMetrics(db performancedatabase.DataSource, fetchInterval int, queryCountThreshold int) ([]performancedatamodel.SlowQueryMetrics, []string, error) {
+func collectGroupedSlowQueryMetrics(db performancedatabase.DataSource, slowQueryfetchInterval int, queryCountThreshold int) ([]performancedatamodel.SlowQueryMetrics, []string, error) {
 	query := queries.SlowQueries
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	rows, err := db.QueryxContext(ctx, query, fetchInterval, queryCountThreshold)
+	rows, err := db.QueryxContext(ctx, query, slowQueryfetchInterval, queryCountThreshold)
 	if err != nil {
 		log.Error("Failed to collect query metrics from Performance Schema: %v", err)
 		return nil, []string{}, err
@@ -98,8 +98,7 @@ func PopulateIndividualQueryDetails(db performancedatabase.DataSource, queryIdLi
 	newMetricsList := make([]performancedatamodel.IndividualQueryMetrics, len(filteredQueryList))
 	copy(newMetricsList, filteredQueryList)
 	for i := range newMetricsList {
-		newMetricsList[i].QueryText = newMetricsList[i].AnonymizedQueryText
-		newMetricsList[i].AnonymizedQueryText = nil
+		newMetricsList[i].QueryText = nil
 		metricList = append(metricList, newMetricsList[i])
 	}
 
