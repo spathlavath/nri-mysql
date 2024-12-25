@@ -33,8 +33,6 @@ func PopulateWaitEventMetrics(db performance_database.DataSource, i *integration
 		return nil, err
 	}
 
-	// Rebind the query for the specific database driver
-	preparedQuery = db.RebindX(preparedQuery)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	rows, err := db.QueryxContext(ctx, preparedQuery, preparedArgs...)

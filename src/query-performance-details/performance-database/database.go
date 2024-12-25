@@ -15,7 +15,6 @@ import (
 
 type DataSource interface {
 	Close()
-	RebindX(string) string
 	QueryX(string) (*sqlx.Rows, error)
 	QueryxContext(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error)
 }
@@ -55,11 +54,6 @@ func fatalIfErr(err error) {
 // QueryxContext method implementation
 func (db *Database) QueryxContext(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error) {
 	return db.source.QueryxContext(ctx, query, args...)
-}
-
-// RebindX takes a query and binds it to the appropriate SQL driver
-func (db *Database) RebindX(query string) string {
-	return db.source.Rebind(query)
 }
 
 func GenerateDSN(args arguments.ArgumentList, database string) string {

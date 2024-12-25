@@ -30,8 +30,6 @@ func PopulateBlockingSessionMetrics(db performance_database.DataSource, i *integ
 		return nil, err
 	}
 
-	// Rebind the query for the specific database driver
-	query = db.RebindX(query)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	rows, err := db.QueryxContext(ctx, query, inputArgs...)

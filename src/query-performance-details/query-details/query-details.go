@@ -43,8 +43,6 @@ func collectGroupedSlowQueryMetrics(db performancedatabase.DataSource, slowQuery
 		return nil, []string{}, err
 	}
 
-	// Rebind the query for the specific database driver
-	query = db.RebindX(query)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	rows, err := db.QueryxContext(ctx, query, args...)
@@ -225,8 +223,6 @@ func collectIndividualQueryMetrics(db performancedatabase.DataSource, queryIDLis
 		return nil, err
 	}
 
-	// Rebind the query for the specific database driver
-	query = db.RebindX(query)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
