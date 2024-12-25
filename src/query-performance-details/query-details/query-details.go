@@ -48,6 +48,11 @@ func collectGroupedSlowQueryMetrics(db performancedatabase.DataSource, slowQuery
 	// }
 	// Parse the JSON string into a slice of strings
 	var excludedDatabasesSlice []string
+	// Ensure excludedDatabasesList is a valid JSON string
+	if !strings.HasPrefix(excludedDatabasesList, "[") {
+		excludedDatabasesList = fmt.Sprintf(`[%s]`, excludedDatabasesList)
+	}
+
 	fmt.Println("args---->", excludedDatabasesList)
 	// Check if excludedDatabasesList is a valid JSON array
 	if err := json.Unmarshal([]byte(excludedDatabasesList), &excludedDatabasesSlice); err != nil {
