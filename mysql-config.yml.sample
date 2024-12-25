@@ -43,8 +43,10 @@ integrations:
 	  QUERY_RESPONSE_TIME_THRESHOLD: 500
     # Query count limit for fetching grouped slow and individual query performance metrics.  
     QUERY_COUNT_THRESHOLD: 20
+    # Example:
+    # EXCLUDED_DATABASES: '["employees","azure_sys"]'
     # A JSON array that list databases that will be excluded from collection. system databases are excluded by default.
-    EXCLUDED_DATABASES: []  
+    EXCLUDED_DATABASES: '[]'  
   interval: 15s
   labels:
     env: production
