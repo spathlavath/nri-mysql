@@ -31,7 +31,7 @@ const (
 		FROM performance_schema.events_statements_summary_by_digest
 		WHERE LAST_SEEN >= UTC_TIMESTAMP() - INTERVAL ? SECOND
 			AND SCHEMA_NAME IS NOT NULL
-			AND SCHEMA_NAME NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
+			AND SCHEMA_NAME NOT IN (?)
 			AND DIGEST_TEXT RLIKE '^(SELECT|INSERT|UPDATE|DELETE|WITH)'
 			AND DIGEST_TEXT NOT LIKE '%DIGEST_TEXT%'
 		ORDER BY avg_elapsed_time_ms DESC

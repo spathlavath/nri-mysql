@@ -1,9 +1,11 @@
 package common_utils
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/newrelic/infra-integrations-sdk/v3/data/attribute"
 	"github.com/newrelic/infra-integrations-sdk/v3/data/metric"
@@ -12,11 +14,16 @@ import (
 	arguments "github.com/newrelic/nri-mysql/src/args"
 )
 
+type ignoreList map[string]struct{}
+
 const (
 	IntegrationName = "com.newrelic.mysql"
 	NodeEntityType  = "node"
 	MetricSetLimit  = 100
 )
+
+// Default excluded databases
+var defaultExcludedDatabases = []string{"", "mysql", "information_schema", "performance_schema", "sys"}
 
 func CreateNodeEntity(
 	i *integration.Integration,
@@ -67,6 +74,48 @@ func FatalIfErr(err error) {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func ParseIgnoreList(list string) (ignoreList, error) {
+	ignoreItems := []string{}
+	ignoreMap := ignoreList{}
+
+	if list == "" {
+		return ignoreMap, nil
+	}
+
+	if err := json.Unmarshal([]byte(list), &ignoreItems); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal list arg '%s': %w", list, err)
+	}
+
+	for _, item := range ignoreItems {
+		ignoreMap[item] = struct{}{}
+	}
+
+	return ignoreMap, nil
+}
+
+func GetUniqueExcludedDatabases(excludedDbList ignoreList) []string {
+	// Create a map to store unique schemas
+	uniqueSchemas := make(map[string]struct{})
+
+	// Populate the map with default excluded databases
+	for _, schema := range defaultExcludedDatabases {
+		uniqueSchemas[schema] = struct{}{}
+	}
+
+	// Populate the map with values from excludedDbList
+	for schema := range excludedDbList {
+		uniqueSchemas[strings.TrimSpace(schema)] = struct{}{}
+	}
+
+	// Convert the map keys back into a slice
+	result := make([]string, 0, len(uniqueSchemas))
+	for schema := range uniqueSchemas {
+		result = append(result, schema)
+	}
+
+	return result
 }
 
 // SetMetric sets a metric in the given metric set.

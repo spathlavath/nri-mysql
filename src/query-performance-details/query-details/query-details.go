@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	arguments "github.com/newrelic/nri-mysql/src/args"
@@ -17,21 +18,41 @@ import (
 
 // PopulateSlowQueryMetrics collects and sets slow query metrics
 func PopulateSlowQueryMetrics(i *integration.Integration, e *integration.Entity, db performancedatabase.DataSource, args arguments.ArgumentList) []string {
-	rawMetrics, queryIdList, err := collectGroupedSlowQueryMetrics(db, args.SlowQueryFetchInterval, args.QueryCountThreshold)
+	rawMetrics, queryIdList, err := collectGroupedSlowQueryMetrics(db, args.SlowQueryFetchInterval, args.QueryCountThreshold, args.ExcludedDatabases)
 	if err != nil {
 		log.Error("Failed to collect query metrics: %v", err)
 		return nil
 	}
-	setSlowQueryMetrics(i, rawMetrics, args)
+	fmt.Println("rawMetrics---->", rawMetrics)
+	// setSlowQueryMetrics(i, rawMetrics, args)
 	return queryIdList
 }
 
 // collectGroupedSlowQueryMetrics collects metrics from the performance schema database
-func collectGroupedSlowQueryMetrics(db performancedatabase.DataSource, slowQueryfetchInterval int, queryCountThreshold int) ([]performancedatamodel.SlowQueryMetrics, []string, error) {
-	query := queries.SlowQueries
+func collectGroupedSlowQueryMetrics(db performancedatabase.DataSource, slowQueryfetchInterval int, queryCountThreshold int, excludedDatabasesList string) ([]performancedatamodel.SlowQueryMetrics, []string, error) {
+	// query := queries.SlowQueries
+	parsedDBList, err := common_utils.ParseIgnoreList(excludedDatabasesList)
+	if err != nil {
+		log.Error("Error parsing excludedDbList:", err)
+		return nil, []string{}, err
+	}
+	// Get the list of unique excluded databases
+	excludedDatabases := common_utils.GetUniqueExcludedDatabases(parsedDBList)
+	fmt.Println("excludedDatabases---->", excludedDatabases)
+
+	// Use sqlx.In to safely include the slice in the query
+	query, args, err := sqlx.In(queries.SlowQueries, slowQueryfetchInterval, excludedDatabases, queryCountThreshold)
+	if err != nil {
+		log.Error("Failed to collect query metrics from Performance Schema: %v", err)
+		return nil, []string{}, err
+	}
+	fmt.Println("query---->", query)
+	// Rebind the query for the specific database driver
+	query = db.RebindX(query)
+	fmt.Println("rebind---->", query)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	rows, err := db.QueryxContext(ctx, query, slowQueryfetchInterval, queryCountThreshold)
+	rows, err := db.QueryxContext(ctx, query, args...)
 	if err != nil {
 		log.Error("Failed to collect query metrics from Performance Schema: %v", err)
 		return nil, []string{}, err

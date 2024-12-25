@@ -15,6 +15,7 @@ import (
 
 type DataSource interface {
 	Close()
+	RebindX(string) string
 	QueryX(string) (*sqlx.Rows, error)
 	QueryxContext(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error)
 }
@@ -92,4 +93,9 @@ func determineDatabase(args arguments.ArgumentList, database string) string {
 		return database
 	}
 	return args.Database
+}
+
+// RebindSQLX takes a query and binds it to the appropriate SQL driver
+func (db *Database) RebindX(query string) string {
+	return db.source.Rebind(query)
 }

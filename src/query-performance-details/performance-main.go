@@ -1,6 +1,7 @@
 package query_performance_details
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
@@ -36,47 +37,47 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 	log.Info("Beginning to retrieve slow query metrics")
 	queryIdList := query_details.PopulateSlowQueryMetrics(i, e, db, args)
 	log.Info("Completed fetching slow query metrics in %v", time.Since(start))
+	fmt.Println("queryIdList---->", queryIdList)
+	// if len(queryIdList) > 0 {
+	// 	// Populate metrics for individual queries
+	// 	start = time.Now()
+	// 	log.Info("Beginning to retrieve individual query metrics")
+	// 	groupQueriesByDatabase, individualQueryDetailsErr := query_details.PopulateIndividualQueryDetails(db, queryIdList, i, e, args)
+	// 	log.Info("Completed fetching individual query metrics in %v", time.Since(start))
+	// 	if individualQueryDetailsErr != nil {
+	// 		log.Error("Error populating individual query details: %v", individualQueryDetailsErr)
+	// 		return
+	// 	}
 
-	if len(queryIdList) > 0 {
-		// Populate metrics for individual queries
-		start = time.Now()
-		log.Info("Beginning to retrieve individual query metrics")
-		groupQueriesByDatabase, individualQueryDetailsErr := query_details.PopulateIndividualQueryDetails(db, queryIdList, i, e, args)
-		log.Info("Completed fetching individual query metrics in %v", time.Since(start))
-		if individualQueryDetailsErr != nil {
-			log.Error("Error populating individual query details: %v", individualQueryDetailsErr)
-			return
-		}
+	// 	// Populate execution plan details
+	// 	start = time.Now()
+	// 	log.Info("Beginning to retrieve query execution plan metrics")
+	// 	_, executionPlanMetricsErr := query_details.PopulateExecutionPlans(db, groupQueriesByDatabase, i, e, args)
+	// 	log.Info("Completed fetching query execution plan metrics in %v", time.Since(start))
+	// 	if executionPlanMetricsErr != nil {
+	// 		log.Error("Error populating execution plan details: %v", executionPlanMetricsErr)
+	// 		return
+	// 	}
+	// }
 
-		// Populate execution plan details
-		start = time.Now()
-		log.Info("Beginning to retrieve query execution plan metrics")
-		_, executionPlanMetricsErr := query_details.PopulateExecutionPlans(db, groupQueriesByDatabase, i, e, args)
-		log.Info("Completed fetching query execution plan metrics in %v", time.Since(start))
-		if executionPlanMetricsErr != nil {
-			log.Error("Error populating execution plan details: %v", executionPlanMetricsErr)
-			return
-		}
-	}
+	// // Populate wait event metrics
+	// start = time.Now()
+	// log.Info("Beginning to retrieve wait event metrics")
+	// _, waitEventError := query_details.PopulateWaitEventMetrics(db, i, e, args)
+	// log.Info("Completed fetching wait event metrics in %v", time.Since(start))
+	// if waitEventError != nil {
+	// 	log.Error("Error populating wait event metrics: %v", waitEventError)
+	// 	return
+	// }
 
-	// Populate wait event metrics
-	start = time.Now()
-	log.Info("Beginning to retrieve wait event metrics")
-	_, waitEventError := query_details.PopulateWaitEventMetrics(db, i, e, args)
-	log.Info("Completed fetching wait event metrics in %v", time.Since(start))
-	if waitEventError != nil {
-		log.Error("Error populating wait event metrics: %v", waitEventError)
-		return
-	}
-
-	// Populate blocking session metrics
-	start = time.Now()
-	log.Info("Beginning to retrieve blocking session metrics")
-	_, populateBlockingSessionMetricsError := query_details.PopulateBlockingSessionMetrics(db, i, e, args)
-	log.Info("Completed fetching blocking session metrics in %v", time.Since(start))
-	if populateBlockingSessionMetricsError != nil {
-		log.Error("Error populating blocking session metrics: %v", populateBlockingSessionMetricsError)
-		return
-	}
-	log.Info("Query analysis completed.")
+	// // Populate blocking session metrics
+	// start = time.Now()
+	// log.Info("Beginning to retrieve blocking session metrics")
+	// _, populateBlockingSessionMetricsError := query_details.PopulateBlockingSessionMetrics(db, i, e, args)
+	// log.Info("Completed fetching blocking session metrics in %v", time.Since(start))
+	// if populateBlockingSessionMetricsError != nil {
+	// 	log.Error("Error populating blocking session metrics: %v", populateBlockingSessionMetricsError)
+	// 	return
+	// }
+	// log.Info("Query analysis completed.")
 }
