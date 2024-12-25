@@ -212,7 +212,10 @@ func collectIndividualQueryMetrics(db performancedatabase.DataSource, queryIDLis
 	query := fmt.Sprintf(queryString, placeholders)
 
 	// Combine queryIDList and excludedDatabases with thresholds into args
-	args := append(common_utils.ConvertToInterfaceSlice(queryIDList), common_utils.ConvertToInterfaceSlice(excludedDatabases)...)
+	args := append(
+		common_utils.ConvertToInterfaceSlice(queryIDList),
+		common_utils.ConvertToInterfaceSlice(excludedDatabases),
+	)
 	args = append(args, queryResponseTimeThreshold, queryCountThreshold)
 
 	// Use sqlx.In to safely include the slices in the query
