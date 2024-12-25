@@ -48,14 +48,16 @@ func collectGroupedSlowQueryMetrics(db performancedatabase.DataSource, slowQuery
 	// }
 	// Parse the JSON string into a slice of strings
 	var excludedDatabasesSlice []string
-	// Ensure excludedDatabasesList is a valid JSON string
-	if !strings.HasPrefix(excludedDatabasesList, "[") && !strings.HasSuffix(excludedDatabasesList, "]") {
+	// Check if the input string is improperly formatted
+	if !(strings.HasPrefix(excludedDatabasesList, "[\"") && strings.HasSuffix(excludedDatabasesList, "\"]")) {
+		// Convert non-JSON input to a JSON-compatible array format
 		excludedDatabasesList = fmt.Sprintf(`["%s"]`, strings.Join(strings.Split(excludedDatabasesList, ","), `","`))
 	}
 
 	fmt.Printf("excludedDatabasesList type: %T\n", excludedDatabasesList)
 	fmt.Println("args---->", excludedDatabasesList)
-	// Check if excludedDatabasesList is a valid JSON array
+
+	// Attempt to unmarshal the JSON array
 	if err := json.Unmarshal([]byte(excludedDatabasesList), &excludedDatabasesSlice); err != nil {
 		log.Error("Error unmarshaling JSON: %v\n", err)
 		return nil, []string{}, err
