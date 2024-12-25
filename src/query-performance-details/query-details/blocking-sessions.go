@@ -16,15 +16,12 @@ import (
 
 // PopulateBlockingSessionMetrics retrieves blocking session metrics from the database and populates them into the integration entity.
 func PopulateBlockingSessionMetrics(db performance_database.DataSource, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList) ([]performance_data_model.BlockingSessionMetrics, error) {
-	// Parse the excluded databases list from JSON string
-	excludedDatabasesString, err := common_utils.ParseIgnoreList(args.ExcludedDatabases)
+	// Get the list of unique excluded databases
+	excludedDatabases, err := common_utils.GetExcludedDatabases(args.ExcludedDatabases)
 	if err != nil {
 		log.Error("Error unmarshaling JSON: %v\n", err)
 		return nil, err
 	}
-
-	// Get the list of unique excluded databases
-	excludedDatabases := common_utils.GetUniqueExcludedDatabases(excludedDatabasesString)
 
 	// Prepare the SQL query with the provided parameters
 	query, inputArgs, err := sqlx.In(queries.BlockingSessionsQuery, excludedDatabases, args.QueryCountThreshold)

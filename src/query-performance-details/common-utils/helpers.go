@@ -68,22 +68,7 @@ func PrintMetricSet(ms *metric.Set) {
 	}
 }
 
-func ParseIgnoreList(list string) (string, error) {
-	// Parse the JSON string into a slice of strings
-	var excludedDatabasesSlice []string
-	
-	// Attempt to unmarshal the JSON array
-	if err := json.Unmarshal([]byte(list), &excludedDatabasesSlice); err != nil {
-		return "", err
-	}
-
-	// Join the slice into a comma-separated string
-	excludedDatabasesStr := strings.Join(excludedDatabasesSlice, ",")
-
-	return excludedDatabasesStr, nil
-}
-
-func GetUniqueExcludedDatabases(excludedDbList string) []string {
+func getUniqueExcludedDatabases(excludedDbList string) []string {
 	// Create a map to store unique schemas
 	uniqueSchemas := make(map[string]struct{})
 
@@ -104,6 +89,23 @@ func GetUniqueExcludedDatabases(excludedDbList string) []string {
 	}
 
 	return result
+}
+
+// GetExcludedDatabases parses the excluded databases list from a JSON string and returns a list of unique excluded databases.
+func GetExcludedDatabases(excludedDatabasesList string) ([]string, error) {
+	// Parse the excluded databases list from JSON string
+	var excludedDatabasesSlice []string
+	if err := json.Unmarshal([]byte(excludedDatabasesList), &excludedDatabasesSlice); err != nil {
+		return nil, err
+	}
+
+	// Join the slice into a comma-separated string
+	excludedDatabasesStr := strings.Join(excludedDatabasesSlice, ",")
+
+	// Get the list of unique excluded databases
+	excludedDatabases := getUniqueExcludedDatabases(excludedDatabasesStr)
+
+	return excludedDatabases, nil
 }
 
 func FatalIfErr(err error) {

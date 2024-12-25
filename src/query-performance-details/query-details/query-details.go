@@ -29,15 +29,12 @@ func PopulateSlowQueryMetrics(i *integration.Integration, e *integration.Entity,
 
 // collectGroupedSlowQueryMetrics collects metrics from the performance schema database for slow queries
 func collectGroupedSlowQueryMetrics(db performancedatabase.DataSource, slowQueryfetchInterval int, queryCountThreshold int, excludedDatabasesList string) ([]performancedatamodel.SlowQueryMetrics, []string, error) {
-	// Parse the excluded databases list from JSON string
-	excludedDatabasesString, err := common_utils.ParseIgnoreList(excludedDatabasesList)
+	// Get the list of unique excluded databases
+	excludedDatabases, err := common_utils.GetExcludedDatabases(excludedDatabasesList)
 	if err != nil {
 		log.Error("Error unmarshaling JSON: %v\n", err)
 		return nil, []string{}, err
 	}
-
-	// Get the list of unique excluded databases
-	excludedDatabases := common_utils.GetUniqueExcludedDatabases(excludedDatabasesString)
 
 	// Prepare the SQL query with the provided parameters
 	query, args, err := sqlx.In(queries.SlowQueries, slowQueryfetchInterval, excludedDatabases, queryCountThreshold)
@@ -195,15 +192,12 @@ func extensiveQueryMetrics(db performancedatabase.DataSource, QueryIDList []stri
 
 // collectIndividualQueryMetrics collects current query metrics from the performance schema database for the given query IDs
 func collectIndividualQueryMetrics(db performancedatabase.DataSource, queryIDList []string, queryString string, queryResponseTimeThreshold int, queryCountThreshold int, excludedDatabasesList string) ([]performancedatamodel.IndividualQueryMetrics, error) {
-	// Parse the excluded databases list from JSON string
-	excludedDatabasesString, err := common_utils.ParseIgnoreList(excludedDatabasesList)
+	// Get the list of unique excluded databases
+	excludedDatabases, err := common_utils.GetExcludedDatabases(excludedDatabasesList)
 	if err != nil {
 		log.Error("Error unmarshaling JSON: %v\n", err)
 		return nil, err
 	}
-
-	// Get the list of unique excluded databases
-	excludedDatabases := common_utils.GetUniqueExcludedDatabases(excludedDatabasesString)
 
 	if len(queryIDList) == 0 {
 		log.Warn("queryIDList is empty")

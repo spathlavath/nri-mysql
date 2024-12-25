@@ -16,15 +16,12 @@ import (
 
 // PopulateWaitEventMetrics retrieves wait event metrics from the database and sets them in the integration.
 func PopulateWaitEventMetrics(db performance_database.DataSource, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList) ([]performance_data_model.WaitEventQueryMetrics, error) {
-	// Parse the excluded databases list from JSON string
-	excludedDatabasesString, err := common_utils.ParseIgnoreList(args.ExcludedDatabases)
+	// Get the list of unique excluded databases
+	excludedDatabases, err := common_utils.GetExcludedDatabases(args.ExcludedDatabases)
 	if err != nil {
 		log.Error("Error unmarshaling JSON: %v\n", err)
 		return nil, err
 	}
-
-	// Get the list of unique excluded databases
-	excludedDatabases := common_utils.GetUniqueExcludedDatabases(excludedDatabasesString)
 
 	// Prepare the arguments for the query
 	excludedDatabasesArgs := []interface{}{excludedDatabases, excludedDatabases, excludedDatabases, args.QueryCountThreshold}
