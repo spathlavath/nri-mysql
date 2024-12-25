@@ -2,6 +2,7 @@ package query_details
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -45,8 +46,18 @@ func collectGroupedSlowQueryMetrics(db performancedatabase.DataSource, slowQuery
 	// 	log.Error("Error parsing excludedDbList:", err)
 	// 	return nil, []string{}, err
 	// }
+	// Parse the JSON string into a slice of strings
+	var excludedDatabasesSlice []string
+	err := json.Unmarshal([]byte(excludedDatabasesList), &excludedDatabasesSlice)
+	if err != nil {
+		log.Error("Error unmarshaling JSON: %v\n", err)
+		return nil, []string{}, err
+	}
+
+	// Join the slice into a comma-separated string
+	excludedDatabasesStr := strings.Join(excludedDatabasesSlice, ",")
 	// Get the list of unique excluded databases
-	excludedDatabases := common_utils.GetUniqueExcludedDatabases(excludedDatabasesList)
+	excludedDatabases := common_utils.GetUniqueExcludedDatabases(excludedDatabasesStr)
 	fmt.Println("excludedDatabases---->", excludedDatabases)
 
 	// Use sqlx.In to safely include the slice in the query
