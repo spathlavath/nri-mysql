@@ -31,7 +31,7 @@ const (
 		FROM performance_schema.events_statements_summary_by_digest
 		WHERE LAST_SEEN >= UTC_TIMESTAMP() - INTERVAL ? SECOND
 			AND SCHEMA_NAME IS NOT NULL
-			AND SCHEMA_NAME NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
+			AND SCHEMA_NAME NOT IN (?)
 			AND DIGEST_TEXT RLIKE '^(SELECT|INSERT|UPDATE|DELETE|WITH)'
 			AND DIGEST_TEXT NOT LIKE '%DIGEST_TEXT%'
 		ORDER BY avg_elapsed_time_ms DESC
@@ -54,7 +54,7 @@ const (
 		FROM performance_schema.events_statements_current
 		WHERE DIGEST IN (%s)
             AND CURRENT_SCHEMA IS NOT NULL
-			AND CURRENT_SCHEMA NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
+			AND CURRENT_SCHEMA NOT IN (?)
 			AND SQL_TEXT RLIKE '^(SELECT|INSERT|UPDATE|DELETE|WITH)'
 			AND SQL_TEXT NOT LIKE '%%DIGEST_TEXT%%'
 			AND TIMER_WAIT / 1000000000 > ?
@@ -78,7 +78,7 @@ const (
 		FROM performance_schema.events_statements_history
 		WHERE DIGEST IN (%s)
 			AND CURRENT_SCHEMA IS NOT NULL
-			AND CURRENT_SCHEMA NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
+			AND CURRENT_SCHEMA NOT IN (?)
 			AND SQL_TEXT RLIKE '^(SELECT|INSERT|UPDATE|DELETE|WITH)'
 			AND SQL_TEXT NOT LIKE '%%DIGEST_TEXT%%'
 			AND TIMER_WAIT / 1000000000 > ?
@@ -102,7 +102,7 @@ const (
 		FROM performance_schema.events_statements_history_long
 		WHERE DIGEST IN (%s)
 			AND CURRENT_SCHEMA IS NOT NULL
-			AND CURRENT_SCHEMA NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
+			AND CURRENT_SCHEMA NOT IN (?)
 			AND SQL_TEXT RLIKE '^(SELECT|INSERT|UPDATE|DELETE|WITH)'
 			AND SQL_TEXT NOT LIKE '%%DIGEST_TEXT%%'
 			AND TIMER_WAIT / 1000000000 > ?
@@ -165,7 +165,7 @@ const (
 				DIGEST_TEXT AS query_text
 			FROM performance_schema.events_statements_history_long
 			WHERE CURRENT_SCHEMA IS NOT NULL
-				AND CURRENT_SCHEMA NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
+				AND CURRENT_SCHEMA NOT IN (?)
 				AND SQL_TEXT RLIKE '^(SELECT|INSERT|UPDATE|DELETE|WITH)'
 				AND SQL_TEXT NOT LIKE '%DIGEST_TEXT%'
 			UNION ALL
@@ -176,7 +176,7 @@ const (
 				DIGEST_TEXT AS query_text
 			FROM performance_schema.events_statements_history
 			WHERE CURRENT_SCHEMA IS NOT NULL
-				AND CURRENT_SCHEMA NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
+				AND CURRENT_SCHEMA NOT IN (?)
 				AND SQL_TEXT RLIKE '^(SELECT|INSERT|UPDATE|DELETE|WITH)'
 				AND SQL_TEXT NOT LIKE '%DIGEST_TEXT%'
 			UNION ALL
@@ -187,7 +187,7 @@ const (
 				DIGEST_TEXT AS query_text
 			FROM performance_schema.events_statements_current
 			WHERE CURRENT_SCHEMA IS NOT NULL
-				AND CURRENT_SCHEMA NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
+				AND CURRENT_SCHEMA NOT IN (?)
 				AND SQL_TEXT RLIKE '^(SELECT|INSERT|UPDATE|DELETE|WITH)'
 				AND SQL_TEXT NOT LIKE '%DIGEST_TEXT%'
 		) AS schema_data
@@ -246,7 +246,7 @@ const (
                       ON esc_blocking.DIGEST = es_blocking.DIGEST
 				  WHERE
 					  wt.PROCESSLIST_DB IS NOT NULL
-					  AND wt.PROCESSLIST_DB NOT IN ('', 'mysql', 'performance_schema', 'information_schema', 'sys')
+					  AND wt.PROCESSLIST_DB NOT IN (?)
 				  LIMIT ?;
 	`
 )
