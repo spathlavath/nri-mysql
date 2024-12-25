@@ -2,7 +2,6 @@ package query_details
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -32,22 +31,22 @@ func PopulateSlowQueryMetrics(i *integration.Integration, e *integration.Entity,
 // collectGroupedSlowQueryMetrics collects metrics from the performance schema database
 func collectGroupedSlowQueryMetrics(db performancedatabase.DataSource, slowQueryfetchInterval int, queryCountThreshold int, excludedDatabasesList string) ([]performancedatamodel.SlowQueryMetrics, []string, error) {
 	// query := queries.SlowQueries
-	// Convert the slice to a JSON string
-	jsonBytes, err := json.Marshal(excludedDatabasesList)
-	if err != nil {
-		log.Error("Error marshaling JSON: %v\n", err)
-		return nil, []string{}, err
-	}
+	// // Convert the slice to a JSON string
+	// jsonBytes, err := json.Marshal(excludedDatabasesList)
+	// if err != nil {
+	// 	log.Error("Error marshaling JSON: %v\n", err)
+	// 	return nil, []string{}, err
+	// }
 
-	// Convert byte slice to string
-	jsonString := string(jsonBytes)
-	parsedDBList, err := common_utils.ParseIgnoreList(jsonString)
-	if err != nil {
-		log.Error("Error parsing excludedDbList:", err)
-		return nil, []string{}, err
-	}
+	// // Convert byte slice to string
+	// jsonString := string(jsonBytes)
+	// parsedDBList, err := common_utils.ParseIgnoreList(jsonString)
+	// if err != nil {
+	// 	log.Error("Error parsing excludedDbList:", err)
+	// 	return nil, []string{}, err
+	// }
 	// Get the list of unique excluded databases
-	excludedDatabases := common_utils.GetUniqueExcludedDatabases(parsedDBList)
+	excludedDatabases := common_utils.GetUniqueExcludedDatabases(excludedDatabasesList)
 	fmt.Println("excludedDatabases---->", excludedDatabases)
 
 	// Use sqlx.In to safely include the slice in the query

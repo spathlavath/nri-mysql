@@ -95,7 +95,7 @@ func ParseIgnoreList(list string) (ignoreList, error) {
 	return ignoreMap, nil
 }
 
-func GetUniqueExcludedDatabases(excludedDbList ignoreList) []string {
+func GetUniqueExcludedDatabases(excludedDbList string) []string {
 	// Create a map to store unique schemas
 	uniqueSchemas := make(map[string]struct{})
 
@@ -105,7 +105,7 @@ func GetUniqueExcludedDatabases(excludedDbList ignoreList) []string {
 	}
 
 	// Populate the map with values from excludedDbList
-	for schema := range excludedDbList {
+	for _, schema := range strings.Split(excludedDbList, ",") {
 		uniqueSchemas[strings.TrimSpace(schema)] = struct{}{}
 	}
 
