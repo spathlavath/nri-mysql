@@ -26,18 +26,21 @@ func PopulateWaitEventMetrics(db performance_database.DataSource, i *integration
 	// Get the list of unique excluded databases
 	excludedDatabases := common_utils.GetUniqueExcludedDatabases(excludedDatabasesString)
 
+	// Prepare the arguments for the query
+	excludedDatabasesArgs := []interface{}{excludedDatabases, excludedDatabases, excludedDatabases, args.QueryCountThreshold}
+
 	// Prepare the SQL query with the provided parameters
-	query, inputArgs, err := sqlx.In(queries.WaitEventsQuery, args.QueryCountThreshold, excludedDatabases)
+	preparedQuery, preparedArgs, err := sqlx.In(queries.WaitEventsQuery, excludedDatabasesArgs...)
 	if err != nil {
-		log.Error("Failed to collect query metrics from Performance Schema: %v", err)
+		log.Error("Failed to prepare wait events query: %v", err)
 		return nil, err
 	}
 
 	// Rebind the query for the specific database driver
-	query = db.RebindX(query)
+	preparedQuery = db.RebindX(preparedQuery)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	rows, err := db.QueryxContext(ctx, query, inputArgs...)
+	rows, err := db.QueryxContext(ctx, preparedQuery, preparedArgs...)
 	if err != nil {
 		log.Error("Failed to execute query: %v", err)
 		return nil, err

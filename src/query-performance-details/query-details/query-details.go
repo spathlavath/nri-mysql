@@ -42,7 +42,7 @@ func collectGroupedSlowQueryMetrics(db performancedatabase.DataSource, slowQuery
 	// Prepare the SQL query with the provided parameters
 	query, args, err := sqlx.In(queries.SlowQueries, slowQueryfetchInterval, excludedDatabases, queryCountThreshold)
 	if err != nil {
-		log.Error("Failed to collect query metrics from Performance Schema: %v", err)
+		log.Error("Failed to prepare slow query: %v", err)
 		return nil, []string{}, err
 	}
 
@@ -52,7 +52,7 @@ func collectGroupedSlowQueryMetrics(db performancedatabase.DataSource, slowQuery
 	defer cancel()
 	rows, err := db.QueryxContext(ctx, query, args...)
 	if err != nil {
-		log.Error("Failed to collect query metrics from Performance Schema: %v", err)
+		log.Error("Failed to collect slow query metrics from Performance Schema: %v", err)
 		return nil, []string{}, err
 	}
 	defer rows.Close()
@@ -239,7 +239,7 @@ func collectIndividualQueryMetrics(db performancedatabase.DataSource, queryIDLis
 	defer cancel()
 	rows, err := db.QueryxContext(ctx, query, args...)
 	if err != nil {
-		log.Error("Failed to collect query metrics from Performance Schema: %v", err)
+		log.Error("Failed to collect individual query metrics from Performance Schema: %v", err)
 		return nil, err
 	}
 	defer rows.Close()

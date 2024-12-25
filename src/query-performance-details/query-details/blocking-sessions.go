@@ -27,9 +27,9 @@ func PopulateBlockingSessionMetrics(db performance_database.DataSource, i *integ
 	excludedDatabases := common_utils.GetUniqueExcludedDatabases(excludedDatabasesString)
 
 	// Prepare the SQL query with the provided parameters
-	query, inputArgs, err := sqlx.In(queries.BlockingSessionsQuery, args.QueryCountThreshold, excludedDatabases)
+	query, inputArgs, err := sqlx.In(queries.BlockingSessionsQuery, excludedDatabases, args.QueryCountThreshold)
 	if err != nil {
-		log.Error("Failed to collect query metrics from Performance Schema: %v", err)
+		log.Error("Failed to prepare blocking sessions query: %v", err)
 		return nil, err
 	}
 
