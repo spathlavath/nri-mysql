@@ -29,7 +29,7 @@ func PopulateWaitEventMetrics(db performance_database.DataSource, i *integration
 	// Prepare the SQL query with the provided parameters
 	preparedQuery, preparedArgs, err := sqlx.In(queries.WaitEventsQuery, excludedDatabasesArgs...)
 	if err != nil {
-		log.Error("Failed to prepare wait events query: %v", err)
+		log.Error("Failed to prepare wait event query: %v", err)
 		return nil, err
 	}
 
@@ -39,7 +39,7 @@ func PopulateWaitEventMetrics(db performance_database.DataSource, i *integration
 	defer cancel()
 	rows, err := db.QueryxContext(ctx, preparedQuery, preparedArgs...)
 	if err != nil {
-		log.Error("Failed to execute query: %v", err)
+		log.Error("Failed to collect wait event query metrics from Performance Schema: %v", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -48,13 +48,13 @@ func PopulateWaitEventMetrics(db performance_database.DataSource, i *integration
 	for rows.Next() {
 		var metric performance_data_model.WaitEventQueryMetrics
 		if err := rows.StructScan(&metric); err != nil {
-			log.Error("Failed to scan row: %v", err)
+			log.Error("Failed to scan wait event query metrics row: %v", err)
 			return nil, err
 		}
 		metrics = append(metrics, metric)
 	}
 	if err := rows.Err(); err != nil {
-		log.Error("Error iterating over query metrics rows: %v", err)
+		log.Error("Error encountered while iterating over wait event query metric rows: %v", err)
 		return nil, err
 	}
 

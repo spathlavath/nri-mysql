@@ -108,6 +108,15 @@ func GetExcludedDatabases(excludedDatabasesList string) ([]string, error) {
 	return excludedDatabases, nil
 }
 
+// Helper function to convert a slice of strings to a slice of interfaces
+func ConvertToInterfaceSlice(slice []string) []interface{} {
+	result := make([]interface{}, len(slice))
+	for i, v := range slice {
+		result[i] = v
+	}
+	return result
+}
+
 func FatalIfErr(err error) {
 	if err != nil {
 		log.Fatal(err)

@@ -36,7 +36,7 @@ func PopulateBlockingSessionMetrics(db performance_database.DataSource, i *integ
 	defer cancel()
 	rows, err := db.QueryxContext(ctx, query, inputArgs...)
 	if err != nil {
-		log.Error("Failed to execute blocking session query: %v", err)
+		log.Error("Failed to collect blocking session query metrics from Performance Schema: %v", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -45,13 +45,13 @@ func PopulateBlockingSessionMetrics(db performance_database.DataSource, i *integ
 	for rows.Next() {
 		var metric performance_data_model.BlockingSessionMetrics
 		if err := rows.StructScan(&metric); err != nil {
-			log.Error("Failed to scan blocking session metrics: %v", err)
+			log.Error("Failed to scan blocking session query metrics: %v", err)
 			return nil, err
 		}
 		metrics = append(metrics, metric)
 	}
 	if err := rows.Err(); err != nil {
-		log.Error("Error iterating over blocking session metrics rows: %v", err)
+		log.Error("Error encountered while iterating over blocking session metric rows: %v", err)
 		return nil, err
 	}
 
