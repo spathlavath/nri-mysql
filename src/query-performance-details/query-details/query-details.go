@@ -48,10 +48,18 @@ func collectGroupedSlowQueryMetrics(db performancedatabase.DataSource, slowQuery
 	// }
 	// Parse the JSON string into a slice of strings
 	var excludedDatabasesSlice []string
-	// Check if the input string is improperly formatted
+	// Check if the input is not a valid JSON array format.
 	if !(strings.HasPrefix(excludedDatabasesList, "[\"") && strings.HasSuffix(excludedDatabasesList, "\"]")) {
-		// Convert non-JSON input to a JSON-compatible array format
-		excludedDatabasesList = fmt.Sprintf(`["%s"]`, strings.Join(strings.Split(excludedDatabasesList, ","), `","`))
+		// If it looks like a bare list (e.g., [sakila]), format it correctly as JSON.
+		if strings.HasPrefix(excludedDatabasesList, "[") && strings.HasSuffix(excludedDatabasesList, "]") {
+			excludedDatabasesList = strings.TrimPrefix(excludedDatabasesList, "[")
+			excludedDatabasesList = strings.TrimSuffix(excludedDatabasesList, "]")
+			excludedDatabasesList = strings.TrimSpace(excludedDatabasesList)
+			excludedDatabasesList = fmt.Sprintf(`["%s"]`, strings.Join(strings.Split(excludedDatabasesList, ","), `","`))
+		} else {
+			// If it's totally unformatted, make it a JSON array.
+			excludedDatabasesList = fmt.Sprintf(`["%s"]`, strings.Join(strings.Split(excludedDatabasesList, ","), `","`))
+		}
 	}
 
 	fmt.Printf("excludedDatabasesList type: %T\n", excludedDatabasesList)
