@@ -14,8 +14,6 @@ import (
 	arguments "github.com/newrelic/nri-mysql/src/args"
 )
 
-type ignoreList map[string]struct{}
-
 const (
 	IntegrationName = "com.newrelic.mysql"
 	NodeEntityType  = "node"
@@ -76,23 +74,32 @@ func FatalIfErr(err error) {
 	}
 }
 
-func ParseIgnoreList(list string) (ignoreList, error) {
-	ignoreItems := []string{}
-	ignoreMap := ignoreList{}
-
-	if list == "" {
-		return ignoreMap, nil
+func ParseIgnoreList(list string) (string, error) {
+	// Parse the JSON string into a slice of strings
+	var excludedDatabasesSlice []string
+	// Check if the input is not a valid JSON array format.
+	if !(strings.HasPrefix(list, "[\"") && strings.HasSuffix(list, "\"]")) {
+		// If it looks like a bare list (e.g., [sakila]), format it correctly as JSON.
+		if strings.HasPrefix(list, "[") && strings.HasSuffix(list, "]") {
+			list = strings.TrimPrefix(list, "[")
+			list = strings.TrimSuffix(list, "]")
+			list = strings.TrimSpace(list)
+			list = fmt.Sprintf(`["%s"]`, strings.Join(strings.Split(list, ","), `","`))
+		} else {
+			// If it's totally unformatted, make it a JSON array.
+			list = fmt.Sprintf(`["%s"]`, strings.Join(strings.Split(list, ","), `","`))
+		}
 	}
 
-	if err := json.Unmarshal([]byte(list), &ignoreItems); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal list arg '%s': %w", list, err)
+	// Attempt to unmarshal the JSON array
+	if err := json.Unmarshal([]byte(list), &excludedDatabasesSlice); err != nil {
+		return "", err
 	}
 
-	for _, item := range ignoreItems {
-		ignoreMap[item] = struct{}{}
-	}
+	// Join the slice into a comma-separated string
+	excludedDatabasesStr := strings.Join(excludedDatabasesSlice, ",")
 
-	return ignoreMap, nil
+	return excludedDatabasesStr, nil
 }
 
 func GetUniqueExcludedDatabases(excludedDbList string) []string {

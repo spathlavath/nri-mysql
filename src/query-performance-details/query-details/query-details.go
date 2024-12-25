@@ -2,7 +2,6 @@ package query_details
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -31,50 +30,15 @@ func PopulateSlowQueryMetrics(i *integration.Integration, e *integration.Entity,
 
 // collectGroupedSlowQueryMetrics collects metrics from the performance schema database
 func collectGroupedSlowQueryMetrics(db performancedatabase.DataSource, slowQueryfetchInterval int, queryCountThreshold int, excludedDatabasesList string) ([]performancedatamodel.SlowQueryMetrics, []string, error) {
-	// query := queries.SlowQueries
-	// // Convert the slice to a JSON string
-	// jsonBytes, err := json.Marshal(excludedDatabasesList)
-	// if err != nil {
-	// 	log.Error("Error marshaling JSON: %v\n", err)
-	// 	return nil, []string{}, err
-	// }
-
-	// // Convert byte slice to string
-	// jsonString := string(jsonBytes)
-	// parsedDBList, err := common_utils.ParseIgnoreList(jsonString)
-	// if err != nil {
-	// 	log.Error("Error parsing excludedDbList:", err)
-	// 	return nil, []string{}, err
-	// }
-	// Parse the JSON string into a slice of strings
-	var excludedDatabasesSlice []string
-	// Check if the input is not a valid JSON array format.
-	if !(strings.HasPrefix(excludedDatabasesList, "[\"") && strings.HasSuffix(excludedDatabasesList, "\"]")) {
-		// If it looks like a bare list (e.g., [sakila]), format it correctly as JSON.
-		if strings.HasPrefix(excludedDatabasesList, "[") && strings.HasSuffix(excludedDatabasesList, "]") {
-			excludedDatabasesList = strings.TrimPrefix(excludedDatabasesList, "[")
-			excludedDatabasesList = strings.TrimSuffix(excludedDatabasesList, "]")
-			excludedDatabasesList = strings.TrimSpace(excludedDatabasesList)
-			excludedDatabasesList = fmt.Sprintf(`["%s"]`, strings.Join(strings.Split(excludedDatabasesList, ","), `","`))
-		} else {
-			// If it's totally unformatted, make it a JSON array.
-			excludedDatabasesList = fmt.Sprintf(`["%s"]`, strings.Join(strings.Split(excludedDatabasesList, ","), `","`))
-		}
-	}
-
-	fmt.Printf("excludedDatabasesList type: %T\n", excludedDatabasesList)
-	fmt.Println("args---->", excludedDatabasesList)
-
-	// Attempt to unmarshal the JSON array
-	if err := json.Unmarshal([]byte(excludedDatabasesList), &excludedDatabasesSlice); err != nil {
+	// Join the slice into a comma-separated string
+	excludedDatabasesString, err := common_utils.ParseIgnoreList(excludedDatabasesList)
+	if err != nil {
 		log.Error("Error unmarshaling JSON: %v\n", err)
 		return nil, []string{}, err
 	}
 
-	// Join the slice into a comma-separated string
-	excludedDatabasesStr := strings.Join(excludedDatabasesSlice, ",")
 	// Get the list of unique excluded databases
-	excludedDatabases := common_utils.GetUniqueExcludedDatabases(excludedDatabasesStr)
+	excludedDatabases := common_utils.GetUniqueExcludedDatabases(excludedDatabasesString)
 	fmt.Println("excludedDatabases---->", excludedDatabases)
 
 	// Use sqlx.In to safely include the slice in the query
@@ -83,10 +47,9 @@ func collectGroupedSlowQueryMetrics(db performancedatabase.DataSource, slowQuery
 		log.Error("Failed to collect query metrics from Performance Schema: %v", err)
 		return nil, []string{}, err
 	}
-	fmt.Println("query---->", query)
+
 	// Rebind the query for the specific database driver
 	query = db.RebindX(query)
-	fmt.Println("rebind---->", query)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	rows, err := db.QueryxContext(ctx, query, args...)
