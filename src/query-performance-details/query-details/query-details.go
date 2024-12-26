@@ -18,13 +18,13 @@ import (
 
 // PopulateSlowQueryMetrics collects and sets slow query metrics
 func PopulateSlowQueryMetrics(i *integration.Integration, e *integration.Entity, db performancedatabase.DataSource, args arguments.ArgumentList) []string {
-	rawMetrics, queryIdList, err := collectGroupedSlowQueryMetrics(db, args.SlowQueryFetchInterval, args.QueryCountThreshold, args.ExcludedDatabases)
+	rawMetrics, queryIDList, err := collectGroupedSlowQueryMetrics(db, args.SlowQueryFetchInterval, args.QueryCountThreshold, args.ExcludedDatabases)
 	if err != nil {
 		log.Error("Failed to collect query metrics: %v", err)
 		return nil
 	}
 	setSlowQueryMetrics(i, rawMetrics, args)
-	return queryIdList
+	return queryIDList
 }
 
 // collectGroupedSlowQueryMetrics collects metrics from the performance schema database for slow queries
@@ -85,20 +85,20 @@ func setSlowQueryMetrics(i *integration.Integration, metrics []performancedatamo
 }
 
 // PopulateIndividualQueryDetails collects and sets individual query details
-func PopulateIndividualQueryDetails(db performancedatabase.DataSource, queryIdList []string, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList) ([]performancedatamodel.QueryGroup, error) {
-	currentQueryMetrics, currentQueryMetricsErr := currentQueryMetrics(db, queryIdList, args.QueryResponseTimeThreshold, args.QueryCountThreshold, args.ExcludedDatabases)
+func PopulateIndividualQueryDetails(db performancedatabase.DataSource, queryIDList []string, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList) ([]performancedatamodel.QueryGroup, error) {
+	currentQueryMetrics, currentQueryMetricsErr := currentQueryMetrics(db, queryIDList, args.QueryResponseTimeThreshold, args.QueryCountThreshold, args.ExcludedDatabases)
 	if currentQueryMetricsErr != nil {
 		log.Error("Failed to collect current query metrics: %v", currentQueryMetricsErr)
 		return nil, currentQueryMetricsErr
 	}
 
-	recentQueryList, recentQueryErr := recentQueryMetrics(db, queryIdList, args.QueryResponseTimeThreshold, args.QueryCountThreshold, args.ExcludedDatabases)
+	recentQueryList, recentQueryErr := recentQueryMetrics(db, queryIDList, args.QueryResponseTimeThreshold, args.QueryCountThreshold, args.ExcludedDatabases)
 	if recentQueryErr != nil {
 		log.Error("Failed to collect recent query metrics: %v", recentQueryErr)
 		return nil, recentQueryErr
 	}
 
-	extensiveQueryList, extensiveQueryErr := extensiveQueryMetrics(db, queryIdList, args.QueryResponseTimeThreshold, args.QueryCountThreshold, args.ExcludedDatabases)
+	extensiveQueryList, extensiveQueryErr := extensiveQueryMetrics(db, queryIDList, args.QueryResponseTimeThreshold, args.QueryCountThreshold, args.ExcludedDatabases)
 	if extensiveQueryErr != nil {
 		log.Error("Failed to collect history query metrics: %v", extensiveQueryErr)
 		return nil, extensiveQueryErr
@@ -154,8 +154,8 @@ func groupQueriesByDatabase(filteredList []performancedatamodel.IndividualQueryM
 }
 
 // currentQueryMetrics collects current query metrics from the performance schema database for the given query IDs
-func currentQueryMetrics(db performancedatabase.DataSource, QueryIDList []string, queryResponseTimeThreshold int, queryCountThreshold int, excludedDatabasesList string) ([]performancedatamodel.IndividualQueryMetrics, error) {
-	metrics, err := collectIndividualQueryMetrics(db, QueryIDList, queries.CurrentRunningQueriesSearch, queryResponseTimeThreshold, queryCountThreshold, excludedDatabasesList)
+func currentQueryMetrics(db performancedatabase.DataSource, queryIDList []string, queryResponseTimeThreshold int, queryCountThreshold int, excludedDatabasesList string) ([]performancedatamodel.IndividualQueryMetrics, error) {
+	metrics, err := collectIndividualQueryMetrics(db, queryIDList, queries.CurrentRunningQueriesSearch, queryResponseTimeThreshold, queryCountThreshold, excludedDatabasesList)
 	if err != nil {
 		log.Error("Failed to collect current query metrics: %v", err)
 		return nil, err
@@ -165,8 +165,8 @@ func currentQueryMetrics(db performancedatabase.DataSource, QueryIDList []string
 }
 
 // recentQueryMetrics collects recent query metrics	from the performance schema	database for the given query IDs
-func recentQueryMetrics(db performancedatabase.DataSource, QueryIDList []string, queryResponseTimeThreshold int, queryCountThreshold int, excludedDatabasesList string) ([]performancedatamodel.IndividualQueryMetrics, error) {
-	metrics, err := collectIndividualQueryMetrics(db, QueryIDList, queries.RecentQueriesSearch, queryResponseTimeThreshold, queryCountThreshold, excludedDatabasesList)
+func recentQueryMetrics(db performancedatabase.DataSource, queryIDList []string, queryResponseTimeThreshold int, queryCountThreshold int, excludedDatabasesList string) ([]performancedatamodel.IndividualQueryMetrics, error) {
+	metrics, err := collectIndividualQueryMetrics(db, queryIDList, queries.RecentQueriesSearch, queryResponseTimeThreshold, queryCountThreshold, excludedDatabasesList)
 	if err != nil {
 		log.Error("Failed to collect recent query metrics: %v", err)
 		return nil, err
@@ -176,8 +176,8 @@ func recentQueryMetrics(db performancedatabase.DataSource, QueryIDList []string,
 }
 
 // extensiveQueryMetrics collects extensive query metrics from the performance schema database for the given query IDs
-func extensiveQueryMetrics(db performancedatabase.DataSource, QueryIDList []string, queryResponseTimeThreshold int, queryCountThreshold int, excludedDatabasesList string) ([]performancedatamodel.IndividualQueryMetrics, error) {
-	metrics, err := collectIndividualQueryMetrics(db, QueryIDList, queries.PastQueriesSearch, queryResponseTimeThreshold, queryCountThreshold, excludedDatabasesList)
+func extensiveQueryMetrics(db performancedatabase.DataSource, queryIDList []string, queryResponseTimeThreshold int, queryCountThreshold int, excludedDatabasesList string) ([]performancedatamodel.IndividualQueryMetrics, error) {
+	metrics, err := collectIndividualQueryMetrics(db, queryIDList, queries.PastQueriesSearch, queryResponseTimeThreshold, queryCountThreshold, excludedDatabasesList)
 	if err != nil {
 		log.Error("Failed to collect history query metrics: %v", err)
 		return nil, err

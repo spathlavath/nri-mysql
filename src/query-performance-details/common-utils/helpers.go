@@ -68,7 +68,7 @@ func PrintMetricSet(ms *metric.Set) {
 	}
 }
 
-func getUniqueExcludedDatabases(excludedDbList string) []string {
+func getUniqueExcludedDatabases(excludedDBList string) []string {
 	// Create a map to store unique schemas
 	uniqueSchemas := make(map[string]struct{})
 
@@ -77,8 +77,8 @@ func getUniqueExcludedDatabases(excludedDbList string) []string {
 		uniqueSchemas[schema] = struct{}{}
 	}
 
-	// Populate the map with values from excludedDbList
-	for _, schema := range strings.Split(excludedDbList, ",") {
+	// Populate the map with values from excludedDBList
+	for _, schema := range strings.Split(excludedDBList, ",") {
 		uniqueSchemas[strings.TrimSpace(schema)] = struct{}{}
 	}
 
