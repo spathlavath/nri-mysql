@@ -18,7 +18,7 @@ func PopulateWaitEventMetrics(db dbconnection.DataSource, i *integration.Integra
 	// Get the list of unique excluded databases
 	excludedDatabases, err := commonutils.GetExcludedDatabases(args.ExcludedDatabases)
 	if err != nil {
-		log.Error("Error unmarshaling JSON: %v\n", err)
+		log.Error("Error unmarshaling JSON: %v", err)
 		return nil, err
 	}
 

@@ -31,14 +31,14 @@ func ValidatePreconditions(db dbconnection.DataSource) bool {
 	// Check if essential consumers are enabled
 	errEssentialConsumers := checkEssentialConsumers(db)
 	if errEssentialConsumers != nil {
-		log.Error("Essential consumer check failed: %v", fmt.Errorf("%w: %v", commonutils.ErrEssentialConsumerNotEnabled, errEssentialConsumers))
+		log.Error("Essential consumer check failed: %v", fmt.Errorf("%w", errEssentialConsumers))
 		return false
 	}
 
 	// Check if essential instruments are enabled
 	errEssentialInstruments := checkEssentialInstruments(db)
 	if errEssentialInstruments != nil {
-		log.Error("Essential instruments check failed: %v", fmt.Errorf("%w: %v", commonutils.ErrEssentialInstrumentNotEnabled, errEssentialInstruments))
+		log.Error("Essential instruments check failed: %v", fmt.Errorf("%w", errEssentialInstruments))
 		return false
 	}
 	return true

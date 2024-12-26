@@ -31,7 +31,7 @@ func collectGroupedSlowQueryMetrics(db dbconnection.DataSource, slowQueryfetchIn
 	// Get the list of unique excluded databases
 	excludedDatabases, err := commonutils.GetExcludedDatabases(excludedDatabasesList)
 	if err != nil {
-		log.Error("Error unmarshaling JSON: %v\n", err)
+		log.Error("Error unmarshaling JSON: %v", err)
 		return nil, []string{}, err
 	}
 
