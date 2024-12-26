@@ -14,7 +14,6 @@ import (
 
 // ValidatePreconditions checks if the necessary preconditions are met for performance monitoring.
 func ValidatePreconditions(db dbconnection.DataSource) bool {
-
 	// Check if Performance Schema is enabled
 	performanceSchemaEnabled, errPerformanceEnabled := isPerformanceSchemaEnabled(db)
 	if errPerformanceEnabled != nil {
@@ -190,7 +189,6 @@ func logEnablePerformanceSchemaInstructions(db dbconnection.DataSource) {
 	} else {
 		log.Error("MySQL version %s is not supported. Only version 8.0+ is supported.", version)
 	}
-
 }
 
 // getMySQLVersion retrieves the MySQL version from the database.
