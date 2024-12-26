@@ -39,7 +39,6 @@ func CreateNodeEntity(
 	hostname string,
 	port int,
 ) (*integration.Entity, error) {
-
 	if remoteMonitoring {
 		return i.Entity(fmt.Sprint(hostname, ":", port), NodeEntityType)
 	}
