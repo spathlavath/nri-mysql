@@ -2,7 +2,6 @@ package query_details
 
 import (
 	"context"
-	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
@@ -33,7 +32,7 @@ func PopulateWaitEventMetrics(db performance_database.DataSource, i *integration
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), common_utils.TimeoutDuration)
 	defer cancel()
 	rows, err := db.QueryxContext(ctx, preparedQuery, preparedArgs...)
 	if err != nil {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
@@ -43,7 +42,7 @@ func collectGroupedSlowQueryMetrics(db performancedatabase.DataSource, slowQuery
 		return nil, []string{}, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), common_utils.TimeoutDuration)
 	defer cancel()
 	rows, err := db.QueryxContext(ctx, query, args...)
 	if err != nil {
@@ -221,7 +220,7 @@ func collectIndividualQueryMetrics(db performancedatabase.DataSource, queryIDLis
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), common_utils.TimeoutDuration)
 	defer cancel()
 
 	// Execute the query

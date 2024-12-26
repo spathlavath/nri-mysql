@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/newrelic/infra-integrations-sdk/v3/data/attribute"
 	"github.com/newrelic/infra-integrations-sdk/v3/data/metric"
@@ -18,6 +19,8 @@ const (
 	IntegrationName = "com.newrelic.mysql"
 	NodeEntityType  = "node"
 	MetricSetLimit  = 100
+	// TimeoutDuration defines the timeout duration for database queries
+	TimeoutDuration = 5 * time.Second
 )
 
 // Default excluded databases
