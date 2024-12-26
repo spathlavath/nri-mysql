@@ -1,9 +1,12 @@
 package common_utils
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/newrelic/infra-integrations-sdk/v3/data/attribute"
 	"github.com/newrelic/infra-integrations-sdk/v3/data/metric"
@@ -16,7 +19,12 @@ const (
 	IntegrationName = "com.newrelic.mysql"
 	NodeEntityType  = "node"
 	MetricSetLimit  = 100
+	// TimeoutDuration defines the timeout duration for database queries
+	TimeoutDuration = 5 * time.Second
 )
+
+// Default excluded databases
+var defaultExcludedDatabases = []string{"", "mysql", "information_schema", "performance_schema", "sys"}
 
 func CreateNodeEntity(
 	i *integration.Integration,
@@ -61,6 +69,55 @@ func PrintMetricSet(ms *metric.Set) {
 	for name, metric := range ms.Metrics {
 		fmt.Printf("Name: %s, Value: %v, Type: %v\n", name, metric, "unknown")
 	}
+}
+
+func getUniqueExcludedDatabases(excludedDBList string) []string {
+	// Create a map to store unique schemas
+	uniqueSchemas := make(map[string]struct{})
+
+	// Populate the map with default excluded databases
+	for _, schema := range defaultExcludedDatabases {
+		uniqueSchemas[schema] = struct{}{}
+	}
+
+	// Populate the map with values from excludedDBList
+	for _, schema := range strings.Split(excludedDBList, ",") {
+		uniqueSchemas[strings.TrimSpace(schema)] = struct{}{}
+	}
+
+	// Convert the map keys back into a slice
+	result := make([]string, 0, len(uniqueSchemas))
+	for schema := range uniqueSchemas {
+		result = append(result, schema)
+	}
+
+	return result
+}
+
+// GetExcludedDatabases parses the excluded databases list from a JSON string and returns a list of unique excluded databases.
+func GetExcludedDatabases(excludedDatabasesList string) ([]string, error) {
+	// Parse the excluded databases list from JSON string
+	var excludedDatabasesSlice []string
+	if err := json.Unmarshal([]byte(excludedDatabasesList), &excludedDatabasesSlice); err != nil {
+		return nil, err
+	}
+
+	// Join the slice into a comma-separated string
+	excludedDatabasesStr := strings.Join(excludedDatabasesSlice, ",")
+
+	// Get the list of unique excluded databases
+	excludedDatabases := getUniqueExcludedDatabases(excludedDatabasesStr)
+
+	return excludedDatabases, nil
+}
+
+// Helper function to convert a slice of strings to a slice of interfaces
+func ConvertToInterfaceSlice(slice []string) []interface{} {
+	result := make([]interface{}, len(slice))
+	for i, v := range slice {
+		result[i] = v
+	}
+	return result
 }
 
 func FatalIfErr(err error) {

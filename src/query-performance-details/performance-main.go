@@ -34,14 +34,14 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 	// Populate metrics for slow queries
 	start := time.Now()
 	log.Info("Beginning to retrieve slow query metrics")
-	queryIdList := query_details.PopulateSlowQueryMetrics(i, e, db, args)
+	queryIDList := query_details.PopulateSlowQueryMetrics(i, e, db, args)
 	log.Info("Completed fetching slow query metrics in %v", time.Since(start))
 
-	if len(queryIdList) > 0 {
+	if len(queryIDList) > 0 {
 		// Populate metrics for individual queries
 		start = time.Now()
 		log.Info("Beginning to retrieve individual query metrics")
-		groupQueriesByDatabase, individualQueryDetailsErr := query_details.PopulateIndividualQueryDetails(db, queryIdList, i, e, args)
+		groupQueriesByDatabase, individualQueryDetailsErr := query_details.PopulateIndividualQueryDetails(db, queryIDList, i, e, args)
 		log.Info("Completed fetching individual query metrics in %v", time.Since(start))
 		if individualQueryDetailsErr != nil {
 			log.Error("Error populating individual query details: %v", individualQueryDetailsErr)
