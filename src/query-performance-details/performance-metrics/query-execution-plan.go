@@ -18,8 +18,9 @@ import (
 )
 
 const (
-	explainQueryFormat  = "EXPLAIN FORMAT=JSON %s"
-	supportedStatements = "SELECT INSERT UPDATE DELETE WITH"
+	explainQueryFormat       = "EXPLAIN FORMAT=JSON %s"
+	supportedStatements      = "SELECT INSERT UPDATE DELETE WITH"
+	QueryPlanTimeoutDuration = 10 * time.Second
 )
 
 // PopulateExecutionPlans populates execution plans for the given queries.
@@ -56,7 +57,7 @@ func PopulateExecutionPlans(db dbconnection.DataSource, queryGroups []datamodels
 func processExecutionPlanMetrics(db dbconnection.DataSource, query datamodels.IndividualQueryMetrics) []datamodels.QueryPlanMetrics {
 	// supportedStatements := map[string]bool{"SELECT": true, "INSERT": true, "UPDATE": true, "DELETE": true, "WITH": true}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), QueryPlanTimeoutDuration)
 	defer cancel()
 
 	if *query.QueryText == "" {

@@ -155,48 +155,23 @@ func SetMetric(metricSet *metric.Set, name string, value interface{}, sourceType
 
 // IngestMetric ingests a list of metrics into the integration.
 func IngestMetric(metricList []interface{}, eventName string, i *integration.Integration, args arguments.ArgumentList) {
-	metricCount := 0
 	instanceEntity, err := CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
 	if err != nil {
 		log.Error("Error creating entity: %v", err)
 		return
 	}
 
+	metricCount := 0
 	for _, model := range metricList {
 		if model == nil {
 			continue
 		}
 		metricCount++
-		metricSet := CreateMetricSet(instanceEntity, eventName, args)
-
-		modelValue := reflect.ValueOf(model)
-		if modelValue.Kind() == reflect.Ptr {
-			modelValue = modelValue.Elem()
-		}
-		if !modelValue.IsValid() || modelValue.Kind() != reflect.Struct {
-			continue
-		}
-
-		modelType := reflect.TypeOf(model)
-
-		for i := 0; i < modelValue.NumField(); i++ {
-			field := modelValue.Field(i)
-			fieldType := modelType.Field(i)
-			metricName := fieldType.Tag.Get("metric_name")
-			sourceType := fieldType.Tag.Get("source_type")
-
-			if field.Kind() == reflect.Ptr && !field.IsNil() {
-				SetMetric(metricSet, metricName, field.Elem().Interface(), sourceType)
-			} else if field.Kind() != reflect.Ptr {
-				SetMetric(metricSet, metricName, field.Interface(), sourceType)
-			}
-		}
+		processModel(model, instanceEntity, eventName, args)
 
 		if metricCount > MetricSetLimit {
 			metricCount = 0
-			err := i.Publish()
-			if err != nil {
-				log.Error("Error publishing metrics: %v", err)
+			if err := publishMetrics(i); err != nil {
 				return
 			}
 			instanceEntity, err = CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
@@ -208,10 +183,43 @@ func IngestMetric(metricList []interface{}, eventName string, i *integration.Int
 	}
 
 	if metricCount > 0 {
-		err = i.Publish()
-		if err != nil {
-			log.Error("Error publishing metrics: %v", err)
+		if err := publishMetrics(i); err != nil {
 			return
 		}
 	}
+}
+
+func processModel(model interface{}, instanceEntity *integration.Entity, eventName string, args arguments.ArgumentList) {
+	metricSet := CreateMetricSet(instanceEntity, eventName, args)
+
+	modelValue := reflect.ValueOf(model)
+	if modelValue.Kind() == reflect.Ptr {
+		modelValue = modelValue.Elem()
+	}
+	if !modelValue.IsValid() || modelValue.Kind() != reflect.Struct {
+		return
+	}
+
+	modelType := reflect.TypeOf(model)
+	for i := 0; i < modelValue.NumField(); i++ {
+		field := modelValue.Field(i)
+		fieldType := modelType.Field(i)
+		metricName := fieldType.Tag.Get("metric_name")
+		sourceType := fieldType.Tag.Get("source_type")
+
+		if field.Kind() == reflect.Ptr && !field.IsNil() {
+			SetMetric(metricSet, metricName, field.Elem().Interface(), sourceType)
+		} else if field.Kind() != reflect.Ptr {
+			SetMetric(metricSet, metricName, field.Interface(), sourceType)
+		}
+	}
+}
+
+func publishMetrics(i *integration.Integration) error {
+	err := i.Publish()
+	if err != nil {
+		log.Error("Error publishing metrics: %v", err)
+		return err
+	}
+	return nil
 }

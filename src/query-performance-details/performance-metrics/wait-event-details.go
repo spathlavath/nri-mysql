@@ -62,7 +62,7 @@ func PopulateWaitEventMetrics(db dbconnection.DataSource, i *integration.Integra
 
 // setWaitEventMetrics sets the wait event metrics in the integration.
 func setWaitEventMetrics(i *integration.Integration, args arguments.ArgumentList, metrics []datamodels.WaitEventQueryMetrics) {
-	var metricList []interface{}
+	metricList := make([]interface{}, 0, len(metrics))
 	for _, metricData := range metrics {
 		metricList = append(metricList, metricData)
 	}

@@ -59,7 +59,7 @@ func PopulateBlockingSessionMetrics(db dbconnection.DataSource, i *integration.I
 
 // setBlockingQueryMetrics sets the blocking session metrics into the integration entity.
 func setBlockingQueryMetrics(metrics []datamodels.BlockingSessionMetrics, i *integration.Integration, args arguments.ArgumentList) {
-	var metricList []interface{}
+	metricList := make([]interface{}, 0, len(metrics))
 	for _, metricData := range metrics {
 		metricList = append(metricList, metricData)
 	}
