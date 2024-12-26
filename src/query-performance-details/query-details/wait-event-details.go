@@ -62,13 +62,11 @@ func PopulateWaitEventMetrics(db performance_database.DataSource, i *integration
 }
 
 // setWaitEventMetrics sets the wait event metrics in the integration.
-func setWaitEventMetrics(i *integration.Integration, args arguments.ArgumentList, metrics []performance_data_model.WaitEventQueryMetrics) error {
+func setWaitEventMetrics(i *integration.Integration, args arguments.ArgumentList, metrics []performance_data_model.WaitEventQueryMetrics) {
 	var metricList []interface{}
 	for _, metricData := range metrics {
 		metricList = append(metricList, metricData)
 	}
 
 	common_utils.IngestMetric(metricList, "MysqlWaitEventsSample", i, args)
-
-	return nil
 }

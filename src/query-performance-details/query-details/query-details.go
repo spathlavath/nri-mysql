@@ -75,15 +75,13 @@ func collectGroupedSlowQueryMetrics(db performancedatabase.DataSource, slowQuery
 }
 
 // setSlowQueryMetrics sets the collected slow query metrics to the integration
-func setSlowQueryMetrics(i *integration.Integration, metrics []performancedatamodel.SlowQueryMetrics, args arguments.ArgumentList) error {
+func setSlowQueryMetrics(i *integration.Integration, metrics []performancedatamodel.SlowQueryMetrics, args arguments.ArgumentList) {
 	var metricList []interface{}
 	for _, metricData := range metrics {
 		metricList = append(metricList, metricData)
 	}
 
 	common_utils.IngestMetric(metricList, "MysqlSlowQueriesSample", i, args)
-
-	return nil
 }
 
 // PopulateIndividualQueryDetails collects and sets individual query details

@@ -59,13 +59,11 @@ func PopulateBlockingSessionMetrics(db performance_database.DataSource, i *integ
 }
 
 // setBlockingQueryMetrics sets the blocking session metrics into the integration entity.
-func setBlockingQueryMetrics(metrics []performance_data_model.BlockingSessionMetrics, i *integration.Integration, args arguments.ArgumentList) error {
+func setBlockingQueryMetrics(metrics []performance_data_model.BlockingSessionMetrics, i *integration.Integration, args arguments.ArgumentList) {
 	var metricList []interface{}
 	for _, metricData := range metrics {
 		metricList = append(metricList, metricData)
 	}
 
 	common_utils.IngestMetric(metricList, "MysqlBlockingSessionSample", i, args)
-
-	return nil
 }
