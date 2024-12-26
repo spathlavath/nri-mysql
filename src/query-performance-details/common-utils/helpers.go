@@ -17,7 +17,7 @@ import (
 const (
 	IntegrationName = "com.newrelic.mysql"
 	NodeEntityType  = "node"
-	MetricSetLimit  = 100
+	MetricSetLimit  = 2
 )
 
 // Default excluded databases
