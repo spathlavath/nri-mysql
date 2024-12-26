@@ -11,7 +11,6 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	arguments "github.com/newrelic/nri-mysql/src/args"
-	commonutils "github.com/newrelic/nri-mysql/src/query-performance-details/common-utils"
 )
 
 type DataSource interface {
@@ -27,7 +26,7 @@ type Database struct {
 func OpenDB(dsn string) (DataSource, error) {
 	source, err := sqlx.Open("mysql", dsn)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", commonutils.ErrOpenDSN, err)
+		return nil, fmt.Errorf("error opening DSN: %w", err)
 	}
 
 	db := Database{

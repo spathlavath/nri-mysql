@@ -28,7 +28,6 @@ const (
 var defaultExcludedDatabases = []string{"", "mysql", "information_schema", "performance_schema", "sys"}
 
 var (
-	ErrOpenDSN                       = errors.New("error opening DSN")
 	ErrEssentialConsumerNotEnabled   = errors.New("essential consumer is not enabled")
 	ErrEssentialInstrumentNotEnabled = errors.New("essential instrument is not fully enabled")
 	ErrMySQLVersion                  = errors.New("failed to determine MySQL version")
