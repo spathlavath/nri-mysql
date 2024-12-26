@@ -1,7 +1,8 @@
-package common_utils
+package commonutils
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -26,13 +27,18 @@ const (
 // Default excluded databases
 var defaultExcludedDatabases = []string{"", "mysql", "information_schema", "performance_schema", "sys"}
 
+var (
+	ErrEssentialConsumerNotEnabled   = errors.New("essential consumer is not enabled")
+	ErrEssentialInstrumentNotEnabled = errors.New("essential instrument is not fully enabled")
+	ErrMySQLVersion                  = errors.New("failed to determine MySQL version")
+)
+
 func CreateNodeEntity(
 	i *integration.Integration,
 	remoteMonitoring bool,
 	hostname string,
 	port int,
 ) (*integration.Entity, error) {
-
 	if remoteMonitoring {
 		return i.Entity(fmt.Sprint(hostname, ":", port), NodeEntityType)
 	}

@@ -1,4 +1,4 @@
-package query_details
+package performancemetrics
 
 import (
 	"context"
@@ -7,18 +7,18 @@ import (
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	arguments "github.com/newrelic/nri-mysql/src/args"
-	common_utils "github.com/newrelic/nri-mysql/src/query-performance-details/common-utils"
-	performance_data_model "github.com/newrelic/nri-mysql/src/query-performance-details/performance-data-models"
-	performance_database "github.com/newrelic/nri-mysql/src/query-performance-details/performance-database"
+	commonutils "github.com/newrelic/nri-mysql/src/query-performance-details/common-utils"
+	dbconnection "github.com/newrelic/nri-mysql/src/query-performance-details/connection"
+	datamodels "github.com/newrelic/nri-mysql/src/query-performance-details/data-models"
 	queries "github.com/newrelic/nri-mysql/src/query-performance-details/queries"
 )
 
 // PopulateBlockingSessionMetrics retrieves blocking session metrics from the database and populates them into the integration entity.
-func PopulateBlockingSessionMetrics(db performance_database.DataSource, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList) ([]performance_data_model.BlockingSessionMetrics, error) {
+func PopulateBlockingSessionMetrics(db dbconnection.DataSource, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList) ([]datamodels.BlockingSessionMetrics, error) {
 	// Get the list of unique excluded databases
-	excludedDatabases, err := common_utils.GetExcludedDatabases(args.ExcludedDatabases)
+	excludedDatabases, err := commonutils.GetExcludedDatabases(args.ExcludedDatabases)
 	if err != nil {
-		log.Error("Error unmarshaling JSON: %v\n", err)
+		log.Error("Error unmarshaling JSON: %v", err)
 		return nil, err
 	}
 
@@ -29,7 +29,7 @@ func PopulateBlockingSessionMetrics(db performance_database.DataSource, i *integ
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), common_utils.TimeoutDuration)
+	ctx, cancel := context.WithTimeout(context.Background(), commonutils.TimeoutDuration)
 	defer cancel()
 	rows, err := db.QueryxContext(ctx, query, inputArgs...)
 	if err != nil {
@@ -38,9 +38,9 @@ func PopulateBlockingSessionMetrics(db performance_database.DataSource, i *integ
 	}
 	defer rows.Close()
 
-	var metrics []performance_data_model.BlockingSessionMetrics
+	var metrics []datamodels.BlockingSessionMetrics
 	for rows.Next() {
-		var metric performance_data_model.BlockingSessionMetrics
+		var metric datamodels.BlockingSessionMetrics
 		if err := rows.StructScan(&metric); err != nil {
 			log.Error("Failed to scan blocking session query metrics: %v", err)
 			return nil, err
@@ -58,11 +58,11 @@ func PopulateBlockingSessionMetrics(db performance_database.DataSource, i *integ
 }
 
 // setBlockingQueryMetrics sets the blocking session metrics into the integration entity.
-func setBlockingQueryMetrics(metrics []performance_data_model.BlockingSessionMetrics, i *integration.Integration, args arguments.ArgumentList) {
+func setBlockingQueryMetrics(metrics []datamodels.BlockingSessionMetrics, i *integration.Integration, args arguments.ArgumentList) {
 	var metricList []interface{}
 	for _, metricData := range metrics {
 		metricList = append(metricList, metricData)
 	}
 
-	common_utils.IngestMetric(metricList, "MysqlBlockingSessionSample", i, args)
+	commonutils.IngestMetric(metricList, "MysqlBlockingSessionSample", i, args)
 }
