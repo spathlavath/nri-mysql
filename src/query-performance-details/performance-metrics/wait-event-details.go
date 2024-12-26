@@ -1,4 +1,4 @@
-package query_details
+package performancemetrics
 
 import (
 	"context"
@@ -7,16 +7,16 @@ import (
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	arguments "github.com/newrelic/nri-mysql/src/args"
-	common_utils "github.com/newrelic/nri-mysql/src/query-performance-details/common-utils"
-	performance_data_model "github.com/newrelic/nri-mysql/src/query-performance-details/performance-data-models"
-	performance_database "github.com/newrelic/nri-mysql/src/query-performance-details/performance-database"
+	commonutils "github.com/newrelic/nri-mysql/src/query-performance-details/common-utils"
+	dbconnection "github.com/newrelic/nri-mysql/src/query-performance-details/connection"
+	datamodels "github.com/newrelic/nri-mysql/src/query-performance-details/data-models"
 	queries "github.com/newrelic/nri-mysql/src/query-performance-details/queries"
 )
 
 // PopulateWaitEventMetrics retrieves wait event metrics from the database and sets them in the integration.
-func PopulateWaitEventMetrics(db performance_database.DataSource, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList) ([]performance_data_model.WaitEventQueryMetrics, error) {
+func PopulateWaitEventMetrics(db dbconnection.DataSource, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList) ([]datamodels.WaitEventQueryMetrics, error) {
 	// Get the list of unique excluded databases
-	excludedDatabases, err := common_utils.GetExcludedDatabases(args.ExcludedDatabases)
+	excludedDatabases, err := commonutils.GetExcludedDatabases(args.ExcludedDatabases)
 	if err != nil {
 		log.Error("Error unmarshaling JSON: %v\n", err)
 		return nil, err
@@ -32,7 +32,7 @@ func PopulateWaitEventMetrics(db performance_database.DataSource, i *integration
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), common_utils.TimeoutDuration)
+	ctx, cancel := context.WithTimeout(context.Background(), commonutils.TimeoutDuration)
 	defer cancel()
 	rows, err := db.QueryxContext(ctx, preparedQuery, preparedArgs...)
 	if err != nil {
@@ -41,9 +41,9 @@ func PopulateWaitEventMetrics(db performance_database.DataSource, i *integration
 	}
 	defer rows.Close()
 
-	var metrics []performance_data_model.WaitEventQueryMetrics
+	var metrics []datamodels.WaitEventQueryMetrics
 	for rows.Next() {
-		var metric performance_data_model.WaitEventQueryMetrics
+		var metric datamodels.WaitEventQueryMetrics
 		if err := rows.StructScan(&metric); err != nil {
 			log.Error("Failed to scan wait event query metrics row: %v", err)
 			return nil, err
@@ -61,11 +61,11 @@ func PopulateWaitEventMetrics(db performance_database.DataSource, i *integration
 }
 
 // setWaitEventMetrics sets the wait event metrics in the integration.
-func setWaitEventMetrics(i *integration.Integration, args arguments.ArgumentList, metrics []performance_data_model.WaitEventQueryMetrics) {
+func setWaitEventMetrics(i *integration.Integration, args arguments.ArgumentList, metrics []datamodels.WaitEventQueryMetrics) {
 	var metricList []interface{}
 	for _, metricData := range metrics {
 		metricList = append(metricList, metricData)
 	}
 
-	common_utils.IngestMetric(metricList, "MysqlWaitEventsSample", i, args)
+	commonutils.IngestMetric(metricList, "MysqlWaitEventsSample", i, args)
 }
