@@ -1,4 +1,4 @@
-package query_performance_details
+package queryperformancedetails
 
 import (
 	"time"

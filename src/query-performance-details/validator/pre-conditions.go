@@ -12,6 +12,9 @@ import (
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 )
 
+// Define constants
+const minVersionParts = 2
+
 // ValidatePreconditions checks if the necessary preconditions are met for performance monitoring.
 func ValidatePreconditions(db dbconnection.DataSource) bool {
 	// Check if Performance Schema is enabled
@@ -223,7 +226,7 @@ func isVersion8OrGreater(version string) bool {
 // parseVersion extracts the major and minor version numbers from the version string
 func parseVersion(version string) (int, int) {
 	parts := strings.Split(version, ".")
-	if len(parts) < 2 {
+	if len(parts) < minVersionParts {
 		return 0, 0 // Return 0 if the version string is improperly formatted
 	}
 

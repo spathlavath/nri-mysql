@@ -75,7 +75,7 @@ func collectGroupedSlowQueryMetrics(db dbconnection.DataSource, slowQueryfetchIn
 
 // setSlowQueryMetrics sets the collected slow query metrics to the integration
 func setSlowQueryMetrics(i *integration.Integration, metrics []datamodels.SlowQueryMetrics, args arguments.ArgumentList) {
-	var metricList []interface{}
+	metricList := make([]interface{}, 0, len(metrics))
 	for _, metricData := range metrics {
 		metricList = append(metricList, metricData)
 	}
@@ -105,9 +105,9 @@ func PopulateIndividualQueryDetails(db dbconnection.DataSource, queryIDList []st
 
 	queryList := append(append(currentQueryMetrics, recentQueryList...), extensiveQueryList...)
 	filteredQueryList := getUniqueQueryList(queryList)
-	var metricList []interface{}
 	newMetricsList := make([]datamodels.IndividualQueryMetrics, len(filteredQueryList))
 	copy(newMetricsList, filteredQueryList)
+	metricList := make([]interface{}, 0, len(newMetricsList))
 	for i := range newMetricsList {
 		newMetricsList[i].QueryText = nil
 		metricList = append(metricList, newMetricsList[i])
