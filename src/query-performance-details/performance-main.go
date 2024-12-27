@@ -1,4 +1,4 @@
-package query_performance_details
+package queryperformancedetails
 
 import (
 	"time"
@@ -6,9 +6,9 @@ import (
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	arguments "github.com/newrelic/nri-mysql/src/args"
-	common_utils "github.com/newrelic/nri-mysql/src/query-performance-details/common-utils"
-	performance_database "github.com/newrelic/nri-mysql/src/query-performance-details/performance-database"
-	query_details "github.com/newrelic/nri-mysql/src/query-performance-details/query-details"
+	commonutils "github.com/newrelic/nri-mysql/src/query-performance-details/common-utils"
+	dbconnection "github.com/newrelic/nri-mysql/src/query-performance-details/connection"
+	performancemetrics "github.com/newrelic/nri-mysql/src/query-performance-details/performance-metrics"
 	"github.com/newrelic/nri-mysql/src/query-performance-details/validator"
 )
 
@@ -17,11 +17,11 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 	var database string
 
 	// Generate Data Source Name (DSN) for database connection
-	dsn := performance_database.GenerateDSN(args, database)
+	dsn := dbconnection.GenerateDSN(args, database)
 
 	// Open database connection
-	db, err := performance_database.OpenDB(dsn)
-	common_utils.FatalIfErr(err)
+	db, err := dbconnection.OpenDB(dsn)
+	commonutils.FatalIfErr(err)
 	defer db.Close()
 
 	// Validate preconditions before proceeding
@@ -34,14 +34,14 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 	// Populate metrics for slow queries
 	start := time.Now()
 	log.Info("Beginning to retrieve slow query metrics")
-	queryIdList := query_details.PopulateSlowQueryMetrics(i, e, db, args)
+	queryIDList := performancemetrics.PopulateSlowQueryMetrics(i, e, db, args)
 	log.Info("Completed fetching slow query metrics in %v", time.Since(start))
 
-	if len(queryIdList) > 0 {
+	if len(queryIDList) > 0 {
 		// Populate metrics for individual queries
 		start = time.Now()
 		log.Info("Beginning to retrieve individual query metrics")
-		groupQueriesByDatabase, individualQueryDetailsErr := query_details.PopulateIndividualQueryDetails(db, queryIdList, i, e, args)
+		groupQueriesByDatabase, individualQueryDetailsErr := performancemetrics.PopulateIndividualQueryDetails(db, queryIDList, i, e, args)
 		log.Info("Completed fetching individual query metrics in %v", time.Since(start))
 		if individualQueryDetailsErr != nil {
 			log.Error("Error populating individual query details: %v", individualQueryDetailsErr)
@@ -51,7 +51,7 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 		// Populate execution plan details
 		start = time.Now()
 		log.Info("Beginning to retrieve query execution plan metrics")
-		_, executionPlanMetricsErr := query_details.PopulateExecutionPlans(db, groupQueriesByDatabase, i, e, args)
+		_, executionPlanMetricsErr := performancemetrics.PopulateExecutionPlans(db, groupQueriesByDatabase, i, e, args)
 		log.Info("Completed fetching query execution plan metrics in %v", time.Since(start))
 		if executionPlanMetricsErr != nil {
 			log.Error("Error populating execution plan details: %v", executionPlanMetricsErr)
@@ -62,7 +62,7 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 	// Populate wait event metrics
 	start = time.Now()
 	log.Info("Beginning to retrieve wait event metrics")
-	_, waitEventError := query_details.PopulateWaitEventMetrics(db, i, e, args)
+	_, waitEventError := performancemetrics.PopulateWaitEventMetrics(db, i, e, args)
 	log.Info("Completed fetching wait event metrics in %v", time.Since(start))
 	if waitEventError != nil {
 		log.Error("Error populating wait event metrics: %v", waitEventError)
@@ -72,7 +72,7 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 	// Populate blocking session metrics
 	start = time.Now()
 	log.Info("Beginning to retrieve blocking session metrics")
-	_, populateBlockingSessionMetricsError := query_details.PopulateBlockingSessionMetrics(db, i, e, args)
+	_, populateBlockingSessionMetricsError := performancemetrics.PopulateBlockingSessionMetrics(db, i, e, args)
 	log.Info("Completed fetching blocking session metrics in %v", time.Since(start))
 	if populateBlockingSessionMetricsError != nil {
 		log.Error("Error populating blocking session metrics: %v", populateBlockingSessionMetricsError)

@@ -1,4 +1,4 @@
-package query_details
+package performancemetrics
 
 import (
 	"context"
@@ -12,8 +12,7 @@ import (
 	"github.com/newrelic/nri-mysql/src/args"
 	arguments "github.com/newrelic/nri-mysql/src/args"
 
-	performance_data_model "github.com/newrelic/nri-mysql/src/query-performance-details/performance-data-models"
-	performancedatamodel "github.com/newrelic/nri-mysql/src/query-performance-details/performance-data-models"
+	datamodels "github.com/newrelic/nri-mysql/src/query-performance-details/data-models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -23,7 +22,7 @@ import (
 type MockDataSource struct {
 	mock.Mock
 	db                          *sqlx.DB
-	SetExecutionPlanMetricsFunc func(i *integration.Integration, args arguments.ArgumentList, metrics []performance_data_model.QueryPlanMetrics) error
+	SetExecutionPlanMetricsFunc func(i *integration.Integration, args arguments.ArgumentList, metrics []datamodels.QueryPlanMetrics) error
 }
 
 // MockCommonUtils is a mock implementation of the CommonUtils interface
@@ -73,7 +72,7 @@ func TestCollectGroupedSlowQueryMetrics(t *testing.T) {
 		fetchInterval       int
 		queryCountThreshold int
 		mockSetup           func(mock sqlmock.Sqlmock)
-		expectedMetrics     []performancedatamodel.SlowQueryMetrics
+		expectedMetrics     []datamodels.SlowQueryMetrics
 		expectedQueryIDList []string
 		expectedError       error
 	}{
@@ -89,7 +88,7 @@ func TestCollectGroupedSlowQueryMetrics(t *testing.T) {
 					WithArgs(60, 10).
 					WillReturnRows(rows)
 			},
-			expectedMetrics: []performancedatamodel.SlowQueryMetrics{
+			expectedMetrics: []datamodels.SlowQueryMetrics{
 				{QueryID: stringPtr("1"), QueryText: stringPtr("SELECT * FROM table1")},
 				{QueryID: stringPtr("2"), QueryText: stringPtr("SELECT * FROM table2")},
 			},
@@ -180,7 +179,7 @@ func TestCurrentQueryMetrics(t *testing.T) {
 	queryIDList := []string{"1", "2", "3"}
 	queryResponseTimeThreshold := 100
 	queryCountThreshold := 10
-	expectedMetrics := []performancedatamodel.IndividualQueryMetrics{
+	expectedMetrics := []datamodels.IndividualQueryMetrics{
 		{QueryID: stringPtr("1"), ExecutionTimeMs: float64Ptr(50)},
 		{QueryID: stringPtr("2"), ExecutionTimeMs: float64Ptr(60)},
 	}
@@ -209,7 +208,7 @@ func TestRecentQueryMetrics(t *testing.T) {
 	queryIDList := []string{"1", "2", "3"}
 	queryResponseTimeThreshold := 100
 	queryCountThreshold := 10
-	expectedMetrics := []performancedatamodel.IndividualQueryMetrics{
+	expectedMetrics := []datamodels.IndividualQueryMetrics{
 		{QueryID: stringPtr("1"), ExecutionTimeMs: float64Ptr(50)},
 		{QueryID: stringPtr("2"), ExecutionTimeMs: float64Ptr(60)},
 	}
@@ -238,7 +237,7 @@ func TestExtensiveQueryMetrics(t *testing.T) {
 	queryIDList := []string{"1", "2", "3"}
 	queryResponseTimeThreshold := 100
 	queryCountThreshold := 10
-	expectedMetrics := []performancedatamodel.IndividualQueryMetrics{
+	expectedMetrics := []datamodels.IndividualQueryMetrics{
 		{QueryID: stringPtr("1"), ExecutionTimeMs: float64Ptr(50)},
 		{QueryID: stringPtr("2"), ExecutionTimeMs: float64Ptr(60)},
 	}
@@ -397,22 +396,22 @@ func TestPopulateIndividualQueryDetails(t *testing.T) {
 func TestGetUniqueQueryList(t *testing.T) {
 	tests := []struct {
 		name         string
-		queryList    []performancedatamodel.IndividualQueryMetrics
-		expectedList []performancedatamodel.IndividualQueryMetrics
+		queryList    []datamodels.IndividualQueryMetrics
+		expectedList []datamodels.IndividualQueryMetrics
 	}{
 		{
 			name:         "Empty list",
-			queryList:    []performancedatamodel.IndividualQueryMetrics{},
-			expectedList: []performancedatamodel.IndividualQueryMetrics{},
+			queryList:    []datamodels.IndividualQueryMetrics{},
+			expectedList: []datamodels.IndividualQueryMetrics{},
 		},
 		{
 			name: "No duplicates",
-			queryList: []performancedatamodel.IndividualQueryMetrics{
+			queryList: []datamodels.IndividualQueryMetrics{
 				{EventID: uint64Ptr(1)},
 				{EventID: uint64Ptr(2)},
 				{EventID: uint64Ptr(3)},
 			},
-			expectedList: []performancedatamodel.IndividualQueryMetrics{
+			expectedList: []datamodels.IndividualQueryMetrics{
 				{EventID: uint64Ptr(1)},
 				{EventID: uint64Ptr(2)},
 				{EventID: uint64Ptr(3)},
@@ -420,14 +419,14 @@ func TestGetUniqueQueryList(t *testing.T) {
 		},
 		{
 			name: "Some duplicates",
-			queryList: []performancedatamodel.IndividualQueryMetrics{
+			queryList: []datamodels.IndividualQueryMetrics{
 				{EventID: uint64Ptr(1)},
 				{EventID: uint64Ptr(2)},
 				{EventID: uint64Ptr(1)},
 				{EventID: uint64Ptr(3)},
 				{EventID: uint64Ptr(2)},
 			},
-			expectedList: []performancedatamodel.IndividualQueryMetrics{
+			expectedList: []datamodels.IndividualQueryMetrics{
 				{EventID: uint64Ptr(1)},
 				{EventID: uint64Ptr(2)},
 				{EventID: uint64Ptr(3)},
@@ -435,12 +434,12 @@ func TestGetUniqueQueryList(t *testing.T) {
 		},
 		{
 			name: "All duplicates",
-			queryList: []performancedatamodel.IndividualQueryMetrics{
+			queryList: []datamodels.IndividualQueryMetrics{
 				{EventID: uint64Ptr(1)},
 				{EventID: uint64Ptr(1)},
 				{EventID: uint64Ptr(1)},
 			},
-			expectedList: []performancedatamodel.IndividualQueryMetrics{
+			expectedList: []datamodels.IndividualQueryMetrics{
 				{EventID: uint64Ptr(1)},
 			},
 		},
@@ -450,7 +449,7 @@ func TestGetUniqueQueryList(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := getUniqueQueryList(tt.queryList)
 			if result == nil {
-				result = []performancedatamodel.IndividualQueryMetrics{}
+				result = []datamodels.IndividualQueryMetrics{}
 			}
 			assert.Equal(t, tt.expectedList, result)
 		})
@@ -460,25 +459,25 @@ func TestGetUniqueQueryList(t *testing.T) {
 func TestGroupQueriesByDatabase(t *testing.T) {
 	tests := []struct {
 		name         string
-		filteredList []performancedatamodel.IndividualQueryMetrics
-		expectedList []performancedatamodel.QueryGroup
+		filteredList []datamodels.IndividualQueryMetrics
+		expectedList []datamodels.QueryGroup
 	}{
 		{
 			name:         "Empty list",
-			filteredList: []performancedatamodel.IndividualQueryMetrics{},
-			expectedList: []performancedatamodel.QueryGroup{},
+			filteredList: []datamodels.IndividualQueryMetrics{},
+			expectedList: []datamodels.QueryGroup{},
 		},
 		{
 			name: "Single database",
-			filteredList: []performancedatamodel.IndividualQueryMetrics{
+			filteredList: []datamodels.IndividualQueryMetrics{
 				{DatabaseName: stringPtr("db1")},
 				{DatabaseName: stringPtr("db1")},
 				{DatabaseName: stringPtr("db1")},
 			},
-			expectedList: []performancedatamodel.QueryGroup{
+			expectedList: []datamodels.QueryGroup{
 				{
 					Database: "db1",
-					Queries: []performancedatamodel.IndividualQueryMetrics{
+					Queries: []datamodels.IndividualQueryMetrics{
 						{DatabaseName: stringPtr("db1")},
 						{DatabaseName: stringPtr("db1")},
 						{DatabaseName: stringPtr("db1")},
@@ -488,17 +487,17 @@ func TestGroupQueriesByDatabase(t *testing.T) {
 		},
 		{
 			name: "Multiple databases",
-			filteredList: []performancedatamodel.IndividualQueryMetrics{
+			filteredList: []datamodels.IndividualQueryMetrics{
 				{DatabaseName: stringPtr("db1")},
 				{DatabaseName: stringPtr("db2")},
 				{DatabaseName: stringPtr("db1")},
 				{DatabaseName: stringPtr("db2")},
 				{DatabaseName: stringPtr("db1")},
 			},
-			expectedList: []performancedatamodel.QueryGroup{
+			expectedList: []datamodels.QueryGroup{
 				{
 					Database: "db1",
-					Queries: []performancedatamodel.IndividualQueryMetrics{
+					Queries: []datamodels.IndividualQueryMetrics{
 						{DatabaseName: stringPtr("db1")},
 						{DatabaseName: stringPtr("db1")},
 						{DatabaseName: stringPtr("db1")},
@@ -506,7 +505,7 @@ func TestGroupQueriesByDatabase(t *testing.T) {
 				},
 				{
 					Database: "db2",
-					Queries: []performancedatamodel.IndividualQueryMetrics{
+					Queries: []datamodels.IndividualQueryMetrics{
 						{DatabaseName: stringPtr("db2")},
 						{DatabaseName: stringPtr("db2")},
 					},
@@ -519,7 +518,7 @@ func TestGroupQueriesByDatabase(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := groupQueriesByDatabase(tt.filteredList)
 			if result == nil {
-				result = []performancedatamodel.QueryGroup{}
+				result = []datamodels.QueryGroup{}
 			}
 			assert.Equal(t, tt.expectedList, result)
 		})
@@ -533,7 +532,7 @@ func TestCollectIndividualQueryMetrics(t *testing.T) {
 		queryResponseTimeThreshold int
 		queryCountThreshold        int
 		mockSetup                  func(mock sqlmock.Sqlmock)
-		expectedMetrics            []performancedatamodel.IndividualQueryMetrics
+		expectedMetrics            []datamodels.IndividualQueryMetrics
 		expectedError              error
 	}{
 		{
@@ -574,7 +573,7 @@ func TestCollectIndividualQueryMetrics(t *testing.T) {
 					WithArgs("1", "2", 100, 10).
 					WillReturnRows(rows)
 			},
-			expectedMetrics: []performancedatamodel.IndividualQueryMetrics{
+			expectedMetrics: []datamodels.IndividualQueryMetrics{
 				{QueryID: stringPtr("1"), AnonymizedQueryText: stringPtr("metric1"), QueryText: nil},
 				{QueryID: stringPtr("2"), AnonymizedQueryText: stringPtr("metric2"), QueryText: nil},
 			},

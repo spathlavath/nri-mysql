@@ -1,4 +1,4 @@
-package validator_test
+package validator
 
 import (
 	"bytes"
@@ -9,8 +9,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/jmoiron/sqlx"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
-	performance_database "github.com/newrelic/nri-mysql/src/query-performance-details/performance-database"
-	"github.com/newrelic/nri-mysql/src/query-performance-details/validator"
+	dbconnection "github.com/newrelic/nri-mysql/src/query-performance-details/connection"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -30,7 +29,7 @@ func (m *MockDataSource) QueryX(query string) (*sqlx.Rows, error) {
 	return m.db.Queryx(query)
 }
 
-func getMockDataSource(db *sqlx.DB) performance_database.DataSource {
+func getMockDataSource(db *sqlx.DB) dbconnection.DataSource {
 	return &MockDataSource{db: db}
 }
 
@@ -44,7 +43,7 @@ func TestValidatePreconditions_PerformanceSchemaDisabled(t *testing.T) {
 	mock.ExpectQuery("SHOW GLOBAL VARIABLES LIKE 'performance_schema';").
 		WillReturnRows(sqlmock.NewRows([]string{"Variable_name", "Value"}).AddRow("performance_schema", "OFF"))
 	dataSource := getMockDataSource(sqlxDB)
-	result := validator.ValidatePreconditions(dataSource)
+	result := ValidatePreconditions(dataSource)
 	assert.False(t, result)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
@@ -64,7 +63,7 @@ func TestValidatePreconditions_ConsumerCheckError(t *testing.T) {
 
 	sqlxDB := sqlx.NewDb(db, "sqlmock")
 	dataSource := getMockDataSource(sqlxDB)
-	result := validator.ValidatePreconditions(dataSource)
+	result := ValidatePreconditions(dataSource)
 	assert.False(t, result)
 	assert.NoError(t, mock.ExpectationsWereMet()) // Ensure all expected calls were made
 }
@@ -92,7 +91,7 @@ func TestValidatePreconditions_InstrumentNotFullyEnabled(t *testing.T) {
 
 	sqlxDB := sqlx.NewDb(db, "sqlmock")
 	dataSource := getMockDataSource(sqlxDB)
-	result := validator.ValidatePreconditions(dataSource)
+	result := ValidatePreconditions(dataSource)
 	assert.False(t, result)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
@@ -120,7 +119,7 @@ func TestValidatePreconditions_InstrumentNotTimed(t *testing.T) {
 
 	sqlxDB := sqlx.NewDb(db, "sqlmock")
 	dataSource := getMockDataSource(sqlxDB)
-	result := validator.ValidatePreconditions(dataSource)
+	result := ValidatePreconditions(dataSource)
 	assert.False(t, result)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
@@ -148,7 +147,7 @@ func TestValidatePreconditions_InstrumentNotEnabled(t *testing.T) {
 
 	sqlxDB := sqlx.NewDb(db, "sqlmock")
 	dataSource := getMockDataSource(sqlxDB)
-	result := validator.ValidatePreconditions(dataSource)
+	result := ValidatePreconditions(dataSource)
 	assert.False(t, result)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
@@ -174,7 +173,7 @@ func TestValidatePreconditions_InstrumentCheckError(t *testing.T) {
 
 	sqlxDB := sqlx.NewDb(db, "sqlmock")
 	dataSource := getMockDataSource(sqlxDB)
-	result := validator.ValidatePreconditions(dataSource)
+	result := ValidatePreconditions(dataSource)
 	assert.False(t, result)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
@@ -237,7 +236,7 @@ func TestLogEnablePerformanceSchemaInstructions(t *testing.T) {
 		var logBuffer bytes.Buffer
 		log.SetOutput(&logBuffer)
 
-		validator.LogEnablePerformanceSchemaInstructions(dataSource)
+		logEnablePerformanceSchemaInstructions(dataSource)
 
 		for _, expectedLog := range test.expectedLogs {
 			assert.Contains(t, logBuffer.String(), expectedLog)
@@ -264,7 +263,7 @@ func TestIsVersion8OrGreater(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		result := validator.IsVersion8OrGreater(test.version)
+		result := IsVersion8OrGreater(test.version)
 		assert.Equal(t, test.expected, result, "Version: %s", test.version)
 	}
 }
@@ -287,7 +286,7 @@ func TestParseVersion(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		major, minor := validator.ParseVersion(test.version)
+		major, minor := ParseVersion(test.version)
 		assert.Equal(t, test.expectedMajor, major, "Version: %s", test.version)
 		assert.Equal(t, test.expectedMinor, minor, "Version: %s", test.version)
 	}

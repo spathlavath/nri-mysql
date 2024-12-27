@@ -1,4 +1,4 @@
-package query_details
+package performancemetrics
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	arguments "github.com/newrelic/nri-mysql/src/args"
-	query_performance_details "github.com/newrelic/nri-mysql/src/query-performance-details/queries"
+	queries "github.com/newrelic/nri-mysql/src/query-performance-details/queries"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,7 +22,7 @@ func TestPopulateWaitEventMetrics(t *testing.T) {
 		{
 			name: "Successful execution",
 			mockSetup: func(mock sqlmock.Sqlmock) {
-				query := query_performance_details.WaitEventsQuery
+				query := queries.WaitEventsQuery
 				rows := sqlmock.NewRows([]string{"query_id", "query_text", "database_name", "wait_category", "collection_timestamp", "instance_id", "wait_event_name", "wait_event_count", "avg_wait_time_ms", "total_wait_time_ms"}).
 					AddRow("1234", "SELECT * FROM table", "test_db", "wait_category", "2023-01-01T00:00:00Z", "1", "wait_event", 10, 1.23, 12.3)
 				mock.ExpectQuery(query).WillReturnRows(rows)
@@ -33,7 +33,7 @@ func TestPopulateWaitEventMetrics(t *testing.T) {
 		{
 			name: "Query execution failure",
 			mockSetup: func(mock sqlmock.Sqlmock) {
-				query := query_performance_details.WaitEventsQuery
+				query := queries.WaitEventsQuery
 				mock.ExpectQuery(query).WillReturnError(fmt.Errorf("query execution error"))
 			},
 			expectedError: true,
@@ -42,7 +42,7 @@ func TestPopulateWaitEventMetrics(t *testing.T) {
 		{
 			name: "Row scanning failure",
 			mockSetup: func(mock sqlmock.Sqlmock) {
-				query := query_performance_details.WaitEventsQuery
+				query := queries.WaitEventsQuery
 				rows := sqlmock.NewRows([]string{"query_id", "query_text", "database_name", "wait_category", "collection_timestamp", "instance_id", "wait_event_name", "wait_event_count", "avg_wait_time_ms", "total_wait_time_ms"}).
 					AddRow("1234", "SELECT * FROM table", "test_db", "wait_category", "2023-01-01T00:00:00Z", "1", "wait_event", "invalid", 1.23, 12.3)
 				mock.ExpectQuery(query).WillReturnRows(rows)
@@ -53,7 +53,7 @@ func TestPopulateWaitEventMetrics(t *testing.T) {
 		{
 			name: "Row iteration error",
 			mockSetup: func(mock sqlmock.Sqlmock) {
-				query := query_performance_details.WaitEventsQuery
+				query := queries.WaitEventsQuery
 				rows := sqlmock.NewRows([]string{"query_id", "query_text", "database_name", "wait_category", "collection_timestamp", "instance_id", "wait_event_name", "wait_event_count", "avg_wait_time_ms", "total_wait_time_ms"}).
 					AddRow("1234", "SELECT * FROM table", "test_db", "wait_category", "2023-01-01T00:00:00Z", "1", "wait_event", 10, 1.23, 12.3).
 					RowError(0, fmt.Errorf("row iteration error"))

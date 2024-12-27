@@ -1,4 +1,4 @@
-package performance_database
+package dbconnection
 
 import (
 	"context"
@@ -26,7 +26,7 @@ type Database struct {
 func OpenDB(dsn string) (DataSource, error) {
 	source, err := sqlx.Open("mysql", dsn)
 	if err != nil {
-		return nil, fmt.Errorf("error opening %s: %v", dsn, err)
+		return nil, fmt.Errorf("error opening DSN: %w", err)
 	}
 
 	db := Database{

@@ -1,4 +1,4 @@
-package query_details
+package performancemetrics
 
 import (
 	"testing"
@@ -8,7 +8,7 @@ import (
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/nri-mysql/src/args"
 	arguments "github.com/newrelic/nri-mysql/src/args"
-	performance_data_model "github.com/newrelic/nri-mysql/src/query-performance-details/performance-data-models"
+	datamodels "github.com/newrelic/nri-mysql/src/query-performance-details/data-models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -30,7 +30,7 @@ func TestPopulateExecutionPlans(t *testing.T) {
 
 		sqlxDB := sqlx.NewDb(db, "sqlmock")
 		dataSource := NewMockDataSource(sqlxDB)
-		queries := []performance_data_model.QueryGroup{}
+		queries := []datamodels.QueryGroup{}
 		i, _ := integration.New("test", "1.0.0")
 		e := i.LocalEntity()
 		args := args.ArgumentList{}
@@ -48,8 +48,8 @@ func TestPopulateExecutionPlans(t *testing.T) {
 		sqlxDB := sqlx.NewDb(db, "sqlmock")
 		dataSource := NewMockDataSource(sqlxDB)
 		dropTableQuery := "DROP TABLE test"
-		queries := []performance_data_model.QueryGroup{
-			{Queries: []performance_data_model.IndividualQueryMetrics{{QueryText: &dropTableQuery}}},
+		queries := []datamodels.QueryGroup{
+			{Queries: []datamodels.IndividualQueryMetrics{{QueryText: &dropTableQuery}}},
 		}
 		i, _ := integration.New("test", "1.0.0")
 		e := i.LocalEntity()
@@ -82,7 +82,7 @@ func TestSetExecutionPlanMetrics(t *testing.T) {
 	mockArgs := arguments.ArgumentList{}
 
 	t.Run("Successful Ingestion", func(t *testing.T) {
-		metrics := []performance_data_model.QueryPlanMetrics{
+		metrics := []datamodels.QueryPlanMetrics{
 			{EventID: 1, QueryCost: "10", TableName: "test"},
 		}
 		mockIntegration.On("IngestMetric", mock.Anything, "MysqlQueryExecutionSample", mockIntegration, mockArgs).Return(nil)
@@ -92,7 +92,7 @@ func TestSetExecutionPlanMetrics(t *testing.T) {
 	})
 
 	t.Run("Empty Metrics", func(t *testing.T) {
-		metrics := []performance_data_model.QueryPlanMetrics{}
+		metrics := []datamodels.QueryPlanMetrics{}
 		err := SetExecutionPlanMetrics(mockIntegration.Integration, mockArgs, metrics)
 		assert.NoError(t, err)
 	})
