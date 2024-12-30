@@ -149,7 +149,7 @@ func TestPopulateBlockingSessionMetrics_Success(t *testing.T) {
 	dataSource := &dbWrapper{DB: sqlx.NewDb(db, "sqlmock")}
 	i, _ := integration.New("test", "1.0.0")
 	e := i.LocalEntity()
-	args := args.ArgumentList{ExcludedDatabases: `["mysql", "performance_schema"]`, QueryCountThreshold: 10}
+	args := args.ArgumentList{ExcludedDatabases: `["", "mysql", "information_schema", "performance_schema", "sys"]`, QueryCountThreshold: 10}
 
 	metrics, err := PopulateBlockingSessionMetrics(dataSource, i, e, args)
 	assert.NoError(t, err)
@@ -168,7 +168,7 @@ func TestPopulateBlockingSessionMetrics_QueryError(t *testing.T) {
 	dataSource := &dbWrapper{DB: sqlx.NewDb(db, "sqlmock")}
 	i, _ := integration.New("test", "1.0.0")
 	e := i.LocalEntity()
-	args := args.ArgumentList{ExcludedDatabases: `["mysql", "performance_schema"]`, QueryCountThreshold: 10}
+	args := args.ArgumentList{ExcludedDatabases: `["", "mysql", "information_schema", "performance_schema", "sys"]`, QueryCountThreshold: 10}
 
 	metrics, err := PopulateBlockingSessionMetrics(dataSource, i, e, args)
 	assert.Error(t, err)
@@ -191,7 +191,7 @@ func TestPopulateBlockingSessionMetrics_StructScanError(t *testing.T) {
 	dataSource := &dbWrapper{DB: sqlx.NewDb(db, "sqlmock")}
 	i, _ := integration.New("test", "1.0.0")
 	e := i.LocalEntity()
-	args := args.ArgumentList{ExcludedDatabases: `["mysql", "performance_schema"]`, QueryCountThreshold: 10}
+	args := args.ArgumentList{ExcludedDatabases: `["", "mysql", "information_schema", "performance_schema", "sys"]`, QueryCountThreshold: 10}
 
 	metrics, err := PopulateBlockingSessionMetrics(dataSource, i, e, args)
 	assert.Nil(t, metrics)
@@ -215,11 +215,10 @@ func TestPopulateBlockingSessionMetrics_RowIterationError(t *testing.T) {
 	dataSource := &dbWrapper{DB: sqlx.NewDb(db, "sqlmock")}
 	i, _ := integration.New("test", "1.0.0")
 	e := i.LocalEntity()
-	args := args.ArgumentList{ExcludedDatabases: `["mysql", "performance_schema"]`, QueryCountThreshold: 10}
+	args := args.ArgumentList{ExcludedDatabases: `["", "mysql", "information_schema", "performance_schema", "sys"]`, QueryCountThreshold: 10}
 
 	metrics, err := PopulateBlockingSessionMetrics(dataSource, i, e, args)
 	assert.Nil(t, metrics)
 	assert.Error(t, err)
 	assert.Equal(t, "row iteration error", err.Error())
 }
-
