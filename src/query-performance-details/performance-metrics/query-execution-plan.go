@@ -140,7 +140,6 @@ func extractMetrics(js *simplejson.Json, dbPerformanceEvents []datamodels.QueryP
 	key, _ := js.Get("key").String()
 	usedKeyPartsArray, _ := js.Get("used_key_parts").StringArray()
 	refArray, _ := js.Get("ref").StringArray()
-	attachedCondition, _ := js.Get("attached_condition").String()
 
 	possibleKeys := strings.Join(possibleKeysArray, ",")
 	usedKeyParts := strings.Join(usedKeyPartsArray, ",")
@@ -166,7 +165,6 @@ func extractMetrics(js *simplejson.Json, dbPerformanceEvents []datamodels.QueryP
 			Key:                 key,
 			UsedKeyParts:        usedKeyParts,
 			Ref:                 ref,
-			AttachedCondition:   attachedCondition,
 		})
 		*stepID++
 	}
