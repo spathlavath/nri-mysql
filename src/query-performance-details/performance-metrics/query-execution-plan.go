@@ -24,7 +24,7 @@ const (
 )
 
 // PopulateExecutionPlans populates execution plans for the given queries.
-func PopulateExecutionPlans(db dbconnection.DataSource, queryGroups []datamodels.QueryGroup, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList) ([]datamodels.QueryPlanMetrics, error) {
+func PopulateExecutionPlans(db dbconnection.DataSource, queryGroups []datamodels.QueryGroup, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList) error {
 	var events []datamodels.QueryPlanMetrics
 
 	for _, group := range queryGroups {
@@ -41,16 +41,16 @@ func PopulateExecutionPlans(db dbconnection.DataSource, queryGroups []datamodels
 	}
 
 	if len(events) == 0 {
-		return make([]datamodels.QueryPlanMetrics, 0), nil
+		return nil
 	}
 
 	err := SetExecutionPlanMetrics(i, args, events)
 	if err != nil {
 		log.Error("Error publishing execution plan metrics: %v", err)
-		return nil, err
+		return err
 	}
 
-	return events, nil
+	return nil
 }
 
 // processExecutionPlanMetrics processes the execution plan metrics for a given query.

@@ -1,8 +1,6 @@
 package performancemetrics
 
 import (
-	"context"
-
 	"github.com/jmoiron/sqlx"
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
@@ -14,14 +12,7 @@ import (
 )
 
 // PopulateWaitEventMetrics retrieves wait event metrics from the database and sets them in the integration.
-func PopulateWaitEventMetrics(db dbconnection.DataSource, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList) ([]datamodels.WaitEventQueryMetrics, error) {
-	// Get the list of unique excluded databases
-	excludedDatabases, err := commonutils.GetExcludedDatabases(args.ExcludedDatabases)
-	if err != nil {
-		log.Error("Error unmarshaling JSON: %v", err)
-		return nil, err
-	}
-
+func PopulateWaitEventMetrics(db dbconnection.DataSource, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList, excludedDatabases []string) error {
 	// Prepare the arguments for the query
 	excludedDatabasesArgs := []interface{}{excludedDatabases, excludedDatabases, excludedDatabases, args.QueryCountThreshold}
 
@@ -29,35 +20,19 @@ func PopulateWaitEventMetrics(db dbconnection.DataSource, i *integration.Integra
 	preparedQuery, preparedArgs, err := sqlx.In(queries.WaitEventsQuery, excludedDatabasesArgs...)
 	if err != nil {
 		log.Error("Failed to prepare wait event query: %v", err)
-		return nil, err
+		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), commonutils.TimeoutDuration)
-	defer cancel()
-	rows, err := db.QueryxContext(ctx, preparedQuery, preparedArgs...)
+	// Collect the wait event metrics
+	metrics, err := dbconnection.CollectMetrics[datamodels.WaitEventQueryMetrics](db, preparedQuery, preparedArgs...)
 	if err != nil {
-		log.Error("Failed to collect wait event query metrics from Performance Schema: %v", err)
-		return nil, err
-	}
-	defer rows.Close()
-
-	var metrics []datamodels.WaitEventQueryMetrics
-	for rows.Next() {
-		var metric datamodels.WaitEventQueryMetrics
-		if err := rows.StructScan(&metric); err != nil {
-			log.Error("Failed to scan wait event query metrics row: %v", err)
-			return nil, err
-		}
-		metrics = append(metrics, metric)
-	}
-	if err := rows.Err(); err != nil {
-		log.Error("Error encountered while iterating over wait event query metric rows: %v", err)
-		return nil, err
+		log.Error("Error collecting wait event metrics: %v", err)
+		return err
 	}
 
 	// Set the retrieved metrics in the integration
 	setWaitEventMetrics(i, args, metrics)
-	return metrics, nil
+	return nil
 }
 
 // setWaitEventMetrics sets the wait event metrics in the integration.

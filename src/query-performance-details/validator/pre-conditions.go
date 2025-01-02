@@ -16,34 +16,30 @@ import (
 const minVersionParts = 2
 
 // ValidatePreconditions checks if the necessary preconditions are met for performance monitoring.
-func ValidatePreconditions(db dbconnection.DataSource) bool {
+func ValidatePreconditions(db dbconnection.DataSource) error {
 	// Check if Performance Schema is enabled
 	performanceSchemaEnabled, errPerformanceEnabled := isPerformanceSchemaEnabled(db)
 	if errPerformanceEnabled != nil {
-		log.Error("Failed to check Performance Schema status: %v", errPerformanceEnabled)
-		return false
+		return errPerformanceEnabled
 	}
 
 	if !performanceSchemaEnabled {
-		log.Error("Performance Schema is not enabled. Skipping validation.")
 		logEnablePerformanceSchemaInstructions(db)
-		return false
+		return fmt.Errorf("Performance Schema is not enabled. Skipping validation.")
 	}
 
 	// Check if essential consumers are enabled
 	errEssentialConsumers := checkEssentialConsumers(db)
 	if errEssentialConsumers != nil {
-		log.Error("Essential consumer check failed: %v", fmt.Errorf("%w", errEssentialConsumers))
-		return false
+		return fmt.Errorf("Essential consumer check failed: %v", fmt.Errorf("%w", errEssentialConsumers))
 	}
 
 	// Check if essential instruments are enabled
 	errEssentialInstruments := checkEssentialInstruments(db)
 	if errEssentialInstruments != nil {
-		log.Error("Essential instruments check failed: %v", fmt.Errorf("%w", errEssentialInstruments))
-		return false
+		return fmt.Errorf("Essential instruments check failed: %v", fmt.Errorf("%w", errEssentialInstruments))
 	}
-	return true
+	return nil
 }
 
 // isPerformanceSchemaEnabled checks if the Performance Schema is enabled in the MySQL database.

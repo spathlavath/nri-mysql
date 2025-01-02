@@ -1,6 +1,7 @@
 package queryperformancedetails
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
@@ -25,58 +26,59 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 	defer db.Close()
 
 	// Validate preconditions before proceeding
-	isPreConditionsPassed := validator.ValidatePreconditions(db)
-	if !isPreConditionsPassed {
-		log.Error("Preconditions failed. Exiting.")
-		return
+	preValidationErr := validator.ValidatePreconditions(db)
+	if preValidationErr != nil {
+		commonutils.FatalIfErr(fmt.Errorf("Preconditions failed: %w", preValidationErr))
+	}
+
+	// Get the list of unique excluded databases
+	excludedDatabases, err := commonutils.GetExcludedDatabases(args.ExcludedDatabases)
+	if err != nil {
+		commonutils.FatalIfErr(fmt.Errorf("Error unmarshaling JSON: %w", err))
 	}
 
 	// Populate metrics for slow queries
 	start := time.Now()
 	log.Debug("Beginning to retrieve slow query metrics")
-	queryIDList := performancemetrics.PopulateSlowQueryMetrics(i, e, db, args)
+	queryIDList := performancemetrics.PopulateSlowQueryMetrics(i, e, db, args, excludedDatabases)
 	log.Debug("Completed fetching slow query metrics in %v", time.Since(start))
 
 	if len(queryIDList) > 0 {
 		// Populate metrics for individual queries
 		start = time.Now()
 		log.Debug("Beginning to retrieve individual query metrics")
-		groupQueriesByDatabase, individualQueryDetailsErr := performancemetrics.PopulateIndividualQueryDetails(db, queryIDList, i, e, args)
+		groupQueriesByDatabase, individualQueryDetailsErr := performancemetrics.PopulateIndividualQueryDetails(db, queryIDList, i, e, args, excludedDatabases)
 		log.Debug("Completed fetching individual query metrics in %v", time.Since(start))
 		if individualQueryDetailsErr != nil {
-			log.Error("Error populating individual query details: %v", individualQueryDetailsErr)
-			return
+			commonutils.FatalIfErr(fmt.Errorf("Error populating individual query details: %w", individualQueryDetailsErr))
 		}
 
 		// Populate execution plan details
 		start = time.Now()
 		log.Debug("Beginning to retrieve query execution plan metrics")
-		_, executionPlanMetricsErr := performancemetrics.PopulateExecutionPlans(db, groupQueriesByDatabase, i, e, args)
+		executionPlanMetricsErr := performancemetrics.PopulateExecutionPlans(db, groupQueriesByDatabase, i, e, args)
 		log.Debug("Completed fetching query execution plan metrics in %v", time.Since(start))
 		if executionPlanMetricsErr != nil {
-			log.Error("Error populating execution plan details: %v", executionPlanMetricsErr)
-			return
+			commonutils.FatalIfErr(fmt.Errorf("Error populating execution plan details: %w", executionPlanMetricsErr))
 		}
 	}
 
 	// Populate wait event metrics
 	start = time.Now()
 	log.Debug("Beginning to retrieve wait event metrics")
-	_, waitEventError := performancemetrics.PopulateWaitEventMetrics(db, i, e, args)
+	waitEventError := performancemetrics.PopulateWaitEventMetrics(db, i, e, args, excludedDatabases)
 	log.Debug("Completed fetching wait event metrics in %v", time.Since(start))
 	if waitEventError != nil {
-		log.Error("Error populating wait event metrics: %v", waitEventError)
-		return
+		commonutils.FatalIfErr(fmt.Errorf("Error populating wait event metrics: %w", waitEventError))
 	}
 
 	// Populate blocking session metrics
 	start = time.Now()
 	log.Debug("Beginning to retrieve blocking session metrics")
-	_, populateBlockingSessionMetricsError := performancemetrics.PopulateBlockingSessionMetrics(db, i, e, args)
+	populateBlockingSessionMetricsError := performancemetrics.PopulateBlockingSessionMetrics(db, i, e, args, excludedDatabases)
 	log.Debug("Completed fetching blocking session metrics in %v", time.Since(start))
 	if populateBlockingSessionMetricsError != nil {
-		log.Error("Error populating blocking session metrics: %v", populateBlockingSessionMetricsError)
-		return
+		commonutils.FatalIfErr(fmt.Errorf("Error populating blocking session metrics: %w", populateBlockingSessionMetricsError))
 	}
 	log.Debug("Query analysis completed.")
 }
