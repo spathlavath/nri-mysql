@@ -2,6 +2,7 @@ package validator
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -25,7 +26,7 @@ func ValidatePreconditions(db dbconnection.DataSource) error {
 
 	if !performanceSchemaEnabled {
 		logEnablePerformanceSchemaInstructions(db)
-		return fmt.Errorf("performance schema is not enabled. skipping validation.")
+		return errors.New("performance schema is not enabled")
 	}
 
 	// Check if essential consumers are enabled

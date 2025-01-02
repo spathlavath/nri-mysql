@@ -28,13 +28,13 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 	// Validate preconditions before proceeding
 	preValidationErr := validator.ValidatePreconditions(db)
 	if preValidationErr != nil {
-		commonutils.FatalIfErr(fmt.Errorf("Preconditions failed: %w", preValidationErr))
+		commonutils.FatalIfErr(fmt.Errorf("preconditions failed: %w", preValidationErr))
 	}
 
 	// Get the list of unique excluded databases
 	excludedDatabases, err := commonutils.GetExcludedDatabases(args.ExcludedDatabases)
 	if err != nil {
-		commonutils.FatalIfErr(fmt.Errorf("Error unmarshaling JSON: %w", err))
+		commonutils.FatalIfErr(fmt.Errorf("error unmarshaling json: %w", err))
 	}
 
 	// Populate metrics for slow queries
