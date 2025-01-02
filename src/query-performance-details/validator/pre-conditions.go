@@ -16,6 +16,9 @@ import (
 // Define constants
 const minVersionParts = 2
 
+// Dynamic error
+var errPerformanceSchemaDisabled = errors.New("performance schema is not enabled")
+
 // ValidatePreconditions checks if the necessary preconditions are met for performance monitoring.
 func ValidatePreconditions(db dbconnection.DataSource) error {
 	// Check if Performance Schema is enabled
@@ -26,7 +29,7 @@ func ValidatePreconditions(db dbconnection.DataSource) error {
 
 	if !performanceSchemaEnabled {
 		logEnablePerformanceSchemaInstructions(db)
-		return errors.New("performance schema is not enabled")
+		return errPerformanceSchemaDisabled
 	}
 
 	// Check if essential consumers are enabled
