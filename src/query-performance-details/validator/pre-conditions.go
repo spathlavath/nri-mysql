@@ -25,19 +25,19 @@ func ValidatePreconditions(db dbconnection.DataSource) error {
 
 	if !performanceSchemaEnabled {
 		logEnablePerformanceSchemaInstructions(db)
-		return fmt.Errorf("Performance Schema is not enabled. Skipping validation.")
+		return fmt.Errorf("performance Schema is not enabled. skipping validation.")
 	}
 
 	// Check if essential consumers are enabled
 	errEssentialConsumers := checkEssentialConsumers(db)
 	if errEssentialConsumers != nil {
-		return fmt.Errorf("Essential consumer check failed: %v", fmt.Errorf("%w", errEssentialConsumers))
+		return fmt.Errorf("essential consumer check failed: %v", fmt.Errorf("%w", errEssentialConsumers))
 	}
 
 	// Check if essential instruments are enabled
 	errEssentialInstruments := checkEssentialInstruments(db)
 	if errEssentialInstruments != nil {
-		return fmt.Errorf("Essential instruments check failed: %v", fmt.Errorf("%w", errEssentialInstruments))
+		return fmt.Errorf("essential instruments check failed: %v", fmt.Errorf("%w", errEssentialInstruments))
 	}
 	return nil
 }
