@@ -50,7 +50,7 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 		groupQueriesByDatabase, individualQueryDetailsErr := performancemetrics.PopulateIndividualQueryDetails(db, queryIDList, i, e, args, excludedDatabases)
 		log.Debug("Completed fetching individual query metrics in %v", time.Since(start))
 		if individualQueryDetailsErr != nil {
-			commonutils.FatalIfErr(fmt.Errorf("Error populating individual query details: %w", individualQueryDetailsErr))
+			commonutils.FatalIfErr(fmt.Errorf("error populating individual query details: %w", individualQueryDetailsErr))
 		}
 
 		// Populate execution plan details
@@ -59,7 +59,7 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 		executionPlanMetricsErr := performancemetrics.PopulateExecutionPlans(db, groupQueriesByDatabase, i, e, args)
 		log.Debug("Completed fetching query execution plan metrics in %v", time.Since(start))
 		if executionPlanMetricsErr != nil {
-			commonutils.FatalIfErr(fmt.Errorf("Error populating execution plan details: %w", executionPlanMetricsErr))
+			commonutils.FatalIfErr(fmt.Errorf("error populating execution plan details: %w", executionPlanMetricsErr))
 		}
 	}
 
@@ -69,7 +69,7 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 	waitEventError := performancemetrics.PopulateWaitEventMetrics(db, i, e, args, excludedDatabases)
 	log.Debug("Completed fetching wait event metrics in %v", time.Since(start))
 	if waitEventError != nil {
-		commonutils.FatalIfErr(fmt.Errorf("Error populating wait event metrics: %w", waitEventError))
+		commonutils.FatalIfErr(fmt.Errorf("error populating wait event metrics: %w", waitEventError))
 	}
 
 	// Populate blocking session metrics
@@ -78,7 +78,7 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 	populateBlockingSessionMetricsError := performancemetrics.PopulateBlockingSessionMetrics(db, i, e, args, excludedDatabases)
 	log.Debug("Completed fetching blocking session metrics in %v", time.Since(start))
 	if populateBlockingSessionMetricsError != nil {
-		commonutils.FatalIfErr(fmt.Errorf("Error populating blocking session metrics: %w", populateBlockingSessionMetricsError))
+		commonutils.FatalIfErr(fmt.Errorf("error populating blocking session metrics: %w", populateBlockingSessionMetricsError))
 	}
 	log.Debug("Query analysis completed.")
 }
