@@ -14,7 +14,7 @@ import (
 // PopulateBlockingSessionMetrics retrieves blocking session metrics from the database and populates them into the integration entity.
 func PopulateBlockingSessionMetrics(db dbconnection.DataSource, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList, excludedDatabases []string) error {
 	// Prepare the SQL query with the provided parameters
-	query, inputArgs, err := sqlx.In(queries.BlockingSessionsQuery, excludedDatabases, args.QueryCountThreshold)
+	query, inputArgs, err := sqlx.In(queries.BlockingSessionsQuery, excludedDatabases, min(args.QueryCountThreshold, commonutils.MaxQueryCountThreshold))
 	if err != nil {
 		log.Error("Failed to prepare blocking sessions query: %v", err)
 		return err
