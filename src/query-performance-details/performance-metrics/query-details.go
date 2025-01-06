@@ -95,9 +95,8 @@ func PopulateIndividualQueryDetails(db dbconnection.DataSource, queryIDList []st
 	}
 
 	queryList := append(append(currentQueryMetrics, recentQueryList...), extensiveQueryList...)
-	filteredQueryList := getUniqueQueryList(queryList)
-	newMetricsList := make([]datamodels.IndividualQueryMetrics, len(filteredQueryList))
-	copy(newMetricsList, filteredQueryList)
+	newMetricsList := make([]datamodels.IndividualQueryMetrics, len(queryList))
+	copy(newMetricsList, queryList)
 	metricList := make([]interface{}, 0, len(newMetricsList))
 	for i := range newMetricsList {
 		newMetricsList[i].QueryText = nil
@@ -105,23 +104,9 @@ func PopulateIndividualQueryDetails(db dbconnection.DataSource, queryIDList []st
 	}
 
 	commonutils.IngestMetric(metricList, "MysqlIndividualQueriesSample", i, args)
-	groupQueriesByDatabase := groupQueriesByDatabase(filteredQueryList)
+	groupQueriesByDatabase := groupQueriesByDatabase(queryList)
 
 	return groupQueriesByDatabase, nil
-}
-
-// getUniqueQueryList filters out duplicate queries from the list
-func getUniqueQueryList(queryList []datamodels.IndividualQueryMetrics) []datamodels.IndividualQueryMetrics {
-	uniqueEvents := make(map[uint64]bool)
-	var uniqueQueryList []datamodels.IndividualQueryMetrics
-
-	for _, query := range queryList {
-		if _, exists := uniqueEvents[*query.EventID]; !exists {
-			uniqueEvents[*query.EventID] = true
-			uniqueQueryList = append(uniqueQueryList, query)
-		}
-	}
-	return uniqueQueryList
 }
 
 // groupQueriesByDatabase groups queries by their database name
