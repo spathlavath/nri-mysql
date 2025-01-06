@@ -185,7 +185,7 @@ func collectIndividualQueryMetrics(db dbconnection.DataSource, queryIDList []str
 		return nil, nil
 	}
 
-	var allMetrics []datamodels.IndividualQueryMetrics
+	var metricsList []datamodels.IndividualQueryMetrics
 
 	for _, queryID := range queryIDList {
 		// Combine queryID and thresholds into args
@@ -205,8 +205,8 @@ func collectIndividualQueryMetrics(db dbconnection.DataSource, queryIDList []str
 			return nil, err
 		}
 
-		allMetrics = append(allMetrics, metrics...)
+		metricsList = append(metricsList, metrics...)
 	}
 
-	return allMetrics, nil
+	return metricsList, nil
 }
