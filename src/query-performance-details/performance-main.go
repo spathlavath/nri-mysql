@@ -47,7 +47,7 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 		// Populate metrics for individual queries
 		start = time.Now()
 		log.Debug("Beginning to retrieve individual query metrics")
-		groupQueriesByDatabase, individualQueryDetailsErr := performancemetrics.PopulateIndividualQueryDetails(db, queryIDList, i, e, args, excludedDatabases)
+		groupQueriesByDatabase, individualQueryDetailsErr := performancemetrics.PopulateIndividualQueryDetails(db, queryIDList, i, e, args)
 		log.Debug("Completed fetching individual query metrics in %v", time.Since(start))
 		if individualQueryDetailsErr != nil {
 			commonutils.FatalIfErr(fmt.Errorf("error populating individual query details: %w", individualQueryDetailsErr))

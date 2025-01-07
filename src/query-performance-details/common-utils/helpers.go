@@ -21,7 +21,9 @@ const (
 	NodeEntityType  = "node"
 	MetricSetLimit  = 100
 	// TimeoutDuration defines the timeout duration for database queries
-	TimeoutDuration = 5 * time.Second
+	TimeoutDuration               = 5 * time.Second
+	MaxQueryCountThreshold        = 30
+	IndividualQueryCountThreshold = 10
 )
 
 // Default excluded databases
