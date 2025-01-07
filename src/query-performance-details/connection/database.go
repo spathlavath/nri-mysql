@@ -11,6 +11,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	arguments "github.com/newrelic/nri-mysql/src/args"
+	commonutils "github.com/newrelic/nri-mysql/src/query-performance-details/common-utils"
 )
 
 type DataSource interface {
@@ -76,7 +77,7 @@ func GenerateDSN(args arguments.ArgumentList, database string) string {
 		log.Warn("Could not successfully parse ExtraConnectionURLArgs.", err.Error())
 	}
 	if args.Socket != "" {
-		log.Info("Socket parameter is defined, ignoring host and port parameters")
+		log.Debug("Socket parameter is defined, ignoring host and port parameters")
 		return fmt.Sprintf("%s:%s@unix(%s)/%s?%s", args.Username, args.Password, args.Socket, determineDatabase(args, database), query.Encode())
 	}
 
@@ -92,4 +93,33 @@ func determineDatabase(args arguments.ArgumentList, database string) string {
 		return database
 	}
 	return args.Database
+}
+
+// collectMetrics collects metrics from the performance schema database
+func CollectMetrics[T any](db DataSource, preparedQuery string, preparedArgs ...interface{}) ([]T, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), commonutils.TimeoutDuration)
+	defer cancel()
+
+	rows, err := db.QueryxContext(ctx, preparedQuery, preparedArgs...)
+	if err != nil {
+		log.Error("Failed to collect metrics from Performance Schema: %v", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var metrics []T
+	for rows.Next() {
+		var metric T
+		if err := rows.StructScan(&metric); err != nil {
+			log.Error("Failed to scan metrics row: %v", err)
+			return nil, err
+		}
+		metrics = append(metrics, metric)
+	}
+	if err := rows.Err(); err != nil {
+		log.Error("Error encountered while iterating over metric rows: %v", err)
+		return nil, err
+	}
+
+	return metrics, nil
 }

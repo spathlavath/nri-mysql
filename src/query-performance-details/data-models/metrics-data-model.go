@@ -35,6 +35,7 @@ type QueryGroup struct {
 
 type QueryPlanMetrics struct {
 	EventID             uint64 `json:"event_id" metric_name:"event_id" source_type:"gauge"`
+	ThreadID            uint64 `json:"thread_id" db:"thread_id" metric_name:"thread_id" source_type:"gauge"`
 	StepID              int    `json:"step_id" metric_name:"step_id" source_type:"gauge"`
 	QueryCost           string `json:"query_cost" metric_name:"query_cost" source_type:"attribute"`
 	TableName           string `json:"table_name" metric_name:"table_name" source_type:"attribute"`
@@ -48,7 +49,6 @@ type QueryPlanMetrics struct {
 	Key                 string `json:"key" metric_name:"key" source_type:"attribute"`
 	UsedKeyParts        string `json:"used_key_parts" metric_name:"used_key_parts" source_type:"attribute"`
 	Ref                 string `json:"ref" metric_name:"ref" source_type:"attribute"`
-	AttachedCondition   string `json:"attached_condition" metric_name:"attached_condition" source_type:"attribute"`
 }
 
 type Memo struct {

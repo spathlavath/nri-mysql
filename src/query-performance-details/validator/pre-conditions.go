@@ -2,6 +2,7 @@ package validator
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -15,35 +16,34 @@ import (
 // Define constants
 const minVersionParts = 2
 
+// Dynamic error
+var errPerformanceSchemaDisabled = errors.New("performance schema is not enabled")
+
 // ValidatePreconditions checks if the necessary preconditions are met for performance monitoring.
-func ValidatePreconditions(db dbconnection.DataSource) bool {
+func ValidatePreconditions(db dbconnection.DataSource) error {
 	// Check if Performance Schema is enabled
 	performanceSchemaEnabled, errPerformanceEnabled := isPerformanceSchemaEnabled(db)
 	if errPerformanceEnabled != nil {
-		log.Error("Failed to check Performance Schema status: %v", errPerformanceEnabled)
-		return false
+		return errPerformanceEnabled
 	}
 
 	if !performanceSchemaEnabled {
-		log.Error("Performance Schema is not enabled. Skipping validation.")
 		logEnablePerformanceSchemaInstructions(db)
-		return false
+		return errPerformanceSchemaDisabled
 	}
 
 	// Check if essential consumers are enabled
 	errEssentialConsumers := checkEssentialConsumers(db)
 	if errEssentialConsumers != nil {
-		log.Error("Essential consumer check failed: %v", fmt.Errorf("%w", errEssentialConsumers))
-		return false
+		return fmt.Errorf("essential consumer check failed: %w", errEssentialConsumers)
 	}
 
 	// Check if essential instruments are enabled
 	errEssentialInstruments := checkEssentialInstruments(db)
 	if errEssentialInstruments != nil {
-		log.Error("Essential instruments check failed: %v", fmt.Errorf("%w", errEssentialInstruments))
-		return false
+		return fmt.Errorf("essential instruments check failed: %w", errEssentialInstruments)
 	}
-	return true
+	return nil
 }
 
 // isPerformanceSchemaEnabled checks if the Performance Schema is enabled in the MySQL database.
@@ -178,17 +178,16 @@ func logEnablePerformanceSchemaInstructions(db dbconnection.DataSource) {
 	}
 
 	if IsVersion8OrGreater(version) {
-		log.Info("To enable the Performance Schema, add the following lines to your MySQL configuration file (my.cnf or my.ini) in the [mysqld] section and restart the MySQL server:")
-		log.Info("performance_schema=ON")
-
-		log.Info("For MySQL 8.0 and higher, you may also need to set the following variables:")
-		log.Info("performance_schema_instrument='%%=ON'")
-		log.Info("performance_schema_consumer_events_statements_current=ON")
-		log.Info("performance_schema_consumer_events_statements_history=ON")
-		log.Info("performance_schema_consumer_events_statements_history_long=ON")
-		log.Info("performance_schema_consumer_events_waits_current=ON")
-		log.Info("performance_schema_consumer_events_waits_history=ON")
-		log.Info("performance_schema_consumer_events_waits_history_long=ON")
+		log.Debug("To enable the Performance Schema, add the following lines to your MySQL configuration file (my.cnf or my.ini) in the [mysqld] section and restart the MySQL server:")
+		log.Debug("performance_schema=ON")
+		log.Debug("For MySQL 8.0 and higher, you may also need to set the following variables:")
+		log.Debug("performance_schema_instrument='%%=ON'")
+		log.Debug("performance_schema_consumer_events_statements_current=ON")
+		log.Debug("performance_schema_consumer_events_statements_history=ON")
+		log.Debug("performance_schema_consumer_events_statements_history_long=ON")
+		log.Debug("performance_schema_consumer_events_waits_current=ON")
+		log.Debug("performance_schema_consumer_events_waits_history=ON")
+		log.Debug("performance_schema_consumer_events_waits_history_long=ON")
 	} else {
 		log.Error("MySQL version %s is not supported. Only version 8.0+ is supported.", version)
 	}
