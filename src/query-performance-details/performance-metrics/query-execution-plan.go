@@ -24,7 +24,7 @@ const (
 )
 
 // PopulateExecutionPlans populates execution plans for the given queries.
-func PopulateExecutionPlans(db dbconnection.DataSource, queryGroups []datamodels.QueryGroup, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList) ([]datamodels.QueryPlanMetrics, error) {
+func PopulateExecutionPlans(db dbconnection.DataSource, queryGroups []datamodels.QueryGroup, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList) error {
 	var events []datamodels.QueryPlanMetrics
 
 	for _, group := range queryGroups {
@@ -41,16 +41,16 @@ func PopulateExecutionPlans(db dbconnection.DataSource, queryGroups []datamodels
 	}
 
 	if len(events) == 0 {
-		return make([]datamodels.QueryPlanMetrics, 0), nil
+		return nil
 	}
 
 	err := SetExecutionPlanMetrics(i, args, events)
 	if err != nil {
 		log.Error("Error publishing execution plan metrics: %v", err)
-		return nil, err
+		return err
 	}
 
-	return events, nil
+	return nil
 }
 
 // processExecutionPlanMetrics processes the execution plan metrics for a given query.
@@ -101,7 +101,7 @@ func processExecutionPlanMetrics(db dbconnection.DataSource, query datamodels.In
 	}
 
 	// Extract metrics from the JSON string
-	dbPerformanceEvents, err := extractMetricsFromJSONString(execPlanJSON, *query.EventID)
+	dbPerformanceEvents, err := extractMetricsFromJSONString(execPlanJSON, *query.EventID, *query.ThreadID)
 	if err != nil {
 		log.Error("Error extracting metrics from JSON: %v", err)
 		return nil
@@ -111,7 +111,7 @@ func processExecutionPlanMetrics(db dbconnection.DataSource, query datamodels.In
 }
 
 // extractMetricsFromJSONString extracts metrics from a JSON string.
-func extractMetricsFromJSONString(jsonString string, eventID uint64) ([]datamodels.QueryPlanMetrics, error) {
+func extractMetricsFromJSONString(jsonString string, eventID uint64, threadID uint64) ([]datamodels.QueryPlanMetrics, error) {
 	js, err := simplejson.NewJson([]byte(jsonString))
 	if err != nil {
 		log.Error("Error creating simplejson from byte slice: %v", err)
@@ -121,13 +121,13 @@ func extractMetricsFromJSONString(jsonString string, eventID uint64) ([]datamode
 	memo := datamodels.Memo{QueryCost: ""}
 	stepID := 0
 	dbPerformanceEvents := make([]datamodels.QueryPlanMetrics, 0)
-	dbPerformanceEvents = extractMetrics(js, dbPerformanceEvents, eventID, memo, &stepID)
+	dbPerformanceEvents = extractMetrics(js, dbPerformanceEvents, eventID, threadID, memo, &stepID)
 
 	return dbPerformanceEvents, nil
 }
 
 // extractMetrics recursively extracts metrics from a simplejson.Json object.
-func extractMetrics(js *simplejson.Json, dbPerformanceEvents []datamodels.QueryPlanMetrics, eventID uint64, memo datamodels.Memo, stepID *int) []datamodels.QueryPlanMetrics {
+func extractMetrics(js *simplejson.Json, dbPerformanceEvents []datamodels.QueryPlanMetrics, eventID uint64, threadID uint64, memo datamodels.Memo, stepID *int) []datamodels.QueryPlanMetrics {
 	tableName, _ := js.Get("table_name").String()
 	queryCost, _ := js.Get("cost_info").Get("query_cost").String()
 	accessType, _ := js.Get("access_type").String()
@@ -152,6 +152,7 @@ func extractMetrics(js *simplejson.Json, dbPerformanceEvents []datamodels.QueryP
 	if tableName != "" || accessType != "" || rowsExaminedPerScan != 0 || rowsProducedPerJoin != 0 || filtered != "" || readCost != "" || evalCost != "" {
 		dbPerformanceEvents = append(dbPerformanceEvents, datamodels.QueryPlanMetrics{
 			EventID:             eventID,
+			ThreadID:            threadID,
 			QueryCost:           memo.QueryCost,
 			StepID:              *stepID,
 			TableName:           tableName,
@@ -170,21 +171,21 @@ func extractMetrics(js *simplejson.Json, dbPerformanceEvents []datamodels.QueryP
 	}
 
 	if jsMap, _ := js.Map(); jsMap != nil {
-		dbPerformanceEvents = processMap(jsMap, dbPerformanceEvents, eventID, memo, stepID)
+		dbPerformanceEvents = processMap(jsMap, dbPerformanceEvents, eventID, threadID, memo, stepID)
 	}
 
 	return dbPerformanceEvents
 }
 
 // processMap processes a map within the JSON object.
-func processMap(jsMap map[string]interface{}, dbPerformanceEvents []datamodels.QueryPlanMetrics, eventID uint64, memo datamodels.Memo, stepID *int) []datamodels.QueryPlanMetrics {
+func processMap(jsMap map[string]interface{}, dbPerformanceEvents []datamodels.QueryPlanMetrics, eventID uint64, threadID uint64, memo datamodels.Memo, stepID *int) []datamodels.QueryPlanMetrics {
 	for _, value := range jsMap {
 		if value != nil {
 			t := reflect.TypeOf(value)
 			if t.Kind() == reflect.Map {
-				dbPerformanceEvents = processMapValue(value, dbPerformanceEvents, eventID, memo, stepID)
+				dbPerformanceEvents = processMapValue(value, dbPerformanceEvents, eventID, threadID, memo, stepID)
 			} else if t.Kind() == reflect.Slice {
-				dbPerformanceEvents = processSliceValue(value, dbPerformanceEvents, eventID, memo, stepID)
+				dbPerformanceEvents = processSliceValue(value, dbPerformanceEvents, eventID, threadID, memo, stepID)
 			}
 		}
 	}
@@ -192,7 +193,7 @@ func processMap(jsMap map[string]interface{}, dbPerformanceEvents []datamodels.Q
 }
 
 // processMapValue processes a map value within the JSON object.
-func processMapValue(value interface{}, dbPerformanceEvents []datamodels.QueryPlanMetrics, eventID uint64, memo datamodels.Memo, stepID *int) []datamodels.QueryPlanMetrics {
+func processMapValue(value interface{}, dbPerformanceEvents []datamodels.QueryPlanMetrics, eventID uint64, threadID uint64, memo datamodels.Memo, stepID *int) []datamodels.QueryPlanMetrics {
 	if t := reflect.TypeOf(value); t.Key().Kind() == reflect.String && t.Elem().Kind() == reflect.Interface {
 		jsBytes, err := json.Marshal(value)
 		if err != nil {
@@ -204,13 +205,13 @@ func processMapValue(value interface{}, dbPerformanceEvents []datamodels.QueryPl
 			log.Error("Error creating simplejson from byte slice: %v", err)
 		}
 
-		dbPerformanceEvents = extractMetrics(convertedSimpleJSON, dbPerformanceEvents, eventID, memo, stepID)
+		dbPerformanceEvents = extractMetrics(convertedSimpleJSON, dbPerformanceEvents, eventID, threadID, memo, stepID)
 	}
 	return dbPerformanceEvents
 }
 
 // processSliceValue processes a slice value within the JSON object.
-func processSliceValue(value interface{}, dbPerformanceEvents []datamodels.QueryPlanMetrics, eventID uint64, memo datamodels.Memo, stepID *int) []datamodels.QueryPlanMetrics {
+func processSliceValue(value interface{}, dbPerformanceEvents []datamodels.QueryPlanMetrics, eventID uint64, threadID uint64, memo datamodels.Memo, stepID *int) []datamodels.QueryPlanMetrics {
 	for _, element := range value.([]interface{}) {
 		if elementJSON, ok := element.(map[string]interface{}); ok {
 			jsBytes, err := json.Marshal(elementJSON)
@@ -223,7 +224,7 @@ func processSliceValue(value interface{}, dbPerformanceEvents []datamodels.Query
 				log.Error("Error creating simplejson from byte slice: %v", err)
 			}
 
-			dbPerformanceEvents = extractMetrics(convertedSimpleJSON, dbPerformanceEvents, eventID, memo, stepID)
+			dbPerformanceEvents = extractMetrics(convertedSimpleJSON, dbPerformanceEvents, eventID, threadID, memo, stepID)
 		}
 	}
 	return dbPerformanceEvents

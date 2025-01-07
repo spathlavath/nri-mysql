@@ -1,8 +1,6 @@
 package performancemetrics
 
 import (
-	"context"
-
 	"github.com/jmoiron/sqlx"
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
@@ -14,47 +12,24 @@ import (
 )
 
 // PopulateBlockingSessionMetrics retrieves blocking session metrics from the database and populates them into the integration entity.
-func PopulateBlockingSessionMetrics(db dbconnection.DataSource, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList) ([]datamodels.BlockingSessionMetrics, error) {
-	// Get the list of unique excluded databases
-	excludedDatabases, err := commonutils.GetExcludedDatabases(args.ExcludedDatabases)
-	if err != nil {
-		log.Error("Error unmarshaling JSON: %v", err)
-		return nil, err
-	}
-
+func PopulateBlockingSessionMetrics(db dbconnection.DataSource, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList, excludedDatabases []string) error {
 	// Prepare the SQL query with the provided parameters
-	query, inputArgs, err := sqlx.In(queries.BlockingSessionsQuery, excludedDatabases, args.QueryCountThreshold)
+	query, inputArgs, err := sqlx.In(queries.BlockingSessionsQuery, excludedDatabases, min(args.QueryCountThreshold, commonutils.MaxQueryCountThreshold))
 	if err != nil {
 		log.Error("Failed to prepare blocking sessions query: %v", err)
-		return nil, err
+		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), commonutils.TimeoutDuration)
-	defer cancel()
-	rows, err := db.QueryxContext(ctx, query, inputArgs...)
+	// Collect the blocking session metrics
+	metrics, err := dbconnection.CollectMetrics[datamodels.BlockingSessionMetrics](db, query, inputArgs...)
 	if err != nil {
-		log.Error("Failed to collect blocking session query metrics from Performance Schema: %v", err)
-		return nil, err
-	}
-	defer rows.Close()
-
-	var metrics []datamodels.BlockingSessionMetrics
-	for rows.Next() {
-		var metric datamodels.BlockingSessionMetrics
-		if err := rows.StructScan(&metric); err != nil {
-			log.Error("Failed to scan blocking session query metrics: %v", err)
-			return nil, err
-		}
-		metrics = append(metrics, metric)
-	}
-	if err := rows.Err(); err != nil {
-		log.Error("Error encountered while iterating over blocking session metric rows: %v", err)
-		return nil, err
+		log.Error("Error collecting blocking session metrics: %v", err)
+		return err
 	}
 
 	// Set the blocking query metrics in the integration entity
 	setBlockingQueryMetrics(metrics, i, args)
-	return metrics, nil
+	return nil
 }
 
 // setBlockingQueryMetrics sets the blocking session metrics into the integration entity.

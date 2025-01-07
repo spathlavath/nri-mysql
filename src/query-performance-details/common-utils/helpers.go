@@ -21,7 +21,9 @@ const (
 	NodeEntityType  = "node"
 	MetricSetLimit  = 100
 	// TimeoutDuration defines the timeout duration for database queries
-	TimeoutDuration = 5 * time.Second
+	TimeoutDuration               = 5 * time.Second
+	MaxQueryCountThreshold        = 30
+	IndividualQueryCountThreshold = 10
 )
 
 // Default excluded databases
@@ -111,8 +113,16 @@ func GetExcludedDatabases(excludedDatabasesList string) ([]string, error) {
 	// Join the slice into a comma-separated string
 	excludedDatabasesStr := strings.Join(excludedDatabasesSlice, ",")
 
+	// Assuming you have a map to store the results
+	var excludedDatabasesCache = make(map[string][]string)
+
 	// Get the list of unique excluded databases
+	if cachedDatabases, found := excludedDatabasesCache[excludedDatabasesStr]; found {
+		return cachedDatabases, nil
+	}
+
 	excludedDatabases := getUniqueExcludedDatabases(excludedDatabasesStr)
+	excludedDatabasesCache[excludedDatabasesStr] = excludedDatabases
 
 	return excludedDatabases, nil
 }
