@@ -1,4 +1,4 @@
-package datamodels
+package utils
 
 type SlowQueryMetrics struct {
 	QueryID                *string  `json:"query_id" db:"query_id" metric_name:"query_id" source_type:"attribute"`

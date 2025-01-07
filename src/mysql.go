@@ -17,7 +17,7 @@ import (
 	"strings"
 
 	arguments "github.com/newrelic/nri-mysql/src/args"
-	queryperformancedetails "github.com/newrelic/nri-mysql/src/query-performance-details"
+	queryperformancemonitoring "github.com/newrelic/nri-mysql/src/query-performance-monitoring"
 )
 
 const (
@@ -121,7 +121,7 @@ func main() {
 	fatalIfErr(i.Publish())
 	// New functionality
 	if args.EnableQueryPerformance {
-		queryperformancedetails.PopulateQueryPerformanceMetrics(args, e, i)
+		queryperformancemonitoring.PopulateQueryPerformanceMetrics(args, e, i)
 	}
 }
 

@@ -1,4 +1,4 @@
-package commonutils
+package utils
 
 import (
 	"encoding/json"

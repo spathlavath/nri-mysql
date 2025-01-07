@@ -1,4 +1,4 @@
-package performancemetrics
+package performancemetricscollectors
 
 import (
 	"context"
@@ -12,9 +12,7 @@ import (
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	arguments "github.com/newrelic/nri-mysql/src/args"
-	commonutils "github.com/newrelic/nri-mysql/src/query-performance-details/common-utils"
-	dbconnection "github.com/newrelic/nri-mysql/src/query-performance-details/connection"
-	datamodels "github.com/newrelic/nri-mysql/src/query-performance-details/data-models"
+	utils "github.com/newrelic/nri-mysql/src/query-performance-monitoring/utils"
 )
 
 const (
@@ -24,14 +22,14 @@ const (
 )
 
 // PopulateExecutionPlans populates execution plans for the given queries.
-func PopulateExecutionPlans(db dbconnection.DataSource, queryGroups []datamodels.QueryGroup, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList) error {
-	var events []datamodels.QueryPlanMetrics
+func PopulateExecutionPlans(db utils.DataSource, queryGroups []utils.QueryGroup, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList) error {
+	var events []utils.QueryPlanMetrics
 
 	for _, group := range queryGroups {
-		dsn := dbconnection.GenerateDSN(args, group.Database)
+		dsn := utils.GenerateDSN(args, group.Database)
 		// Open the DB connection
-		db, err := dbconnection.OpenDB(dsn)
-		commonutils.FatalIfErr(err)
+		db, err := utils.OpenDB(dsn)
+		utils.FatalIfErr(err)
 		defer db.Close()
 
 		for _, query := range group.Queries {
@@ -54,7 +52,7 @@ func PopulateExecutionPlans(db dbconnection.DataSource, queryGroups []datamodels
 }
 
 // processExecutionPlanMetrics processes the execution plan metrics for a given query.
-func processExecutionPlanMetrics(db dbconnection.DataSource, query datamodels.IndividualQueryMetrics) []datamodels.QueryPlanMetrics {
+func processExecutionPlanMetrics(db utils.DataSource, query utils.IndividualQueryMetrics) []utils.QueryPlanMetrics {
 	// supportedStatements := map[string]bool{"SELECT": true, "INSERT": true, "UPDATE": true, "DELETE": true, "WITH": true}
 
 	ctx, cancel := context.WithTimeout(context.Background(), QueryPlanTimeoutDuration)
@@ -111,23 +109,23 @@ func processExecutionPlanMetrics(db dbconnection.DataSource, query datamodels.In
 }
 
 // extractMetricsFromJSONString extracts metrics from a JSON string.
-func extractMetricsFromJSONString(jsonString string, eventID uint64, threadID uint64) ([]datamodels.QueryPlanMetrics, error) {
+func extractMetricsFromJSONString(jsonString string, eventID uint64, threadID uint64) ([]utils.QueryPlanMetrics, error) {
 	js, err := simplejson.NewJson([]byte(jsonString))
 	if err != nil {
 		log.Error("Error creating simplejson from byte slice: %v", err)
 		return nil, err
 	}
 
-	memo := datamodels.Memo{QueryCost: ""}
+	memo := utils.Memo{QueryCost: ""}
 	stepID := 0
-	dbPerformanceEvents := make([]datamodels.QueryPlanMetrics, 0)
+	dbPerformanceEvents := make([]utils.QueryPlanMetrics, 0)
 	dbPerformanceEvents = extractMetrics(js, dbPerformanceEvents, eventID, threadID, memo, &stepID)
 
 	return dbPerformanceEvents, nil
 }
 
 // extractMetrics recursively extracts metrics from a simplejson.Json object.
-func extractMetrics(js *simplejson.Json, dbPerformanceEvents []datamodels.QueryPlanMetrics, eventID uint64, threadID uint64, memo datamodels.Memo, stepID *int) []datamodels.QueryPlanMetrics {
+func extractMetrics(js *simplejson.Json, dbPerformanceEvents []utils.QueryPlanMetrics, eventID uint64, threadID uint64, memo utils.Memo, stepID *int) []utils.QueryPlanMetrics {
 	tableName, _ := js.Get("table_name").String()
 	queryCost, _ := js.Get("cost_info").Get("query_cost").String()
 	accessType, _ := js.Get("access_type").String()
@@ -150,7 +148,7 @@ func extractMetrics(js *simplejson.Json, dbPerformanceEvents []datamodels.QueryP
 	}
 
 	if tableName != "" || accessType != "" || rowsExaminedPerScan != 0 || rowsProducedPerJoin != 0 || filtered != "" || readCost != "" || evalCost != "" {
-		dbPerformanceEvents = append(dbPerformanceEvents, datamodels.QueryPlanMetrics{
+		dbPerformanceEvents = append(dbPerformanceEvents, utils.QueryPlanMetrics{
 			EventID:             eventID,
 			ThreadID:            threadID,
 			QueryCost:           memo.QueryCost,
@@ -178,7 +176,7 @@ func extractMetrics(js *simplejson.Json, dbPerformanceEvents []datamodels.QueryP
 }
 
 // processMap processes a map within the JSON object.
-func processMap(jsMap map[string]interface{}, dbPerformanceEvents []datamodels.QueryPlanMetrics, eventID uint64, threadID uint64, memo datamodels.Memo, stepID *int) []datamodels.QueryPlanMetrics {
+func processMap(jsMap map[string]interface{}, dbPerformanceEvents []utils.QueryPlanMetrics, eventID uint64, threadID uint64, memo utils.Memo, stepID *int) []utils.QueryPlanMetrics {
 	for _, value := range jsMap {
 		if value != nil {
 			t := reflect.TypeOf(value)
@@ -193,7 +191,7 @@ func processMap(jsMap map[string]interface{}, dbPerformanceEvents []datamodels.Q
 }
 
 // processMapValue processes a map value within the JSON object.
-func processMapValue(value interface{}, dbPerformanceEvents []datamodels.QueryPlanMetrics, eventID uint64, threadID uint64, memo datamodels.Memo, stepID *int) []datamodels.QueryPlanMetrics {
+func processMapValue(value interface{}, dbPerformanceEvents []utils.QueryPlanMetrics, eventID uint64, threadID uint64, memo utils.Memo, stepID *int) []utils.QueryPlanMetrics {
 	if t := reflect.TypeOf(value); t.Key().Kind() == reflect.String && t.Elem().Kind() == reflect.Interface {
 		jsBytes, err := json.Marshal(value)
 		if err != nil {
@@ -211,7 +209,7 @@ func processMapValue(value interface{}, dbPerformanceEvents []datamodels.QueryPl
 }
 
 // processSliceValue processes a slice value within the JSON object.
-func processSliceValue(value interface{}, dbPerformanceEvents []datamodels.QueryPlanMetrics, eventID uint64, threadID uint64, memo datamodels.Memo, stepID *int) []datamodels.QueryPlanMetrics {
+func processSliceValue(value interface{}, dbPerformanceEvents []utils.QueryPlanMetrics, eventID uint64, threadID uint64, memo utils.Memo, stepID *int) []utils.QueryPlanMetrics {
 	for _, element := range value.([]interface{}) {
 		if elementJSON, ok := element.(map[string]interface{}); ok {
 			jsBytes, err := json.Marshal(elementJSON)
@@ -231,14 +229,14 @@ func processSliceValue(value interface{}, dbPerformanceEvents []datamodels.Query
 }
 
 // SetExecutionPlanMetrics sets the execution plan metrics.
-func SetExecutionPlanMetrics(i *integration.Integration, args arguments.ArgumentList, metrics []datamodels.QueryPlanMetrics) error {
+func SetExecutionPlanMetrics(i *integration.Integration, args arguments.ArgumentList, metrics []utils.QueryPlanMetrics) error {
 	// Pre-allocate the slice with the length of the metrics slice
 	metricList := make([]interface{}, 0, len(metrics))
 	for _, metricData := range metrics {
 		metricList = append(metricList, metricData)
 	}
 
-	commonutils.IngestMetric(metricList, "MysqlQueryExecutionSample", i, args)
+	utils.IngestMetric(metricList, "MysqlQueryExecutionSample", i, args)
 
 	return nil
 }
