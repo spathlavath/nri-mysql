@@ -5,13 +5,14 @@ import (
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	arguments "github.com/newrelic/nri-mysql/src/args"
+	constants "github.com/newrelic/nri-mysql/src/query-performance-monitoring/constants"
 	utils "github.com/newrelic/nri-mysql/src/query-performance-monitoring/utils"
 )
 
 // PopulateBlockingSessionMetrics retrieves blocking session metrics from the database and populates them into the integration entity.
 func PopulateBlockingSessionMetrics(db utils.DataSource, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList, excludedDatabases []string) error {
 	// Prepare the SQL query with the provided parameters
-	query, inputArgs, err := sqlx.In(utils.BlockingSessionsQuery, excludedDatabases, min(args.QueryCountThreshold, utils.MaxQueryCountThreshold))
+	query, inputArgs, err := sqlx.In(utils.BlockingSessionsQuery, excludedDatabases, min(args.QueryCountThreshold, constants.MaxQueryCountThreshold))
 	if err != nil {
 		log.Error("Failed to prepare blocking sessions query: %v", err)
 		return err

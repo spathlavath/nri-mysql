@@ -7,6 +7,7 @@ import (
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	arguments "github.com/newrelic/nri-mysql/src/args"
+	constants "github.com/newrelic/nri-mysql/src/query-performance-monitoring/constants"
 	utils "github.com/newrelic/nri-mysql/src/query-performance-monitoring/utils"
 )
 
@@ -29,13 +30,13 @@ func PopulateSlowQueryMetrics(i *integration.Integration, e *integration.Entity,
 // collectGroupedSlowQueryMetrics collects metrics from the performance schema database for slow queries
 func collectGroupedSlowQueryMetrics(db utils.DataSource, slowQueryfetchInterval int, queryCountThreshold int, excludedDatabases []string) ([]utils.SlowQueryMetrics, []string, error) {
 	// Prepare the SQL query with the provided parameters
-	query, args, err := sqlx.In(utils.SlowQueries, slowQueryfetchInterval, excludedDatabases, min(queryCountThreshold, utils.MaxQueryCountThreshold))
+	query, args, err := sqlx.In(utils.SlowQueries, slowQueryfetchInterval, excludedDatabases, min(queryCountThreshold, constants.MaxQueryCountThreshold))
 	if err != nil {
 		log.Error("Failed to prepare slow query: %v", err)
 		return nil, []string{}, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), utils.TimeoutDuration)
+	ctx, cancel := context.WithTimeout(context.Background(), constants.TimeoutDuration)
 	defer cancel()
 	rows, err := db.QueryxContext(ctx, query, args...)
 	if err != nil {
@@ -183,7 +184,7 @@ func collectIndividualQueryMetrics(db utils.DataSource, queryIDList []string, qu
 
 	for _, queryID := range queryIDList {
 		// Combine queryID and thresholds into args
-		args := []interface{}{queryID, args.QueryResponseTimeThreshold, min(utils.IndividualQueryCountThreshold, args.QueryCountThreshold)}
+		args := []interface{}{queryID, args.QueryResponseTimeThreshold, min(constants.IndividualQueryCountThreshold, args.QueryCountThreshold)}
 
 		// Use sqlx.In to safely include the slices in the query
 		query, args, err := sqlx.In(queryString, args...)

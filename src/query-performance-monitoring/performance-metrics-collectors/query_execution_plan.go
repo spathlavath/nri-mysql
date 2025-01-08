@@ -33,7 +33,11 @@ func PopulateExecutionPlans(db utils.DataSource, queryGroups []utils.QueryGroup,
 		defer db.Close()
 
 		for _, query := range group.Queries {
-			tableIngestionDataList := processExecutionPlanMetrics(db, query)
+			tableIngestionDataList, err := processExecutionPlanMetrics(db, query)
+			if err != nil {
+				log.Error("Error processing execution plan metrics: %v", err)
+				return err
+			}
 			events = append(events, tableIngestionDataList...)
 		}
 	}
@@ -52,15 +56,13 @@ func PopulateExecutionPlans(db utils.DataSource, queryGroups []utils.QueryGroup,
 }
 
 // processExecutionPlanMetrics processes the execution plan metrics for a given query.
-func processExecutionPlanMetrics(db utils.DataSource, query utils.IndividualQueryMetrics) []utils.QueryPlanMetrics {
-	// supportedStatements := map[string]bool{"SELECT": true, "INSERT": true, "UPDATE": true, "DELETE": true, "WITH": true}
-
+func processExecutionPlanMetrics(db utils.DataSource, query utils.IndividualQueryMetrics) ([]utils.QueryPlanMetrics, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), QueryPlanTimeoutDuration)
 	defer cancel()
 
 	if *query.QueryText == "" {
 		log.Warn("Query text is empty, skipping.")
-		return nil
+		return []utils.QueryPlanMetrics{}, nil
 	}
 	queryText := strings.TrimSpace(*query.QueryText)
 	upperQueryText := strings.ToUpper(queryText)
@@ -68,13 +70,13 @@ func processExecutionPlanMetrics(db utils.DataSource, query utils.IndividualQuer
 	// Check if the query is a supported statement
 	if !isSupportedStatement(upperQueryText) {
 		log.Warn("Skipping unsupported query for EXPLAIN: %s", queryText)
-		return nil
+		return []utils.QueryPlanMetrics{}, nil
 	}
 
 	// Skip queries with placeholders
 	if strings.Contains(queryText, "?") {
 		log.Warn("Skipping query with placeholders for EXPLAIN: %s", queryText)
-		return nil
+		return []utils.QueryPlanMetrics{}, nil
 	}
 
 	// Execute the EXPLAIN query
@@ -82,7 +84,7 @@ func processExecutionPlanMetrics(db utils.DataSource, query utils.IndividualQuer
 	rows, err := db.QueryxContext(ctx, execPlanQuery)
 	if err != nil {
 		log.Error("Error executing EXPLAIN for query '%s': %v", queryText, err)
-		return nil
+		return []utils.QueryPlanMetrics{}, err
 	}
 	defer rows.Close()
 
@@ -91,21 +93,21 @@ func processExecutionPlanMetrics(db utils.DataSource, query utils.IndividualQuer
 		err := rows.Scan(&execPlanJSON)
 		if err != nil {
 			log.Error("Failed to scan execution plan: %v", err)
-			return nil
+			return []utils.QueryPlanMetrics{}, err
 		}
 	} else {
 		log.Error("No rows returned from EXPLAIN for query '%s'", queryText)
-		return nil
+		return []utils.QueryPlanMetrics{}, nil
 	}
 
 	// Extract metrics from the JSON string
 	dbPerformanceEvents, err := extractMetricsFromJSONString(execPlanJSON, *query.EventID, *query.ThreadID)
 	if err != nil {
 		log.Error("Error extracting metrics from JSON: %v", err)
-		return nil
+		return []utils.QueryPlanMetrics{}, err
 	}
 
-	return dbPerformanceEvents
+	return dbPerformanceEvents, nil
 }
 
 // extractMetricsFromJSONString extracts metrics from a JSON string.
@@ -113,7 +115,7 @@ func extractMetricsFromJSONString(jsonString string, eventID uint64, threadID ui
 	js, err := simplejson.NewJson([]byte(jsonString))
 	if err != nil {
 		log.Error("Error creating simplejson from byte slice: %v", err)
-		return nil, err
+		return []utils.QueryPlanMetrics{}, err
 	}
 
 	memo := utils.Memo{QueryCost: ""}

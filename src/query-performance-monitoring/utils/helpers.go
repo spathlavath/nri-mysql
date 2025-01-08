@@ -7,32 +7,24 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/newrelic/infra-integrations-sdk/v3/data/attribute"
 	"github.com/newrelic/infra-integrations-sdk/v3/data/metric"
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	arguments "github.com/newrelic/nri-mysql/src/args"
-)
-
-const (
-	IntegrationName = "com.newrelic.mysql"
-	NodeEntityType  = "node"
-	MetricSetLimit  = 100
-	// TimeoutDuration defines the timeout duration for database queries
-	TimeoutDuration               = 5 * time.Second
-	MaxQueryCountThreshold        = 30
-	IndividualQueryCountThreshold = 10
+	constants "github.com/newrelic/nri-mysql/src/query-performance-monitoring/constants"
 )
 
 // Default excluded databases
 var defaultExcludedDatabases = []string{"", "mysql", "information_schema", "performance_schema", "sys"}
 
+// Dynamic error
 var (
 	ErrEssentialConsumerNotEnabled   = errors.New("essential consumer is not enabled")
 	ErrEssentialInstrumentNotEnabled = errors.New("essential instrument is not fully enabled")
 	ErrMySQLVersion                  = errors.New("failed to determine MySQL version")
+	ErrModelIsNotValid               = errors.New("model is not a valid struct")
 )
 
 func CreateNodeEntity(
@@ -42,7 +34,7 @@ func CreateNodeEntity(
 	port int,
 ) (*integration.Entity, error) {
 	if remoteMonitoring {
-		return i.Entity(fmt.Sprint(hostname, ":", port), NodeEntityType)
+		return i.Entity(fmt.Sprint(hostname, ":", port), constants.NodeEntityType)
 	}
 	return i.LocalEntity(), nil
 }
@@ -177,11 +169,14 @@ func IngestMetric(metricList []interface{}, eventName string, i *integration.Int
 			continue
 		}
 		metricCount++
-		processModel(model, instanceEntity, eventName, args)
-
-		if metricCount > MetricSetLimit {
+		err := processModel(model, instanceEntity, eventName, args)
+		if err != nil {
+			log.Error("Error processing model: %v", err)
+			return err
+		}
+		if metricCount > constants.MetricSetLimit {
 			metricCount = 0
-			if err := publishMetrics(i); err != nil {
+			if err = publishMetrics(i); err != nil {
 				return err
 			}
 			instanceEntity, err = CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
@@ -201,7 +196,7 @@ func IngestMetric(metricList []interface{}, eventName string, i *integration.Int
 	return nil
 }
 
-func processModel(model interface{}, instanceEntity *integration.Entity, eventName string, args arguments.ArgumentList) {
+func processModel(model interface{}, instanceEntity *integration.Entity, eventName string, args arguments.ArgumentList) error {
 	metricSet := CreateMetricSet(instanceEntity, eventName, args)
 
 	modelValue := reflect.ValueOf(model)
@@ -209,7 +204,7 @@ func processModel(model interface{}, instanceEntity *integration.Entity, eventNa
 		modelValue = modelValue.Elem()
 	}
 	if !modelValue.IsValid() || modelValue.Kind() != reflect.Struct {
-		return
+		return ErrModelIsNotValid
 	}
 
 	modelType := reflect.TypeOf(model)
@@ -225,6 +220,7 @@ func processModel(model interface{}, instanceEntity *integration.Entity, eventNa
 			SetMetric(metricSet, metricName, field.Interface(), sourceType)
 		}
 	}
+	return nil
 }
 
 func publishMetrics(i *integration.Integration) error {
