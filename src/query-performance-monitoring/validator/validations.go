@@ -59,7 +59,8 @@ func isPerformanceSchemaEnabled(db utils.DataSource) (bool, error) {
 		return false, ErrNoRowsFound
 	}
 
-	if errScanning := rows.Scan(&variableName, &performanceSchemaEnabled); err != nil {
+	errScanning := rows.Scan(&variableName, &performanceSchemaEnabled)
+	if errScanning != nil {
 		return false, errScanning
 	}
 
