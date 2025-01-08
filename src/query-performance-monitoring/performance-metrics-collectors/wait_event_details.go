@@ -10,7 +10,7 @@ import (
 )
 
 // PopulateWaitEventMetrics retrieves wait event metrics from the database and sets them in the integration.
-func PopulateWaitEventMetrics(db utils.DataSource, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList, excludedDatabases []string) error {
+func PopulateWaitEventMetrics(db utils.DataSource, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList, excludedDatabases []string) {
 	// Prepare the arguments for the query
 	excludedDatabasesArgs := []interface{}{excludedDatabases, excludedDatabases, excludedDatabases, min(args.QueryCountThreshold, constants.MaxQueryCountThreshold)}
 
@@ -18,23 +18,23 @@ func PopulateWaitEventMetrics(db utils.DataSource, i *integration.Integration, e
 	preparedQuery, preparedArgs, err := sqlx.In(utils.WaitEventsQuery, excludedDatabasesArgs...)
 	if err != nil {
 		log.Error("Failed to prepare wait event query: %v", err)
-		return err
 	}
 
 	// Collect the wait event metrics
 	metrics, err := utils.CollectMetrics[utils.WaitEventQueryMetrics](db, preparedQuery, preparedArgs...)
 	if err != nil {
 		log.Error("Error collecting wait event metrics: %v", err)
-		return err
 	}
 
+	// Return if no metrics are collected
+	if len(metrics) == 0 {
+		return
+	}
 	// Set the retrieved metrics in the integration
 	err = setWaitEventMetrics(i, args, metrics)
 	if err != nil {
 		log.Error("Error setting wait event metrics: %v", err)
-		return err
 	}
-	return nil
 }
 
 // setWaitEventMetrics sets the wait event metrics in the integration.
@@ -46,7 +46,6 @@ func setWaitEventMetrics(i *integration.Integration, args arguments.ArgumentList
 
 	err := utils.IngestMetric(metricList, "MysqlWaitEventsSample", i, args)
 	if err != nil {
-		log.Error("Error ingesting wait event metrics: %v", err)
 		return err
 	}
 	return nil

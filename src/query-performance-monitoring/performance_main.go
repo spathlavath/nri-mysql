@@ -39,48 +39,33 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 	// Populate metrics for slow queries
 	start := time.Now()
 	log.Debug("Beginning to retrieve slow query metrics")
-	queryIDList, err := performancemetricscollectors.PopulateSlowQueryMetrics(i, e, db, args, excludedDatabases)
+	queryIDList := performancemetricscollectors.PopulateSlowQueryMetrics(i, e, db, args, excludedDatabases)
 	log.Debug("Completed fetching slow query metrics in %v", time.Since(start))
-	if err != nil {
-		utils.FatalIfErr(fmt.Errorf("error populating slow query metrics: %w", err))
-	}
 
 	if len(queryIDList) > 0 {
 		// Populate metrics for individual queries
 		start = time.Now()
 		log.Debug("Beginning to retrieve individual query metrics")
-		groupQueriesByDatabase, individualQueryDetailsErr := performancemetricscollectors.PopulateIndividualQueryDetails(db, queryIDList, i, e, args)
+		groupQueriesByDatabase := performancemetricscollectors.PopulateIndividualQueryDetails(db, queryIDList, i, e, args)
 		log.Debug("Completed fetching individual query metrics in %v", time.Since(start))
-		if individualQueryDetailsErr != nil {
-			utils.FatalIfErr(fmt.Errorf("error populating individual query details: %w", individualQueryDetailsErr))
-		}
 
 		// Populate execution plan details
 		start = time.Now()
 		log.Debug("Beginning to retrieve query execution plan metrics")
-		executionPlanMetricsErr := performancemetricscollectors.PopulateExecutionPlans(db, groupQueriesByDatabase, i, e, args)
+		performancemetricscollectors.PopulateExecutionPlans(db, groupQueriesByDatabase, i, e, args)
 		log.Debug("Completed fetching query execution plan metrics in %v", time.Since(start))
-		if executionPlanMetricsErr != nil {
-			utils.FatalIfErr(fmt.Errorf("error populating execution plan details: %w", executionPlanMetricsErr))
-		}
 	}
 
 	// Populate wait event metrics
 	start = time.Now()
 	log.Debug("Beginning to retrieve wait event metrics")
-	waitEventError := performancemetricscollectors.PopulateWaitEventMetrics(db, i, e, args, excludedDatabases)
+	performancemetricscollectors.PopulateWaitEventMetrics(db, i, e, args, excludedDatabases)
 	log.Debug("Completed fetching wait event metrics in %v", time.Since(start))
-	if waitEventError != nil {
-		utils.FatalIfErr(fmt.Errorf("error populating wait event metrics: %w", waitEventError))
-	}
 
 	// Populate blocking session metrics
 	start = time.Now()
 	log.Debug("Beginning to retrieve blocking session metrics")
-	populateBlockingSessionMetricsError := performancemetricscollectors.PopulateBlockingSessionMetrics(db, i, e, args, excludedDatabases)
+	performancemetricscollectors.PopulateBlockingSessionMetrics(db, i, e, args, excludedDatabases)
 	log.Debug("Completed fetching blocking session metrics in %v", time.Since(start))
-	if populateBlockingSessionMetricsError != nil {
-		utils.FatalIfErr(fmt.Errorf("error populating blocking session metrics: %w", populateBlockingSessionMetricsError))
-	}
 	log.Debug("Query analysis completed.")
 }

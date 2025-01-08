@@ -12,19 +12,25 @@ import (
 )
 
 // PopulateSlowQueryMetrics collects and sets slow query metrics and returns the list of query IDs
-func PopulateSlowQueryMetrics(i *integration.Integration, e *integration.Entity, db utils.DataSource, args arguments.ArgumentList, excludedDatabases []string) ([]string, error) {
+func PopulateSlowQueryMetrics(i *integration.Integration, e *integration.Entity, db utils.DataSource, args arguments.ArgumentList, excludedDatabases []string) []string {
 	rawMetrics, queryIDList, err := collectGroupedSlowQueryMetrics(db, args.SlowQueryFetchInterval, args.QueryCountThreshold, excludedDatabases)
 	if err != nil {
 		log.Error("Failed to collect slow query metrics: %v", err)
-		return []string{}, err
+		return []string{}
 	}
+
+	// Return if no metrics are collected
+	if len(rawMetrics) == 0 {
+		return []string{}
+	}
+
 	err = setSlowQueryMetrics(i, rawMetrics, args)
 	if err != nil {
 		log.Error("Failed to set slow query metrics: %v", err)
-		return []string{}, err
+		return []string{}
 	}
 
-	return queryIDList, nil
+	return queryIDList
 }
 
 // collectGroupedSlowQueryMetrics collects metrics from the performance schema database for slow queries
@@ -32,7 +38,6 @@ func collectGroupedSlowQueryMetrics(db utils.DataSource, slowQueryfetchInterval 
 	// Prepare the SQL query with the provided parameters
 	query, args, err := sqlx.In(utils.SlowQueries, slowQueryfetchInterval, excludedDatabases, min(queryCountThreshold, constants.MaxQueryCountThreshold))
 	if err != nil {
-		log.Error("Failed to prepare slow query: %v", err)
 		return nil, []string{}, err
 	}
 
@@ -40,7 +45,6 @@ func collectGroupedSlowQueryMetrics(db utils.DataSource, slowQueryfetchInterval 
 	defer cancel()
 	rows, err := db.QueryxContext(ctx, query, args...)
 	if err != nil {
-		log.Error("Failed to collect slow query metrics from Performance Schema: %v", err)
 		return nil, []string{}, err
 	}
 	defer rows.Close()
@@ -51,7 +55,6 @@ func collectGroupedSlowQueryMetrics(db utils.DataSource, slowQueryfetchInterval 
 		var metric utils.SlowQueryMetrics
 		var qID string
 		if err := rows.StructScan(&metric); err != nil {
-			log.Error("Failed to scan slow query metrics row: %v", err)
 			return nil, []string{}, err
 		}
 		qID = *metric.QueryID
@@ -60,7 +63,6 @@ func collectGroupedSlowQueryMetrics(db utils.DataSource, slowQueryfetchInterval 
 	}
 
 	if err := rows.Err(); err != nil {
-		log.Error("Error encountered while iterating over slow query metric rows: %v", err)
 		return nil, []string{}, err
 	}
 
@@ -82,23 +84,23 @@ func setSlowQueryMetrics(i *integration.Integration, metrics []utils.SlowQueryMe
 }
 
 // PopulateIndividualQueryDetails collects and sets individual query details
-func PopulateIndividualQueryDetails(db utils.DataSource, queryIDList []string, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList) ([]utils.QueryGroup, error) {
+func PopulateIndividualQueryDetails(db utils.DataSource, queryIDList []string, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList) []utils.QueryGroup {
 	currentQueryMetrics, currentQueryMetricsErr := currentQueryMetrics(db, queryIDList, args)
 	if currentQueryMetricsErr != nil {
 		log.Error("Failed to collect current query metrics: %v", currentQueryMetricsErr)
-		return nil, currentQueryMetricsErr
+		return nil
 	}
 
 	recentQueryList, recentQueryErr := recentQueryMetrics(db, queryIDList, args)
 	if recentQueryErr != nil {
 		log.Error("Failed to collect recent query metrics: %v", recentQueryErr)
-		return nil, recentQueryErr
+		return nil
 	}
 
 	extensiveQueryList, extensiveQueryErr := extensiveQueryMetrics(db, queryIDList, args)
 	if extensiveQueryErr != nil {
 		log.Error("Failed to collect history query metrics: %v", extensiveQueryErr)
-		return nil, extensiveQueryErr
+		return nil
 	}
 
 	queryList := append(append(currentQueryMetrics, recentQueryList...), extensiveQueryList...)
@@ -112,11 +114,12 @@ func PopulateIndividualQueryDetails(db utils.DataSource, queryIDList []string, i
 
 	err := utils.IngestMetric(metricList, "MysqlIndividualQueriesSample", i, args)
 	if err != nil {
-		return nil, err
+		log.Error("Failed to ingest individual query metrics: %v", err)
+		return nil
 	}
 	groupQueriesByDatabase := groupQueriesByDatabase(queryList)
 
-	return groupQueriesByDatabase, nil
+	return groupQueriesByDatabase
 }
 
 // groupQueriesByDatabase groups queries by their database name
@@ -143,7 +146,6 @@ func groupQueriesByDatabase(filteredList []utils.IndividualQueryMetrics) []utils
 func currentQueryMetrics(db utils.DataSource, queryIDList []string, args arguments.ArgumentList) ([]utils.IndividualQueryMetrics, error) {
 	metrics, err := collectIndividualQueryMetrics(db, queryIDList, utils.CurrentRunningQueriesSearch, args)
 	if err != nil {
-		log.Error("Failed to collect current query metrics: %v", err)
 		return nil, err
 	}
 
@@ -154,7 +156,6 @@ func currentQueryMetrics(db utils.DataSource, queryIDList []string, args argumen
 func recentQueryMetrics(db utils.DataSource, queryIDList []string, args arguments.ArgumentList) ([]utils.IndividualQueryMetrics, error) {
 	metrics, err := collectIndividualQueryMetrics(db, queryIDList, utils.RecentQueriesSearch, args)
 	if err != nil {
-		log.Error("Failed to collect recent query metrics: %v", err)
 		return nil, err
 	}
 
@@ -165,7 +166,6 @@ func recentQueryMetrics(db utils.DataSource, queryIDList []string, args argument
 func extensiveQueryMetrics(db utils.DataSource, queryIDList []string, args arguments.ArgumentList) ([]utils.IndividualQueryMetrics, error) {
 	metrics, err := collectIndividualQueryMetrics(db, queryIDList, utils.PastQueriesSearch, args)
 	if err != nil {
-		log.Error("Failed to collect history query metrics: %v", err)
 		return nil, err
 	}
 
@@ -177,7 +177,7 @@ func collectIndividualQueryMetrics(db utils.DataSource, queryIDList []string, qu
 	// Early exit if queryIDList is empty
 	if len(queryIDList) == 0 {
 		log.Warn("queryIDList is empty")
-		return nil, nil
+		return []utils.IndividualQueryMetrics{}, nil
 	}
 
 	var metricsList []utils.IndividualQueryMetrics
@@ -189,15 +189,13 @@ func collectIndividualQueryMetrics(db utils.DataSource, queryIDList []string, qu
 		// Use sqlx.In to safely include the slices in the query
 		query, args, err := sqlx.In(queryString, args...)
 		if err != nil {
-			log.Error("Failed to prepare individual query: %v", err)
-			return nil, err
+			return []utils.IndividualQueryMetrics{}, err
 		}
 
 		// Collect the individual query metrics
 		metrics, err := utils.CollectMetrics[utils.IndividualQueryMetrics](db, query, args...)
 		if err != nil {
-			log.Error("Error collecting wait event metrics for queryID %s: %v", queryID, err)
-			return nil, err
+			return []utils.IndividualQueryMetrics{}, err
 		}
 
 		metricsList = append(metricsList, metrics...)

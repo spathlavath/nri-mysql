@@ -103,7 +103,6 @@ func CollectMetrics[T any](db DataSource, preparedQuery string, preparedArgs ...
 
 	rows, err := db.QueryxContext(ctx, preparedQuery, preparedArgs...)
 	if err != nil {
-		log.Error("Failed to collect metrics from Performance Schema: %v", err)
 		return []T{}, err
 	}
 	defer rows.Close()
@@ -112,13 +111,11 @@ func CollectMetrics[T any](db DataSource, preparedQuery string, preparedArgs ...
 	for rows.Next() {
 		var metric T
 		if err := rows.StructScan(&metric); err != nil {
-			log.Error("Failed to scan metrics row: %v", err)
 			return []T{}, err
 		}
 		metrics = append(metrics, metric)
 	}
 	if err := rows.Err(); err != nil {
-		log.Error("Error encountered while iterating over metric rows: %v", err)
 		return []T{}, err
 	}
 

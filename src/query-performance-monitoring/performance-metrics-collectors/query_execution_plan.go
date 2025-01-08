@@ -3,11 +3,11 @@ package performancemetricscollectors
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"strings"
 
 	"github.com/bitly/go-simplejson"
-	"github.com/jmoiron/sqlx"
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	arguments "github.com/newrelic/nri-mysql/src/args"
@@ -16,7 +16,7 @@ import (
 )
 
 // PopulateExecutionPlans populates execution plans for the given queries.
-func PopulateExecutionPlans(db utils.DataSource, queryGroups []utils.QueryGroup, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList) error {
+func PopulateExecutionPlans(db utils.DataSource, queryGroups []utils.QueryGroup, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList) {
 	var events []utils.QueryPlanMetrics
 
 	for _, group := range queryGroups {
@@ -30,23 +30,20 @@ func PopulateExecutionPlans(db utils.DataSource, queryGroups []utils.QueryGroup,
 			tableIngestionDataList, err := processExecutionPlanMetrics(db, query)
 			if err != nil {
 				log.Error("Error processing execution plan metrics: %v", err)
-				return err
 			}
 			events = append(events, tableIngestionDataList...)
 		}
 	}
 
+	// Return if no metrics are collected
 	if len(events) == 0 {
-		return nil
+		return
 	}
 
 	err := SetExecutionPlanMetrics(i, args, events)
 	if err != nil {
 		log.Error("Error publishing execution plan metrics: %v", err)
-		return err
 	}
-
-	return nil
 }
 
 // processExecutionPlanMetrics processes the execution plan metrics for a given query.
@@ -74,15 +71,9 @@ func processExecutionPlanMetrics(db utils.DataSource, query utils.IndividualQuer
 	}
 
 	// Execute the EXPLAIN query
-	execPlanQuery, _, bindErr := sqlx.In(constants.ExplainQueryFormat, queryText)
-	if bindErr != nil {
-		log.Error("Error preparing EXPLAIN query: %v", bindErr)
-		return []utils.QueryPlanMetrics{}, bindErr
-	}
-
+	execPlanQuery := fmt.Sprintf(constants.ExplainQueryFormat, queryText)
 	rows, err := db.QueryxContext(ctx, execPlanQuery)
 	if err != nil {
-		log.Error("Error executing EXPLAIN for query '%s': %v", queryText, err)
 		return []utils.QueryPlanMetrics{}, err
 	}
 	defer rows.Close()
@@ -91,7 +82,6 @@ func processExecutionPlanMetrics(db utils.DataSource, query utils.IndividualQuer
 	if rows.Next() {
 		err := rows.Scan(&execPlanJSON)
 		if err != nil {
-			log.Error("Failed to scan execution plan: %v", err)
 			return []utils.QueryPlanMetrics{}, err
 		}
 	} else {
@@ -102,7 +92,6 @@ func processExecutionPlanMetrics(db utils.DataSource, query utils.IndividualQuer
 	// Extract metrics from the JSON string
 	dbPerformanceEvents, err := extractMetricsFromJSONString(execPlanJSON, *query.EventID, *query.ThreadID)
 	if err != nil {
-		log.Error("Error extracting metrics from JSON: %v", err)
 		return []utils.QueryPlanMetrics{}, err
 	}
 
