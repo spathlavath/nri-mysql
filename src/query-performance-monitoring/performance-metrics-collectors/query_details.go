@@ -18,7 +18,11 @@ func PopulateSlowQueryMetrics(i *integration.Integration, e *integration.Entity,
 		return []string{}, err
 	}
 	err = setSlowQueryMetrics(i, rawMetrics, args)
-	return queryIDList, err
+	if err != nil {
+		log.Error("Failed to set slow query metrics: %v", err)
+		return []string{}, err
+	}
+	return queryIDList, nil
 }
 
 // collectGroupedSlowQueryMetrics collects metrics from the performance schema database for slow queries
