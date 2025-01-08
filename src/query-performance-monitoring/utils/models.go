@@ -69,21 +69,26 @@ type WaitEventQueryMetrics struct {
 }
 
 type BlockingSessionMetrics struct {
-	BlockedTxnID     *string `json:"blocked_txn_id" db:"blocked_txn_id" metric_name:"blocked_txn_id" source_type:"attribute"`
-	BlockedPID       *string `json:"blocked_pid" db:"blocked_pid" metric_name:"blocked_pid" source_type:"attribute"`
-	BlockedThreadID  *int64  `json:"blocked_thread_id" db:"blocked_thread_id" metric_name:"blocked_thread_id" source_type:"gauge"`
-	BlockedQueryID   *string `json:"blocked_query_id" db:"blocked_query_id" metric_name:"blocked_query_id" source_type:"attribute"`
-	BlockedQuery     *string `json:"blocked_query" db:"blocked_query" metric_name:"blocked_query" source_type:"attribute"`
-	BlockedStatus    *string `json:"blocked_status" db:"blocked_status" metric_name:"blocked_status" source_type:"attribute"`
-	BlockedUser      *string `json:"blocked_user" db:"blocked_user" metric_name:"blocked_user" source_type:"attribute"`
-	BlockedHost      *string `json:"blocked_host" db:"blocked_host" metric_name:"blocked_host" source_type:"attribute"`
-	BlockedDB        *string `json:"database_name" db:"database_name" metric_name:"database_name" source_type:"attribute"`
-	BlockingTxnID    *string `json:"blocking_txn_id" db:"blocking_txn_id" metric_name:"blocking_txn_id" source_type:"attribute"`
-	BlockingPID      *string `json:"blocking_pid" db:"blocking_pid" metric_name:"blocking_pid" source_type:"attribute"`
-	BlockingThreadID *int64  `json:"blocking_thread_id" db:"blocking_thread_id" metric_name:"blocking_thread_id" source_type:"gauge"`
-	BlockingUser     *string `json:"blocking_user" db:"blocking_user" metric_name:"blocking_user" source_type:"attribute"`
-	BlockingHost     *string `json:"blocking_host" db:"blocking_host" metric_name:"blocking_host" source_type:"attribute"`
-	BlockingQueryID  *string `json:"blocking_query_id" db:"blocking_query_id" metric_name:"blocking_query_id" source_type:"attribute"`
-	BlockingQuery    *string `json:"blocking_query" db:"blocking_query" metric_name:"blocking_query" source_type:"attribute"`
-	BlockingStatus   *string `json:"blocking_status" db:"blocking_status" metric_name:"blocking_status" source_type:"attribute"`
+	BlockedTxnID         *string  `json:"blocked_txn_id" db:"blocked_trx_id" metric_name:"blocked_txn_id" source_type:"attribute"`
+	BlockedPID           *string  `json:"blocked_pid" db:"blocked_pid" metric_name:"blocked_pid" source_type:"attribute"`
+	BlockedThreadID      *int64   `json:"blocked_thread_id" db:"blocked_thread_id" metric_name:"blocked_thread_id" source_type:"gauge"`
+	BlockedQueryID       *string  `json:"blocked_query_id" db:"blocked_query_id" metric_name:"blocked_query_id" source_type:"attribute"`
+	BlockedQuery         *string  `json:"blocked_query" db:"blocked_query" metric_name:"blocked_query" source_type:"attribute"`
+	BlockedStatus        *string  `json:"blocked_status" db:"blocked_status" metric_name:"blocked_status" source_type:"attribute"`
+	BlockedUser          *string  `json:"blocked_user" db:"blocked_user" metric_name:"blocked_user" source_type:"attribute"`
+	BlockedHost          *string  `json:"blocked_host" db:"blocked_host" metric_name:"blocked_host" source_type:"attribute"`
+	BlockedDB            *string  `json:"database_name" db:"database_name" metric_name:"database_name" source_type:"attribute"`
+	BlockingTxnID        *string  `json:"blocking_txn_id" db:"blocking_trx_id" metric_name:"blocking_txn_id" source_type:"attribute"`
+	BlockingPID          *string  `json:"blocking_pid" db:"blocking_pid" metric_name:"blocking_pid" source_type:"attribute"`
+	BlockingThreadID     *int64   `json:"blocking_thread_id" db:"blocking_thread_id" metric_name:"blocking_thread_id" source_type:"gauge"`
+	BlockingUser         *string  `json:"blocking_user" db:"blocking_user" metric_name:"blocking_user" source_type:"attribute"`
+	BlockingHost         *string  `json:"blocking_host" db:"blocking_host" metric_name:"blocking_host" source_type:"attribute"`
+	BlockingQueryID      *string  `json:"blocking_query_id" db:"blocking_query_id" metric_name:"blocking_query_id" source_type:"attribute"`
+	BlockingQuery        *string  `json:"blocking_query" db:"blocking_query" metric_name:"blocking_query" source_type:"attribute"`
+	BlockingStatus       *string  `json:"blocking_status" db:"blocking_status" metric_name:"blocking_status" source_type:"attribute"`
+	BlockedQueryTimeMs   *float64 `json:"blocked_query_time_ms" db:"blocked_query_time_ms" metric_name:"blocked_query_time_ms" source_type:"gauge"`
+	BlockingQueryTimeMs  *float64 `json:"blocking_query_time_ms" db:"blocking_query_time_ms" metric_name:"blocking_query_time_ms" source_type:"gauge"`
+	BlockedTxnStartTime  *string  `json:"blocked_txn_start_time" db:"blocked_trx_start_time" metric_name:"blocked_txn_start_time" source_type:"attribute"`
+	BlockingTxnStartTime *string  `json:"blocking_txn_start_time" db:"blocking_trx_start_time" metric_name:"blocking_txn_start_time" source_type:"attribute"`
+	CollectionTimestamp  *string  `json:"collection_timestamp" db:"collection_timestamp" metric_name:"collection_timestamp" source_type:"attribute"`
 }

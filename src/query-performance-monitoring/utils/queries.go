@@ -211,7 +211,12 @@ const (
                       es_blocking.DIGEST_TEXT AS blocking_query,
 					  es_waiting.DIGEST AS blocked_query_id,
                       es_blocking.DIGEST AS blocking_query_id,
-    				  bt.PROCESSLIST_STATE AS blocking_status
+    				  bt.PROCESSLIST_STATE AS blocking_status,
+					  esc_waiting.TIMER_WAIT / 1000000000 AS blocked_query_time_ms,
+					  esc_blocking.TIMER_WAIT / 1000000000 AS blocking_query_time_ms,
+					  DATE_FORMAT(CONVERT_TZ(r.trx_started, @@session.time_zone, '+00:00'), '%Y-%m-%dT%H:%i:%sZ') AS blocked_txn_start_time,
+					  DATE_FORMAT(CONVERT_TZ(b.trx_started, @@session.time_zone, '+00:00'), '%Y-%m-%dT%H:%i:%sZ') AS blocking_txn_start_time,
+					  DATE_FORMAT(UTC_TIMESTAMP(), '%Y-%m-%dT%H:%i:%sZ') AS collection_timestamp
                   FROM 
                       performance_schema.data_lock_waits w
                   JOIN 
@@ -235,6 +240,10 @@ const (
 				  WHERE
 					  wt.PROCESSLIST_DB IS NOT NULL
 					  AND wt.PROCESSLIST_DB NOT IN (?)
+				  ORDER BY 
+					  blocked_query_time_ms DESC,
+					  blocking_query_time_ms DESC,
+					  blocked_txn_start_time DESC
 				  LIMIT ?;
 	`
 )
