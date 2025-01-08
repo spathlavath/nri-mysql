@@ -22,6 +22,7 @@ func PopulateSlowQueryMetrics(i *integration.Integration, e *integration.Entity,
 		log.Error("Failed to set slow query metrics: %v", err)
 		return []string{}, err
 	}
+
 	return queryIDList, nil
 }
 

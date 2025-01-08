@@ -16,6 +16,8 @@ const minVersionParts = 2
 
 // Dynamic error
 var errPerformanceSchemaDisabled = errors.New("performance schema is not enabled")
+var errNoRowsFound = errors.New("No rows found")
+var errMysqlVersion = errors.New("Only version 8.0+ is supported.")
 
 // ValidatePreconditions checks if the necessary preconditions are met for performance monitoring.
 func ValidatePreconditions(db utils.DataSource) error {
@@ -51,7 +53,7 @@ func isPerformanceSchemaEnabled(db utils.DataSource) (bool, error) {
 
 	if !rows.Next() {
 		log.Error("No rows found")
-		return false, fmt.Errorf("No rows found")
+		return false, errNoRowsFound
 	}
 
 	if errScanning := rows.Scan(&variableName, &performanceSchemaEnabled); err != nil {
@@ -189,7 +191,7 @@ func logEnablePerformanceSchemaInstructions(db utils.DataSource) {
 		log.Debug("performance_schema_consumer_events_waits_history_long=ON")
 	} else {
 		log.Error("MySQL version %s is not supported. Only version 8.0+ is supported.", version)
-		utils.FatalIfErr(fmt.Errorf("MySQL version %s is not supported. Only version 8.0+ is supported.", version))
+		utils.FatalIfErr(errMysqlVersion)
 	}
 }
 
