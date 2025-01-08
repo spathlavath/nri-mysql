@@ -3,22 +3,16 @@ package performancemetricscollectors
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"reflect"
 	"strings"
-	"time"
 
 	"github.com/bitly/go-simplejson"
+	"github.com/jmoiron/sqlx"
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	arguments "github.com/newrelic/nri-mysql/src/args"
+	"github.com/newrelic/nri-mysql/src/query-performance-monitoring/constants"
 	utils "github.com/newrelic/nri-mysql/src/query-performance-monitoring/utils"
-)
-
-const (
-	explainQueryFormat       = "EXPLAIN FORMAT=JSON %s"
-	supportedStatements      = "SELECT INSERT UPDATE DELETE WITH"
-	QueryPlanTimeoutDuration = 10 * time.Second
 )
 
 // PopulateExecutionPlans populates execution plans for the given queries.
@@ -57,7 +51,7 @@ func PopulateExecutionPlans(db utils.DataSource, queryGroups []utils.QueryGroup,
 
 // processExecutionPlanMetrics processes the execution plan metrics for a given query.
 func processExecutionPlanMetrics(db utils.DataSource, query utils.IndividualQueryMetrics) ([]utils.QueryPlanMetrics, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), QueryPlanTimeoutDuration)
+	ctx, cancel := context.WithTimeout(context.Background(), constants.QueryPlanTimeoutDuration)
 	defer cancel()
 
 	if *query.QueryText == "" {
@@ -80,7 +74,12 @@ func processExecutionPlanMetrics(db utils.DataSource, query utils.IndividualQuer
 	}
 
 	// Execute the EXPLAIN query
-	execPlanQuery := fmt.Sprintf(explainQueryFormat, queryText)
+	execPlanQuery, _, bindErr := sqlx.In(constants.ExplainQueryFormat, queryText)
+	if bindErr != nil {
+		log.Error("Error preparing EXPLAIN query: %v", bindErr)
+		return []utils.QueryPlanMetrics{}, bindErr
+	}
+
 	rows, err := db.QueryxContext(ctx, execPlanQuery)
 	if err != nil {
 		log.Error("Error executing EXPLAIN for query '%s': %v", queryText, err)
@@ -248,7 +247,7 @@ func SetExecutionPlanMetrics(i *integration.Integration, args arguments.Argument
 
 // isSupportedStatement checks if the given query is a supported statement.
 func isSupportedStatement(query string) bool {
-	for _, stmt := range strings.Split(supportedStatements, " ") {
+	for _, stmt := range strings.Split(constants.SupportedStatements, " ") {
 		if strings.HasPrefix(query, stmt) {
 			return true
 		}
