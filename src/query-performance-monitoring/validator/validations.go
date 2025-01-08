@@ -7,20 +7,20 @@ import (
 	"strconv"
 	"strings"
 
-	commonutils "github.com/newrelic/nri-mysql/src/query-performance-details/common-utils"
-	dbconnection "github.com/newrelic/nri-mysql/src/query-performance-details/connection"
-
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
+	constants "github.com/newrelic/nri-mysql/src/query-performance-monitoring/constants"
+	utils "github.com/newrelic/nri-mysql/src/query-performance-monitoring/utils"
 )
 
-// Define constants
-const minVersionParts = 2
-
 // Dynamic error
-var errPerformanceSchemaDisabled = errors.New("performance schema is not enabled")
+var (
+	ErrPerformanceSchemaDisabled = errors.New("performance schema is not enabled")
+	ErrNoRowsFound               = errors.New("no rows found")
+	ErrMysqlVersion              = errors.New("only version 8.0+ is supported")
+)
 
 // ValidatePreconditions checks if the necessary preconditions are met for performance monitoring.
-func ValidatePreconditions(db dbconnection.DataSource) error {
+func ValidatePreconditions(db utils.DataSource) error {
 	// Check if Performance Schema is enabled
 	performanceSchemaEnabled, errPerformanceEnabled := isPerformanceSchemaEnabled(db)
 	if errPerformanceEnabled != nil {
@@ -29,7 +29,7 @@ func ValidatePreconditions(db dbconnection.DataSource) error {
 
 	if !performanceSchemaEnabled {
 		logEnablePerformanceSchemaInstructions(db)
-		return errPerformanceSchemaDisabled
+		return ErrPerformanceSchemaDisabled
 	}
 
 	// Check if essential consumers are enabled
@@ -47,27 +47,28 @@ func ValidatePreconditions(db dbconnection.DataSource) error {
 }
 
 // isPerformanceSchemaEnabled checks if the Performance Schema is enabled in the MySQL database.
-func isPerformanceSchemaEnabled(db dbconnection.DataSource) (bool, error) {
+func isPerformanceSchemaEnabled(db utils.DataSource) (bool, error) {
 	var variableName, performanceSchemaEnabled string
 	rows, err := db.QueryX("SHOW GLOBAL VARIABLES LIKE 'performance_schema';")
+	if err != nil {
+		return false, fmt.Errorf("failed to check performance schema status: %w", err)
+	}
 
 	if !rows.Next() {
 		log.Error("No rows found")
-		return false, nil
+		return false, ErrNoRowsFound
 	}
 
-	if errScanning := rows.Scan(&variableName, &performanceSchemaEnabled); err != nil {
-		commonutils.FatalIfErr(errScanning)
+	errScanning := rows.Scan(&variableName, &performanceSchemaEnabled)
+	if errScanning != nil {
+		return false, errScanning
 	}
 
-	if err != nil {
-		return false, fmt.Errorf("failed to check Performance Schema status: %w", err)
-	}
 	return performanceSchemaEnabled == "ON", nil
 }
 
 // checkEssentialConsumers checks if the essential consumers are enabled in the Performance Schema.
-func checkEssentialConsumers(db dbconnection.DataSource) error {
+func checkEssentialConsumers(db utils.DataSource) error {
 	consumers := []string{
 		"events_waits_current",
 		"events_waits_history_long",
@@ -108,7 +109,7 @@ func checkEssentialConsumers(db dbconnection.DataSource) error {
 		}
 		if enabled != "YES" {
 			log.Error("Essential consumer %s is not enabled. To enable it, run: UPDATE performance_schema.setup_consumers SET ENABLED = 'YES' WHERE NAME = '%s';", name, name)
-			return fmt.Errorf("%w: %s", commonutils.ErrEssentialConsumerNotEnabled, name)
+			return fmt.Errorf("%w: %s", utils.ErrEssentialConsumerNotEnabled, name)
 		}
 	}
 
@@ -120,7 +121,7 @@ func checkEssentialConsumers(db dbconnection.DataSource) error {
 }
 
 // checkEssentialInstruments checks if the essential instruments are enabled in the Performance Schema.
-func checkEssentialInstruments(db dbconnection.DataSource) error {
+func checkEssentialInstruments(db utils.DataSource) error {
 	instruments := []string{
 		// Add other essential instruments here
 		"wait/%",
@@ -158,7 +159,7 @@ func checkEssentialInstruments(db dbconnection.DataSource) error {
 		}
 		if enabled != "YES" || (timed.Valid && timed.String != "YES") {
 			log.Error("Essential instrument %s is not fully enabled. To enable it, run: UPDATE performance_schema.setup_instruments SET ENABLED = 'YES', TIMED = 'YES' WHERE NAME = '%s';", name, name)
-			return fmt.Errorf("%w: %s", commonutils.ErrEssentialInstrumentNotEnabled, name)
+			return fmt.Errorf("%w: %s", utils.ErrEssentialInstrumentNotEnabled, name)
 		}
 	}
 
@@ -170,11 +171,11 @@ func checkEssentialInstruments(db dbconnection.DataSource) error {
 }
 
 // logEnablePerformanceSchemaInstructions logs instructions to enable the Performance Schema.
-func logEnablePerformanceSchemaInstructions(db dbconnection.DataSource) {
+func logEnablePerformanceSchemaInstructions(db utils.DataSource) {
 	version, err := getMySQLVersion(db)
 	if err != nil {
 		log.Error("Failed to get MySQL version: %v", err)
-		return
+		utils.FatalIfErr(err)
 	}
 
 	if isVersion8OrGreater(version) {
@@ -191,11 +192,12 @@ func logEnablePerformanceSchemaInstructions(db dbconnection.DataSource) {
 		log.Debug("performance_schema_consumer_events_waits_history_long=ON")
 	} else {
 		log.Error("MySQL version %s is not supported. Only version 8.0+ is supported.", version)
+		utils.FatalIfErr(ErrMysqlVersion)
 	}
 }
 
 // getMySQLVersion retrieves the MySQL version from the database.
-func getMySQLVersion(db dbconnection.DataSource) (string, error) {
+func getMySQLVersion(db utils.DataSource) (string, error) {
 	query := "SELECT VERSION();"
 	rows, err := db.QueryX(query)
 	if err != nil {
@@ -211,7 +213,7 @@ func getMySQLVersion(db dbconnection.DataSource) (string, error) {
 	}
 
 	if version == "" {
-		return "", commonutils.ErrMySQLVersion
+		return "", utils.ErrMySQLVersion
 	}
 
 	return version, nil
@@ -226,7 +228,7 @@ func isVersion8OrGreater(version string) bool {
 // parseVersion extracts the major and minor version numbers from the version string
 func parseVersion(version string) (int, int) {
 	parts := strings.Split(version, ".")
-	if len(parts) < minVersionParts {
+	if len(parts) < constants.MinVersionParts {
 		return 0, 0 // Return 0 if the version string is improperly formatted
 	}
 

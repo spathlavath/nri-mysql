@@ -1,4 +1,4 @@
-package dbconnection
+package utils
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	arguments "github.com/newrelic/nri-mysql/src/args"
-	commonutils "github.com/newrelic/nri-mysql/src/query-performance-details/common-utils"
+	constants "github.com/newrelic/nri-mysql/src/query-performance-monitoring/constants"
 )
 
 type DataSource interface {
@@ -33,6 +33,7 @@ func OpenDB(dsn string) (DataSource, error) {
 	db := Database{
 		source: source,
 	}
+
 	return &db, nil
 }
 
@@ -97,13 +98,12 @@ func determineDatabase(args arguments.ArgumentList, database string) string {
 
 // collectMetrics collects metrics from the performance schema database
 func CollectMetrics[T any](db DataSource, preparedQuery string, preparedArgs ...interface{}) ([]T, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), commonutils.TimeoutDuration)
+	ctx, cancel := context.WithTimeout(context.Background(), constants.TimeoutDuration)
 	defer cancel()
 
 	rows, err := db.QueryxContext(ctx, preparedQuery, preparedArgs...)
 	if err != nil {
-		log.Error("Failed to collect metrics from Performance Schema: %v", err)
-		return nil, err
+		return []T{}, err
 	}
 	defer rows.Close()
 
@@ -111,14 +111,12 @@ func CollectMetrics[T any](db DataSource, preparedQuery string, preparedArgs ...
 	for rows.Next() {
 		var metric T
 		if err := rows.StructScan(&metric); err != nil {
-			log.Error("Failed to scan metrics row: %v", err)
-			return nil, err
+			return []T{}, err
 		}
 		metrics = append(metrics, metric)
 	}
 	if err := rows.Err(); err != nil {
-		log.Error("Error encountered while iterating over metric rows: %v", err)
-		return nil, err
+		return []T{}, err
 	}
 
 	return metrics, nil

@@ -1,4 +1,4 @@
-package queries
+package utils
 
 const (
 	SlowQueries = `
@@ -115,7 +115,6 @@ const (
 				ELSE 'Other'
 			END AS wait_category,
 			ROUND(IFNULL(SUM(wait_data.TIMER_WAIT), 0) / 1000000000, 3) AS total_wait_time_ms,
-			'N/A' AS avg_wait_time_ms,
 			SUM(ewsg.COUNT_STAR) AS wait_event_count,
 			ROUND((IFNULL(SUM(wait_data.TIMER_WAIT), 0) / 1000000000) / IFNULL(SUM(ewsg.COUNT_STAR), 1), 3) AS avg_wait_time_ms,
 			CASE
@@ -211,7 +210,12 @@ const (
                       es_blocking.DIGEST_TEXT AS blocking_query,
 					  es_waiting.DIGEST AS blocked_query_id,
                       es_blocking.DIGEST AS blocking_query_id,
-    				  bt.PROCESSLIST_STATE AS blocking_status
+    				  bt.PROCESSLIST_STATE AS blocking_status,
+					  ROUND(esc_waiting.TIMER_WAIT / 1000000000, 3) AS blocked_query_time_ms,
+					  ROUND(esc_blocking.TIMER_WAIT / 1000000000, 3) AS blocking_query_time_ms,
+					  DATE_FORMAT(CONVERT_TZ(r.trx_started, @@session.time_zone, '+00:00'), '%Y-%m-%dT%H:%i:%sZ') AS blocked_txn_start_time,
+					  DATE_FORMAT(CONVERT_TZ(b.trx_started, @@session.time_zone, '+00:00'), '%Y-%m-%dT%H:%i:%sZ') AS blocking_txn_start_time,
+					  DATE_FORMAT(UTC_TIMESTAMP(), '%Y-%m-%dT%H:%i:%sZ') AS collection_timestamp
                   FROM 
                       performance_schema.data_lock_waits w
                   JOIN 
@@ -235,6 +239,8 @@ const (
 				  WHERE
 					  wt.PROCESSLIST_DB IS NOT NULL
 					  AND wt.PROCESSLIST_DB NOT IN (?)
+				  ORDER BY 
+					  blocked_txn_start_time ASC
 				  LIMIT ?;
 	`
 )
