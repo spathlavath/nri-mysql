@@ -164,11 +164,11 @@ func SetMetric(metricSet *metric.Set, name string, value interface{}, sourceType
 }
 
 // IngestMetric ingests a list of metrics into the integration.
-func IngestMetric(metricList []interface{}, eventName string, i *integration.Integration, args arguments.ArgumentList) {
+func IngestMetric(metricList []interface{}, eventName string, i *integration.Integration, args arguments.ArgumentList) error {
 	instanceEntity, err := CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
 	if err != nil {
 		log.Error("Error creating entity: %v", err)
-		return
+		return err
 	}
 
 	metricCount := 0
@@ -182,21 +182,23 @@ func IngestMetric(metricList []interface{}, eventName string, i *integration.Int
 		if metricCount > MetricSetLimit {
 			metricCount = 0
 			if err := publishMetrics(i); err != nil {
-				return
+				return err
 			}
 			instanceEntity, err = CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
 			if err != nil {
 				log.Error("Error creating entity: %v", err)
-				return
+				return err
 			}
 		}
 	}
 
 	if metricCount > 0 {
 		if err := publishMetrics(i); err != nil {
-			return
+			return err
 		}
 	}
+
+	return nil
 }
 
 func processModel(model interface{}, instanceEntity *integration.Entity, eventName string, args arguments.ArgumentList) {

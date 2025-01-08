@@ -51,11 +51,11 @@ func isPerformanceSchemaEnabled(db utils.DataSource) (bool, error) {
 
 	if !rows.Next() {
 		log.Error("No rows found")
-		return false, nil
+		return false, fmt.Errorf("No rows found")
 	}
 
 	if errScanning := rows.Scan(&variableName, &performanceSchemaEnabled); err != nil {
-		utils.FatalIfErr(errScanning)
+		return false, errScanning
 	}
 
 	if err != nil {
@@ -172,7 +172,7 @@ func logEnablePerformanceSchemaInstructions(db utils.DataSource) {
 	version, err := getMySQLVersion(db)
 	if err != nil {
 		log.Error("Failed to get MySQL version: %v", err)
-		return
+		utils.FatalIfErr(err)
 	}
 
 	if isVersion8OrGreater(version) {
@@ -189,6 +189,7 @@ func logEnablePerformanceSchemaInstructions(db utils.DataSource) {
 		log.Debug("performance_schema_consumer_events_waits_history_long=ON")
 	} else {
 		log.Error("MySQL version %s is not supported. Only version 8.0+ is supported.", version)
+		utils.FatalIfErr(fmt.Errorf("MySQL version %s is not supported. Only version 8.0+ is supported.", version))
 	}
 }
 

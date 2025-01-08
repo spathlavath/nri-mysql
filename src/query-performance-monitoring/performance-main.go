@@ -39,8 +39,11 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 	// Populate metrics for slow queries
 	start := time.Now()
 	log.Debug("Beginning to retrieve slow query metrics")
-	queryIDList := performancemetricscollectors.PopulateSlowQueryMetrics(i, e, db, args, excludedDatabases)
+	queryIDList, err := performancemetricscollectors.PopulateSlowQueryMetrics(i, e, db, args, excludedDatabases)
 	log.Debug("Completed fetching slow query metrics in %v", time.Since(start))
+	if err != nil {
+		utils.FatalIfErr(fmt.Errorf("error populating slow query metrics: %w", err))
+	}
 
 	if len(queryIDList) > 0 {
 		// Populate metrics for individual queries

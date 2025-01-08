@@ -28,16 +28,25 @@ func PopulateWaitEventMetrics(db utils.DataSource, i *integration.Integration, e
 	}
 
 	// Set the retrieved metrics in the integration
-	setWaitEventMetrics(i, args, metrics)
+	err = setWaitEventMetrics(i, args, metrics)
+	if err != nil {
+		log.Error("Error setting wait event metrics: %v", err)
+		return err
+	}
 	return nil
 }
 
 // setWaitEventMetrics sets the wait event metrics in the integration.
-func setWaitEventMetrics(i *integration.Integration, args arguments.ArgumentList, metrics []utils.WaitEventQueryMetrics) {
+func setWaitEventMetrics(i *integration.Integration, args arguments.ArgumentList, metrics []utils.WaitEventQueryMetrics) error {
 	metricList := make([]interface{}, 0, len(metrics))
 	for _, metricData := range metrics {
 		metricList = append(metricList, metricData)
 	}
 
-	utils.IngestMetric(metricList, "MysqlWaitEventsSample", i, args)
+	err := utils.IngestMetric(metricList, "MysqlWaitEventsSample", i, args)
+	if err != nil {
+		log.Error("Error ingesting wait event metrics: %v", err)
+		return err
+	}
+	return nil
 }

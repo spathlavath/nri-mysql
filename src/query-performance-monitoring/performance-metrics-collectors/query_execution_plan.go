@@ -236,8 +236,11 @@ func SetExecutionPlanMetrics(i *integration.Integration, args arguments.Argument
 		metricList = append(metricList, metricData)
 	}
 
-	utils.IngestMetric(metricList, "MysqlQueryExecutionSample", i, args)
-
+	err := utils.IngestMetric(metricList, "MysqlQueryExecutionSample", i, args)
+	if err != nil {
+		log.Error("Error setting execution plan metrics: %v", err)
+		return err
+	}
 	return nil
 }
 

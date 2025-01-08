@@ -25,16 +25,25 @@ func PopulateBlockingSessionMetrics(db utils.DataSource, i *integration.Integrat
 	}
 
 	// Set the blocking query metrics in the integration entity
-	setBlockingQueryMetrics(metrics, i, args)
+	err = setBlockingQueryMetrics(metrics, i, args)
+	if err != nil {
+		log.Error("Error setting blocking session metrics: %v", err)
+		return err
+	}
 	return nil
 }
 
 // setBlockingQueryMetrics sets the blocking session metrics into the integration entity.
-func setBlockingQueryMetrics(metrics []utils.BlockingSessionMetrics, i *integration.Integration, args arguments.ArgumentList) {
+func setBlockingQueryMetrics(metrics []utils.BlockingSessionMetrics, i *integration.Integration, args arguments.ArgumentList) error {
 	metricList := make([]interface{}, 0, len(metrics))
 	for _, metricData := range metrics {
 		metricList = append(metricList, metricData)
 	}
 
-	utils.IngestMetric(metricList, "MysqlBlockingSessionSample", i, args)
+	err := utils.IngestMetric(metricList, "MysqlBlockingSessionSample", i, args)
+	if err != nil {
+		log.Error("Error ingesting blocking session metrics: %v", err)
+		return err
+	}
+	return nil
 }

@@ -11,14 +11,14 @@ import (
 )
 
 // PopulateSlowQueryMetrics collects and sets slow query metrics and returns the list of query IDs
-func PopulateSlowQueryMetrics(i *integration.Integration, e *integration.Entity, db utils.DataSource, args arguments.ArgumentList, excludedDatabases []string) []string {
+func PopulateSlowQueryMetrics(i *integration.Integration, e *integration.Entity, db utils.DataSource, args arguments.ArgumentList, excludedDatabases []string) ([]string, error) {
 	rawMetrics, queryIDList, err := collectGroupedSlowQueryMetrics(db, args.SlowQueryFetchInterval, args.QueryCountThreshold, excludedDatabases)
 	if err != nil {
 		log.Error("Failed to collect slow query metrics: %v", err)
-		return nil
+		return []string{}, err
 	}
-	setSlowQueryMetrics(i, rawMetrics, args)
-	return queryIDList
+	err = setSlowQueryMetrics(i, rawMetrics, args)
+	return queryIDList, err
 }
 
 // collectGroupedSlowQueryMetrics collects metrics from the performance schema database for slow queries
@@ -62,13 +62,17 @@ func collectGroupedSlowQueryMetrics(db utils.DataSource, slowQueryfetchInterval 
 }
 
 // setSlowQueryMetrics sets the collected slow query metrics to the integration
-func setSlowQueryMetrics(i *integration.Integration, metrics []utils.SlowQueryMetrics, args arguments.ArgumentList) {
+func setSlowQueryMetrics(i *integration.Integration, metrics []utils.SlowQueryMetrics, args arguments.ArgumentList) error {
 	metricList := make([]interface{}, 0, len(metrics))
 	for _, metricData := range metrics {
 		metricList = append(metricList, metricData)
 	}
 
-	utils.IngestMetric(metricList, "MysqlSlowQueriesSample", i, args)
+	err := utils.IngestMetric(metricList, "MysqlSlowQueriesSample", i, args)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // PopulateIndividualQueryDetails collects and sets individual query details
@@ -100,7 +104,10 @@ func PopulateIndividualQueryDetails(db utils.DataSource, queryIDList []string, i
 		metricList = append(metricList, newMetricsList[i])
 	}
 
-	utils.IngestMetric(metricList, "MysqlIndividualQueriesSample", i, args)
+	err := utils.IngestMetric(metricList, "MysqlIndividualQueriesSample", i, args)
+	if err != nil {
+		return nil, err
+	}
 	groupQueriesByDatabase := groupQueriesByDatabase(queryList)
 
 	return groupQueriesByDatabase, nil
