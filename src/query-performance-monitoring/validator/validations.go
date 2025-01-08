@@ -16,7 +16,7 @@ import (
 var (
 	ErrPerformanceSchemaDisabled = errors.New("performance schema is not enabled")
 	ErrNoRowsFound               = errors.New("no rows found")
-	ErrMysqlVersion              = errors.New("only version 8.0+ is supported.")
+	ErrMysqlVersion              = errors.New("only version 8.0+ is supported")
 )
 
 // ValidatePreconditions checks if the necessary preconditions are met for performance monitoring.
