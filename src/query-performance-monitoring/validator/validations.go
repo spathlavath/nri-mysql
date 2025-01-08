@@ -1,4 +1,4 @@
-package queryperformancemonitoring
+package validator
 
 import (
 	"database/sql"

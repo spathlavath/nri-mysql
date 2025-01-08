@@ -9,6 +9,7 @@ import (
 	arguments "github.com/newrelic/nri-mysql/src/args"
 	performancemetricscollectors "github.com/newrelic/nri-mysql/src/query-performance-monitoring/performance-metrics-collectors"
 	utils "github.com/newrelic/nri-mysql/src/query-performance-monitoring/utils"
+	validator "github.com/newrelic/nri-mysql/src/query-performance-monitoring/validator"
 )
 
 // main
@@ -24,7 +25,7 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 	defer db.Close()
 
 	// Validate preconditions before proceeding
-	preValidationErr := ValidatePreconditions(db)
+	preValidationErr := validator.ValidatePreconditions(db)
 	if preValidationErr != nil {
 		utils.FatalIfErr(fmt.Errorf("preconditions failed: %w", preValidationErr))
 	}
