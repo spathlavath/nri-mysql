@@ -163,11 +163,11 @@ func extractMetrics(js *simplejson.Json, dbPerformanceEvents []utils.QueryPlanMe
 			Ref:                 ref,
 			PrefixCost:          prefixCost,
 			DataReadPerJoin:     dataReadPerJoin,
-			UsingIndex:          usingIndex,
+			UsingIndex:          fmt.Sprintf("%t", usingIndex),
 			KeyLength:           keyLength,
-			Insert:              insert,
-			Update:              update,
-			Delete:              delete,
+			Insert:              fmt.Sprintf("%t", insert),
+			Update:              fmt.Sprintf("%t", update),
+			Delete:              fmt.Sprintf("%t", delete),
 		})
 		*stepID++
 	}
