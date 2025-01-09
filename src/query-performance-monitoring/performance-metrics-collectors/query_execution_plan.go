@@ -132,7 +132,10 @@ func extractMetrics(js *simplejson.Json, dbPerformanceEvents []utils.QueryPlanMe
 	key, _ := js.Get("key").String()
 	usedKeyPartsArray, _ := js.Get("used_key_parts").StringArray()
 	refArray, _ := js.Get("ref").StringArray()
-	insert, _ := js.Get("insert").Bool()
+	insert, err := js.Get("insert").Bool()
+	if err != nil {
+		fmt.Println("Error getting insert: ", err)
+	}
 	update, _ := js.Get("update").Bool()
 	delete, _ := js.Get("delete").Bool()
 
@@ -145,6 +148,7 @@ func extractMetrics(js *simplejson.Json, dbPerformanceEvents []utils.QueryPlanMe
 	}
 
 	if tableName != "" || accessType != "" || rowsExaminedPerScan != 0 || rowsProducedPerJoin != 0 || filtered != "" || readCost != "" || evalCost != "" {
+		fmt.Println("insert : ", insert)
 		dbPerformanceEvents = append(dbPerformanceEvents, utils.QueryPlanMetrics{
 			EventID:             eventID,
 			ThreadID:            threadID,
