@@ -124,10 +124,17 @@ func extractMetrics(js *simplejson.Json, dbPerformanceEvents []utils.QueryPlanMe
 	filtered, _ := js.Get("filtered").String()
 	readCost, _ := js.Get("cost_info").Get("read_cost").String()
 	evalCost, _ := js.Get("cost_info").Get("eval_cost").String()
+	prefixCost, _ := js.Get("cost_info").Get("prefix_cost").String()
+	dataReadPerJoin, _ := js.Get("cost_info").Get("data_read_per_join").String()
+	usingIndex, _ := js.Get("using_index").Bool()
+	keyLength, _ := js.Get("key_length").String()
 	possibleKeysArray, _ := js.Get("possible_keys").StringArray()
 	key, _ := js.Get("key").String()
 	usedKeyPartsArray, _ := js.Get("used_key_parts").StringArray()
 	refArray, _ := js.Get("ref").StringArray()
+	insert, _ := js.Get("insert").Bool()
+	update, _ := js.Get("update").Bool()
+	delete, _ := js.Get("delete").Bool()
 
 	possibleKeys := strings.Join(possibleKeysArray, ",")
 	usedKeyParts := strings.Join(usedKeyPartsArray, ",")
@@ -154,6 +161,13 @@ func extractMetrics(js *simplejson.Json, dbPerformanceEvents []utils.QueryPlanMe
 			Key:                 key,
 			UsedKeyParts:        usedKeyParts,
 			Ref:                 ref,
+			PrefixCost:          prefixCost,
+			DataReadPerJoin:     dataReadPerJoin,
+			UsingIndex:          usingIndex,
+			KeyLength:           keyLength,
+			Insert:              insert,
+			Update:              update,
+			Delete:              delete,
 		})
 		*stepID++
 	}
