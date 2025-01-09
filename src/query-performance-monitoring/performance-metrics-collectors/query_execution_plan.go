@@ -114,7 +114,7 @@ func extractMetricsFromJSONString(jsonString string, eventID uint64, threadID ui
 	return dbPerformanceEvents, nil
 }
 
-// extractMetrics recursively extracts metrics from a simplejson.Json object.
+// extractMetrics recursively retrieves metrics from the query plan.
 func extractMetrics(js *simplejson.Json, dbPerformanceEvents []utils.QueryPlanMetrics, eventID uint64, threadID uint64, memo utils.Memo, stepID *int) []utils.QueryPlanMetrics {
 	tableName, _ := js.Get("table_name").String()
 	queryCost, _ := js.Get("cost_info").Get("query_cost").String()

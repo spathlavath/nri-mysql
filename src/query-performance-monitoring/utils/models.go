@@ -53,9 +53,9 @@ type QueryPlanMetrics struct {
 	DataReadPerJoin     string `json:"data_read_per_join" metric_name:"data_read_per_join" source_type:"attribute"`
 	UsingIndex          string `json:"using_index" metric_name:"using_index" source_type:"attribute"`
 	KeyLength           string `json:"key_length" metric_name:"key_length" source_type:"attribute"`
-	Update              string `json:"update_operation" metric_name:"update_operation" source_type:"attribute"`
-	Insert              string `json:"insert_operation" metric_name:"insert_operation" source_type:"attribute"`
-	Delete              string `json:"delete_operation" metric_name:"delete_operation" source_type:"attribute"`
+	Update              string `json:"update" metric_name:"update_operation" source_type:"attribute"`
+	Insert              string `json:"insert" metric_name:"insert_operation" source_type:"attribute"`
+	Delete              string `json:"delete" metric_name:"delete_operation" source_type:"attribute"`
 }
 
 type Memo struct {
