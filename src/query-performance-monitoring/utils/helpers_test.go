@@ -11,6 +11,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var (
+	ErrCreateNodeEntity = errors.New("error creating node entity")
+	ErrProcessModel     = errors.New("error processing model")
+)
+
 func TestSetMetric(t *testing.T) {
 	i, _ := integration.New("test", "1.0.0")
 	entity := i.LocalEntity()
@@ -160,11 +165,6 @@ func TestProcessModel(t *testing.T) {
 	})
 }
 
-var (
-	ErrCreateNodeEntity = errors.New("error creating node entity")
-	ErrProcessModel     = errors.New("error processing model")
-)
-
 func TestIngestMetric(t *testing.T) {
 	i, _ := integration.New("test", "1.0.0")
 
@@ -189,7 +189,6 @@ func TestIngestMetric(t *testing.T) {
 	})
 
 	t.Run("ErrorProcessingModel", func(t *testing.T) {
-
 		metricList := []interface{}{
 			struct{}{},
 		}
@@ -209,7 +208,6 @@ func TestIngestMetric(t *testing.T) {
 	})
 
 	t.Run("MetricCountExceedsLimit", func(t *testing.T) {
-
 		metricList := make([]interface{}, constants.MetricSetLimit+1)
 		for i := range metricList {
 			metricList[i] = struct{}{}

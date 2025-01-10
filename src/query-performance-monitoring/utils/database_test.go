@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"testing"
@@ -27,14 +28,16 @@ func (m *MockDataSource) QueryX(query string) (*sqlx.Rows, error) {
 	return args.Get(0).(*sqlx.Rows), args.Error(1)
 }
 
-//	func (m *MockDataSource) QueryxContext(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error) {
-//		callArgs := m.Called(ctx, query, args)
-//		return callArgs.Get(0).(*sqlx.Rows), callArgs.Error(1)
-//	}
 func (m *MockDataSource) QueryxContext(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error) {
 	args = m.Called(ctx, query, args).Get(0).([]interface{})
 	return args[0].(*sqlx.Rows), args[1].(error)
 }
+
+type TestMetric struct {
+	Column1 string
+}
+
+var errQuery = errors.New("query error")
 
 func TestGenerateDSN(t *testing.T) {
 	tests := []struct {
@@ -185,7 +188,7 @@ func TestDatabase_QueryxContext_Error(t *testing.T) {
 	database := &Database{source: sqlxDB}
 
 	query := "SELECT * FROM test_table"
-	mock.ExpectQuery("^SELECT \\* FROM test_table$").WillReturnError(fmt.Errorf("query error"))
+	mock.ExpectQuery("^SELECT \\* FROM test_table$").WillReturnError(fmt.Errorf("%w", errQuery))
 
 	ctx := context.Background()
 	_, err = database.QueryxContext(ctx, query)
@@ -225,10 +228,6 @@ func TestOpenDB(t *testing.T) {
 			}
 		})
 	}
-}
-
-type TestMetric struct {
-	Column1 string
 }
 
 func TestCollectMetrics(t *testing.T) {

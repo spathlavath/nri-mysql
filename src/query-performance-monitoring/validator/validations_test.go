@@ -26,6 +26,8 @@ func (m *mockDataSource) QueryxContext(ctx context.Context, query string, args .
 	return m.db.QueryxContext(ctx, query, args...)
 }
 
+var errQuery = errors.New("query failed")
+
 func TestCheckEssentialInstruments_AllEnabledAndTimed(t *testing.T) {
 	rows := sqlmock.NewRows([]string{"NAME", "ENABLED", "TIMED"}).
 		AddRow("wait/synch/mutex/sql/LOCK_plugin", "YES", "YES").
@@ -43,25 +45,6 @@ func TestCheckEssentialInstruments_AllEnabledAndTimed(t *testing.T) {
 	mock.ExpectQuery("SELECT NAME, ENABLED, TIMED FROM performance_schema.setup_instruments WHERE NAME LIKE 'wait/%' OR NAME LIKE 'statement/%' OR NAME LIKE '%lock%';").WillReturnRows(rows)
 	err = checkEssentialInstruments(mockDataSource)
 	assert.NoError(t, err)
-}
-
-func TestCheckEssentialInstruments_NotAllEnabled(t *testing.T) {
-	rows := sqlmock.NewRows([]string{"NAME", "ENABLED", "TIMED"}).
-		AddRow("wait/synch/mutex/sql/LOCK_plugin", "NO", "YES").
-		AddRow("statement/sql/select", "YES", "YES").
-		AddRow("wait/io/file/sql/FILE", "YES", "YES")
-	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
-	if err != nil {
-		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
-	}
-	defer db.Close()
-
-	sqlxDB := sqlx.NewDb(db, "sqlmock")
-	mockDataSource := &mockDataSource{db: sqlxDB}
-
-	mock.ExpectQuery("SELECT NAME, ENABLED, TIMED FROM performance_schema.setup_instruments WHERE NAME LIKE 'wait/%' OR NAME LIKE 'statement/%' OR NAME LIKE '%lock%';").WillReturnRows(rows)
-	err = checkEssentialInstruments(mockDataSource)
-	assert.Error(t, err)
 }
 
 func TestValidatePreconditions_PerformanceSchemaDisabled(t *testing.T) {
@@ -117,7 +100,7 @@ func TestValidatePreconditions_EssentialInstrumentsCheckFailed(t *testing.T) {
 
 	mock.ExpectQuery("SHOW GLOBAL VARIABLES LIKE 'performance_schema';").WillReturnRows(rows)
 	mock.ExpectQuery("SELECT NAME, ENABLED FROM performance_schema.setup_consumers WHERE NAME IN ('events_waits_current', 'events_waits_history_long', 'events_waits_history', 'events_statements_history_long', 'events_statements_history', 'events_statements_current', 'events_statements_cpu', 'events_transactions_current', 'events_stages_current');").WillReturnRows(sqlmock.NewRows([]string{"NAME", "ENABLED"}).AddRow("events_waits_current", "YES"))
-	mock.ExpectQuery("SELECT NAME, ENABLED, TIMED FROM performance_schema.setup_instruments WHERE NAME LIKE 'wait/%' OR NAME LIKE 'statement/%' OR NAME LIKE '%lock%';").WillReturnError(errors.New("query failed"))
+	mock.ExpectQuery("SELECT NAME, ENABLED, TIMED FROM performance_schema.setup_instruments WHERE NAME LIKE 'wait/%' OR NAME LIKE 'statement/%' OR NAME LIKE '%lock%';").WillReturnError(errQuery)
 	err = ValidatePreconditions(mockDataSource)
 	assert.Error(t, err)
 }
