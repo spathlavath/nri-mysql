@@ -81,7 +81,7 @@ func TestValidatePreconditions_EssentialConsumersCheckFailed(t *testing.T) {
 	mockDataSource := &mockDataSource{db: sqlxDB}
 
 	mock.ExpectQuery("SHOW GLOBAL VARIABLES LIKE 'performance_schema';").WillReturnRows(rows)
-	mock.ExpectQuery("SELECT NAME, ENABLED FROM performance_schema.setup_consumers WHERE NAME IN ('events_waits_current', 'events_waits_history_long', 'events_waits_history', 'events_statements_history_long', 'events_statements_history', 'events_statements_current', 'events_statements_cpu', 'events_transactions_current', 'events_stages_current');").WillReturnError(errors.New("query failed"))
+	mock.ExpectQuery("SELECT NAME, ENABLED FROM performance_schema.setup_consumers WHERE NAME IN ('events_waits_current', 'events_waits_history_long', 'events_waits_history', 'events_statements_history_long', 'events_statements_history', 'events_statements_current', 'events_statements_cpu', 'events_transactions_current', 'events_stages_current');").WillReturnError(errQuery)
 	err = ValidatePreconditions(mockDataSource)
 	assert.Error(t, err)
 }
