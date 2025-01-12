@@ -125,6 +125,7 @@ const (
 			FROM performance_schema.events_statements_current
 			WHERE CURRENT_SCHEMA NOT IN (?)
 			AND SQL_TEXT RLIKE '^(SELECT|INSERT|UPDATE|DELETE|WITH)'
+			AND DIGEST_TEXT NOT LIKE '%DIGEST_TEXT%'
 			UNION ALL
 			SELECT DISTINCT
 				THREAD_ID,
@@ -135,6 +136,7 @@ const (
 			FROM performance_schema.events_statements_history
 			WHERE CURRENT_SCHEMA NOT IN (?)
 			AND SQL_TEXT RLIKE '^(SELECT|INSERT|UPDATE|DELETE|WITH)'
+			AND DIGEST_TEXT NOT LIKE '%DIGEST_TEXT%'
 		)
 		SELECT
 			schema_data.DIGEST AS query_id,
