@@ -6,7 +6,6 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
-	"github.com/newrelic/nri-mysql/src/args"
 	arguments "github.com/newrelic/nri-mysql/src/args"
 
 	"github.com/newrelic/nri-mysql/src/query-performance-monitoring/utils"
@@ -34,17 +33,13 @@ func (m *MockDataSource) Close() {
 // Uint64Ptr returns a pointer to the uint64 value passed in.
 
 func Uint64Ptr(i uint64) *uint64 {
-
 	return &i
-
 }
 
 // StringPtr returns a pointer to the string value passed in.
 
 func StringPtr(s string) *string {
-
 	return &s
-
 }
 
 // QueryxContext is a mock implementation of the QueryxContext method.
@@ -101,7 +96,7 @@ func TestExtractMetricsFromJSONString(t *testing.T) {
 func TestSetExecutionPlanMetrics(t *testing.T) {
 	mockIntegration := new(MockIntegration)
 	mockIntegration.Integration, _ = integration.New("test", "1.0.0") // Properly initialize the Integration field
-	mockArgs := args.ArgumentList{}
+	mockArgs := arguments.ArgumentList{}
 
 	t.Run("Successful Ingestion", func(t *testing.T) {
 		metrics := []utils.QueryPlanMetrics{
