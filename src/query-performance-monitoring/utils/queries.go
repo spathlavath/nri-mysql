@@ -156,7 +156,7 @@ const (
 			END AS wait_category,
 			ROUND(SUM(wait_data.TIMER_WAIT) / 1000000000, 3) AS total_wait_time_ms,
 			COUNT(DISTINCT wait_data.instance_id) AS wait_event_count,
-			ROUND(AVG(wait_data.TIMER_WAIT) / 1000000000, 3) AS avg_wait_time_ms,
+			ROUND(SUM(wait_data.TIMER_WAIT) / 1000000000 / COUNT(DISTINCT wait_data.instance_id), 3) AS avg_wait_time_ms,
 			CASE
 				WHEN CHAR_LENGTH(schema_data.query_text) > 4000 THEN CONCAT(LEFT(schema_data.query_text, 3997), '...')
 				ELSE schema_data.query_text
