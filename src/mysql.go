@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/newrelic/go-agent/v3/newrelic"
 	arguments "github.com/newrelic/nri-mysql/src/args"
 	queryperformancemonitoring "github.com/newrelic/nri-mysql/src/query-performance-monitoring"
 )
@@ -77,6 +78,14 @@ func createNodeEntity(
 }
 
 func main() {
+	app, err := newrelic.NewApplication(
+		newrelic.ConfigAppName("nri-mysql"),
+		newrelic.ConfigLicense("dacf7d740407774b3c079e3a520ca57bFFFFNRAL"),
+		newrelic.ConfigAppLogForwardingEnabled(true),
+	)
+	if err != nil {
+		fmt.Println("error creating app:", err)
+	}
 	i, err := integration.New(integrationName, integrationVersion, integration.Args(&args))
 	fatalIfErr(err)
 
@@ -121,7 +130,7 @@ func main() {
 	fatalIfErr(i.Publish())
 
 	if args.EnableQueryPerformance {
-		queryperformancemonitoring.PopulateQueryPerformanceMetrics(args, e, i)
+		queryperformancemonitoring.PopulateQueryPerformanceMetrics(args, e, i, app)
 	}
 }
 
