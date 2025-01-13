@@ -9,6 +9,7 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
+	_ "github.com/newrelic/go-agent/v3/integrations/nrmysql"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	arguments "github.com/newrelic/nri-mysql/src/args"
 	constants "github.com/newrelic/nri-mysql/src/query-performance-monitoring/constants"
@@ -25,7 +26,7 @@ type Database struct {
 }
 
 func OpenDB(dsn string) (DataSource, error) {
-	source, err := sqlx.Open("mysql", dsn)
+	source, err := sqlx.Open("nrmysql", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("error opening DSN: %w", err)
 	}

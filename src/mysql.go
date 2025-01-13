@@ -82,12 +82,12 @@ func main() {
 	fatalIfErr(err)
 
 	app, err := newrelic.NewApplication(
-		newrelic.ConfigAppName("nri-mysql-v3"),
+		newrelic.ConfigAppName("nri-mysql-go-agent"),
 		newrelic.ConfigLicense(args.LicenseKey),
 		newrelic.ConfigAppLogForwardingEnabled(true),
 	)
 	if err != nil {
-		fmt.Println("error creating app:", err)
+		fatalIfErr(err)
 	}
 
 	if args.ShowVersion {

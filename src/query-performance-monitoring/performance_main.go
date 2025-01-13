@@ -2,6 +2,7 @@ package queryperformancemonitoring
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/newrelic/go-agent/v3/newrelic"
@@ -37,10 +38,24 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 	// Populate metrics for slow queries
 	start := time.Now()
 	txn := app.StartTransaction("MysqlSlowQueriesSample")
+	defer txn.End()
+
+	// Wrap database calls in Datastore Segments
+	segment := newrelic.DatastoreSegment{
+		StartTime:          txn.StartSegmentNow(),
+		Product:            newrelic.DatastoreMySQL,
+		Collection:         "performance_schema.events_statements_summary_by_digest", // Appropriate table/collection
+		Operation:          "SELECT",
+		ParameterizedQuery: utils.SlowQueries, // The query being executed
+		Host:               args.Hostname,
+		PortPathOrID:       strconv.Itoa(args.Port),
+		DatabaseName:       args.Database,
+	}
+
 	log.Debug("Beginning to retrieve slow query metrics")
 	queryIDList := performancemetricscollectors.PopulateSlowQueryMetrics(i, e, db, args, excludedDatabases)
 	log.Debug("Completed fetching slow query metrics in %v", time.Since(start))
-	defer txn.End()
+	segment.End()
 
 	if len(queryIDList) > 0 {
 		// Populate metrics for individual queries

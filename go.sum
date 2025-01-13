@@ -20,6 +20,8 @@ github.com/mattn/go-sqlite3 v1.14.22 h1:2gZY6PC6kBnID23Tichd1K+Z0oS6nE/XwU+Vz/5o
 github.com/mattn/go-sqlite3 v1.14.22/go.mod h1:Uh1q+B4BYcTPb+yiD3kU8Ct7aC0hY9fxUwlHK0RXw+Y=
 github.com/newrelic/go-agent/v3 v3.35.1 h1:N43qBNDILmnwLDCSfnE1yy6adyoVEU95nAOtdUgG4vA=
 github.com/newrelic/go-agent/v3 v3.35.1/go.mod h1:GNTda53CohAhkgsc7/gqSsJhDZjj8vaky5u+vKz7wqM=
+github.com/newrelic/go-agent/v3/integrations/nrmysql v1.2.2 h1:JtaJdL4y1hj5mH0JA2XIIIZtOsivsCmG0wsp3cGtoNo=
+github.com/newrelic/go-agent/v3/integrations/nrmysql v1.2.2/go.mod h1:0JZ1gqlaBi9FUrQsg9LLZR357oDH4fGYYTbQQPhOd8o=
 github.com/newrelic/infra-integrations-sdk/v3 v3.9.1 h1:dCtVLsYNHWTQ5aAlAaHroomOUlqxlGTrdi6XTlvBDfI=
 github.com/newrelic/infra-integrations-sdk/v3 v3.9.1/go.mod h1:yPeidhcq9Cla0QDquGXH0KqvS2k9xtetFOD7aLA0Z8M=
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e h1:fD57ERR4JtEqsWbfPhv4DMiApHyliiK5xCTNVSPiaAs=
