@@ -86,6 +86,7 @@ func main() {
 		newrelic.ConfigAppName("nri-mysql-integration"),
 		newrelic.ConfigLicense(args.LicenseKey),
 		newrelic.ConfigAppLogForwardingEnabled(true),
+		newrelic.ConfigDistributedTracerEnabled(true),
 	)
 	if err != nil {
 		log.Error("Error creating new relic application: %s", err.Error())
