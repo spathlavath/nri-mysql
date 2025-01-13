@@ -80,7 +80,7 @@ func createNodeEntity(
 func main() {
 	app, err := newrelic.NewApplication(
 		newrelic.ConfigAppName("nri-mysql"),
-		newrelic.ConfigLicense("dacf7d740407774b3c079e3a520ca57bFFFFNRAL"),
+		newrelic.ConfigLicense(args.LicenseKey),
 		newrelic.ConfigAppLogForwardingEnabled(true),
 	)
 	if err != nil {
