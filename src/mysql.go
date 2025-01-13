@@ -82,7 +82,7 @@ func main() {
 	fatalIfErr(err)
 
 	app, err := newrelic.NewApplication(
-		newrelic.ConfigAppName("nri-mysql-v3"),
+		newrelic.ConfigAppName("nri-mysql-integration"),
 		newrelic.ConfigLicense(args.LicenseKey),
 		newrelic.ConfigAppLogForwardingEnabled(true),
 	)
