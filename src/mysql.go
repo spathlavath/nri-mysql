@@ -85,7 +85,7 @@ func main() {
 	app, err := newrelic.NewApplication(
 		newrelic.ConfigAppName("nri-mysql-integration"),
 		newrelic.ConfigLicense(args.LicenseKey),
-		newrelic.ConfigDebugLogger(os.Stdout),
+		newrelic.ConfigDebugLogger(os.Stderr),
 		newrelic.ConfigDatastoreRawQuery(true),
 		newrelic.ConfigDistributedTracerEnabled(true),
 	)

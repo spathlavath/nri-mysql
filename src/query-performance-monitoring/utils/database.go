@@ -108,7 +108,7 @@ func CollectMetrics[T any](app *newrelic.Application, db DataSource, preparedQue
 		_, err := newrelic.NewApplication(
 			newrelic.ConfigAppName("nri-mysql-integration"),
 			newrelic.ConfigLicense(mysql_apm.ArgsGlobal),
-			newrelic.ConfigDebugLogger(os.Stdout),
+			newrelic.ConfigDebugLogger(os.Stderr),
 			newrelic.ConfigDatastoreRawQuery(true),
 			newrelic.ConfigDistributedTracerEnabled(true),
 		)
