@@ -6,13 +6,16 @@ import (
 	"net"
 	"net/url"
 	"strconv"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/newrelic/go-agent/v3/integrations/nrmysql"
+	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	arguments "github.com/newrelic/nri-mysql/src/args"
 	constants "github.com/newrelic/nri-mysql/src/query-performance-monitoring/constants"
+	mysql_apm "github.com/newrelic/nri-mysql/src/query-performance-monitoring/mysql-apm"
 )
 
 type DataSource interface {
@@ -98,9 +101,41 @@ func determineDatabase(args arguments.ArgumentList, database string) string {
 }
 
 // collectMetrics collects metrics from the performance schema database
-func CollectMetrics[T any](db DataSource, preparedQuery string, preparedArgs ...interface{}) ([]T, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), constants.TimeoutDuration)
+func CollectMetrics[T any](app *newrelic.Application, db DataSource, preparedQuery string, preparedArgs ...interface{}) ([]T, error) {
+	// Initialize New Relic application
+	if app == nil {
+		_, err := newrelic.NewApplication(
+			newrelic.ConfigAppName("nri-mysql-integration"),
+			newrelic.ConfigLicense(mysql_apm.ArgsGlobal),
+			newrelic.ConfigAppLogForwardingEnabled(true),
+		)
+		if err != nil {
+			log.Error("Error creating new relic application: %s", err.Error())
+			return []T{}, err
+		}
+	}
+
+	waitErr := app.WaitForConnection(5 * time.Second)
+	if waitErr != nil {
+		log.Error("Error waiting for connection: %s", waitErr.Error())
+		return []T{}, waitErr
+	}
+
+	txn := app.StartTransaction("nrmysqlQuery")
+	defer txn.End()
+
+	ctx := newrelic.NewContext(context.Background(), txn)
+	ctx, cancel := context.WithTimeout(ctx, constants.TimeoutDuration)
 	defer cancel()
+
+	// Wrap database calls in Datastore Segments
+	segment := newrelic.DatastoreSegment{
+		StartTime:          txn.StartSegmentNow(),
+		Product:            newrelic.DatastoreMySQL,
+		Operation:          "SELECT",
+		ParameterizedQuery: preparedQuery, // The query being executed
+	}
+	defer segment.End()
 
 	rows, err := db.QueryxContext(ctx, preparedQuery, preparedArgs...)
 	if err != nil {

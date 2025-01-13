@@ -40,19 +40,18 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 	ctx := context.Background()
 	txn := app.StartTransaction("MysqlSlowQueriesSample")
 	ctx = newrelic.NewContext(ctx, txn)
-	defer txn.End()
-
 	log.Debug("Beginning to retrieve slow query metrics")
 	queryIDList := performancemetricscollectors.PopulateSlowQueryMetrics(ctx, i, e, db, args, excludedDatabases)
 	log.Debug("Completed fetching slow query metrics in %v", time.Since(start))
+	defer txn.End()
 
 	if len(queryIDList) > 0 {
 		// Populate metrics for individual queries
 		start = time.Now()
 		txn = app.StartTransaction("MysqlIndividualQueriesSample")
-		ctx = newrelic.NewContext(ctx, txn)
+		// ctx = newrelic.NewContext(ctx, txn)
 		log.Debug("Beginning to retrieve individual query metrics")
-		groupQueriesByDatabase := performancemetricscollectors.PopulateIndividualQueryDetails(ctx, db, queryIDList, i, e, args)
+		groupQueriesByDatabase := performancemetricscollectors.PopulateIndividualQueryDetails(app, db, queryIDList, i, e, args)
 		log.Debug("Completed fetching individual query metrics in %v", time.Since(start))
 		defer txn.End()
 
@@ -69,7 +68,7 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 	start = time.Now()
 	txn = app.StartTransaction("MysqlWaitEventsSample")
 	log.Debug("Beginning to retrieve wait event metrics")
-	performancemetricscollectors.PopulateWaitEventMetrics(db, i, e, args, excludedDatabases)
+	performancemetricscollectors.PopulateWaitEventMetrics(app, db, i, e, args, excludedDatabases)
 	log.Debug("Completed fetching wait event metrics in %v", time.Since(start))
 	defer txn.End()
 
@@ -77,7 +76,7 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 	start = time.Now()
 	txn = app.StartTransaction("MysqlBlockingSessionSample")
 	log.Debug("Beginning to retrieve blocking session metrics")
-	performancemetricscollectors.PopulateBlockingSessionMetrics(db, i, e, args, excludedDatabases)
+	performancemetricscollectors.PopulateBlockingSessionMetrics(app, db, i, e, args, excludedDatabases)
 	log.Debug("Completed fetching blocking session metrics in %v", time.Since(start))
 	log.Debug("Query analysis completed.")
 	defer txn.End()

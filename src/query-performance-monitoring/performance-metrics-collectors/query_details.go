@@ -45,7 +45,6 @@ func collectGroupedSlowQueryMetrics(cntx context.Context, db utils.DataSource, s
 	segment := newrelic.DatastoreSegment{
 		StartTime:          txn.StartSegmentNow(),
 		Product:            newrelic.DatastoreMySQL,
-		Collection:         "performance_schema.events_statements_summary_by_digest", // Appropriate table/collection
 		Operation:          "SELECT",
 		ParameterizedQuery: utils.SlowQueries, // The query being executed
 	}
@@ -104,20 +103,20 @@ func setSlowQueryMetrics(i *integration.Integration, metrics []utils.SlowQueryMe
 }
 
 // PopulateIndividualQueryDetails collects and sets individual query details
-func PopulateIndividualQueryDetails(ctx context.Context, db utils.DataSource, queryIDList []string, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList) []utils.QueryGroup {
-	currentQueryMetrics, currentQueryMetricsErr := currentQueryMetrics(ctx, db, queryIDList, args)
+func PopulateIndividualQueryDetails(app *newrelic.Application, db utils.DataSource, queryIDList []string, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList) []utils.QueryGroup {
+	currentQueryMetrics, currentQueryMetricsErr := currentQueryMetrics(app, db, queryIDList, args)
 	if currentQueryMetricsErr != nil {
 		log.Error("Failed to collect current query metrics: %v", currentQueryMetricsErr)
 		return nil
 	}
 
-	recentQueryList, recentQueryErr := recentQueryMetrics(ctx, db, queryIDList, args)
+	recentQueryList, recentQueryErr := recentQueryMetrics(app, db, queryIDList, args)
 	if recentQueryErr != nil {
 		log.Error("Failed to collect recent query metrics: %v", recentQueryErr)
 		return nil
 	}
 
-	extensiveQueryList, extensiveQueryErr := extensiveQueryMetrics(ctx, db, queryIDList, args)
+	extensiveQueryList, extensiveQueryErr := extensiveQueryMetrics(app, db, queryIDList, args)
 	if extensiveQueryErr != nil {
 		log.Error("Failed to collect history query metrics: %v", extensiveQueryErr)
 		return nil
@@ -167,8 +166,8 @@ func groupQueriesByDatabase(filteredList []utils.IndividualQueryMetrics) []utils
 }
 
 // currentQueryMetrics collects current query metrics from the performance schema database for the given query IDs
-func currentQueryMetrics(ctx context.Context, db utils.DataSource, queryIDList []string, args arguments.ArgumentList) ([]utils.IndividualQueryMetrics, error) {
-	metrics, err := collectIndividualQueryMetrics(ctx, db, queryIDList, utils.CurrentRunningQueriesSearch, args)
+func currentQueryMetrics(app *newrelic.Application, db utils.DataSource, queryIDList []string, args arguments.ArgumentList) ([]utils.IndividualQueryMetrics, error) {
+	metrics, err := collectIndividualQueryMetrics(app, db, queryIDList, utils.CurrentRunningQueriesSearch, args)
 	if err != nil {
 		return nil, err
 	}
@@ -177,8 +176,8 @@ func currentQueryMetrics(ctx context.Context, db utils.DataSource, queryIDList [
 }
 
 // recentQueryMetrics collects recent query metrics	from the performance schema	database for the given query IDs
-func recentQueryMetrics(ctx context.Context, db utils.DataSource, queryIDList []string, args arguments.ArgumentList) ([]utils.IndividualQueryMetrics, error) {
-	metrics, err := collectIndividualQueryMetrics(ctx, db, queryIDList, utils.RecentQueriesSearch, args)
+func recentQueryMetrics(app *newrelic.Application, db utils.DataSource, queryIDList []string, args arguments.ArgumentList) ([]utils.IndividualQueryMetrics, error) {
+	metrics, err := collectIndividualQueryMetrics(app, db, queryIDList, utils.RecentQueriesSearch, args)
 	if err != nil {
 		return nil, err
 	}
@@ -187,8 +186,8 @@ func recentQueryMetrics(ctx context.Context, db utils.DataSource, queryIDList []
 }
 
 // extensiveQueryMetrics collects extensive query metrics from the performance schema database for the given query IDs
-func extensiveQueryMetrics(ctx context.Context, db utils.DataSource, queryIDList []string, args arguments.ArgumentList) ([]utils.IndividualQueryMetrics, error) {
-	metrics, err := collectIndividualQueryMetrics(ctx, db, queryIDList, utils.PastQueriesSearch, args)
+func extensiveQueryMetrics(app *newrelic.Application, db utils.DataSource, queryIDList []string, args arguments.ArgumentList) ([]utils.IndividualQueryMetrics, error) {
+	metrics, err := collectIndividualQueryMetrics(app, db, queryIDList, utils.PastQueriesSearch, args)
 	if err != nil {
 		return nil, err
 	}
@@ -197,41 +196,27 @@ func extensiveQueryMetrics(ctx context.Context, db utils.DataSource, queryIDList
 }
 
 // collectIndividualQueryMetrics collects current query metrics from the performance schema database for the given query IDs
-func collectIndividualQueryMetrics(ctx context.Context, db utils.DataSource, queryIDList []string, queryString string, args arguments.ArgumentList) ([]utils.IndividualQueryMetrics, error) {
+func collectIndividualQueryMetrics(app *newrelic.Application, db utils.DataSource, queryIDList []string, queryString string, args arguments.ArgumentList) ([]utils.IndividualQueryMetrics, error) {
 	// Early exit if queryIDList is empty
 	if len(queryIDList) == 0 {
 		log.Warn("queryIDList is empty")
 		return []utils.IndividualQueryMetrics{}, nil
 	}
 
-	txn := newrelic.FromContext(ctx)
-	if txn == nil {
-		log.Error("Failed to get New Relic transaction from context")
-		return []utils.IndividualQueryMetrics{}, nil
-	}
-	// Wrap database calls in Datastore Segments
-	segment := newrelic.DatastoreSegment{
-		StartTime:          txn.StartSegmentNow(),
-		Product:            newrelic.DatastoreMySQL,
-		Operation:          "SELECT",
-		ParameterizedQuery: queryString, // The query being executed
-	}
-	defer segment.End()
-
 	var metricsList []utils.IndividualQueryMetrics
 
 	for _, queryID := range queryIDList {
 		// Combine queryID and thresholds into args
-		args := []interface{}{queryID, args.QueryResponseTimeThreshold, min(constants.IndividualQueryCountThreshold, args.QueryCountThreshold)}
+		inputArgs := []interface{}{queryID, args.QueryResponseTimeThreshold, min(constants.IndividualQueryCountThreshold, args.QueryCountThreshold)}
 
 		// Use sqlx.In to safely include the slices in the query
-		query, args, err := sqlx.In(queryString, args...)
+		query, preparedArgs, err := sqlx.In(queryString, inputArgs...)
 		if err != nil {
 			return []utils.IndividualQueryMetrics{}, err
 		}
 
 		// Collect the individual query metrics
-		metrics, err := utils.CollectMetrics[utils.IndividualQueryMetrics](db, query, args...)
+		metrics, err := utils.CollectMetrics[utils.IndividualQueryMetrics](app, db, query, preparedArgs...)
 		if err != nil {
 			return []utils.IndividualQueryMetrics{}, err
 		}
