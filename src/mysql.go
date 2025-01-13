@@ -78,6 +78,9 @@ func createNodeEntity(
 }
 
 func main() {
+	i, err := integration.New(integrationName, integrationVersion, integration.Args(&args))
+	fatalIfErr(err)
+
 	app, err := newrelic.NewApplication(
 		newrelic.ConfigAppName("nri-mysql"),
 		newrelic.ConfigLicense(args.LicenseKey),
@@ -86,8 +89,6 @@ func main() {
 	if err != nil {
 		fmt.Println("error creating app:", err)
 	}
-	i, err := integration.New(integrationName, integrationVersion, integration.Args(&args))
-	fatalIfErr(err)
 
 	if args.ShowVersion {
 		fmt.Printf(
