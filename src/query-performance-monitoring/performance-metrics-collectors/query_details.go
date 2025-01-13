@@ -36,19 +36,19 @@ func PopulateSlowQueryMetrics(ctx context.Context, i *integration.Integration, e
 
 // collectGroupedSlowQueryMetrics collects metrics from the performance schema database for slow queries
 func collectGroupedSlowQueryMetrics(cntx context.Context, db utils.DataSource, slowQueryfetchInterval int, queryCountThreshold int, excludedDatabases []string) ([]utils.SlowQueryMetrics, []string, error) {
-	// txn := newrelic.FromContext(cntx)
-	// if txn == nil {
-	// 	log.Error("Failed to get New Relic transaction from context")
-	// 	return nil, []string{}, nil
-	// }
-	// // Wrap database calls in Datastore Segments
-	// segment := newrelic.DatastoreSegment{
-	// 	StartTime:          txn.StartSegmentNow(),
-	// 	Product:            newrelic.DatastoreMySQL,
-	// 	Operation:          "SELECT",
-	// 	ParameterizedQuery: utils.SlowQueries, // The query being executed
-	// }
-	// defer segment.End()
+	txn := newrelic.FromContext(cntx)
+	if txn == nil {
+		log.Error("Failed to get New Relic transaction from context")
+		return nil, []string{}, nil
+	}
+	// Wrap database calls in Datastore Segments
+	segment := newrelic.DatastoreSegment{
+		StartTime:          txn.StartSegmentNow(),
+		Product:            newrelic.DatastoreMySQL,
+		Operation:          "SELECT",
+		ParameterizedQuery: utils.SlowQueries, // The query being executed
+	}
+	defer segment.End()
 
 	// Prepare the SQL query with the provided parameters
 	query, args, err := sqlx.In(utils.SlowQueries, slowQueryfetchInterval, excludedDatabases, min(queryCountThreshold, constants.MaxQueryCountThreshold))
