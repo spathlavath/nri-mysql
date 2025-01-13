@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	_ "github.com/go-sql-driver/mysql"
-	_ "github.com/newrelic/go-agent/v3/integrations/nrmysql"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 )
 
@@ -19,7 +18,7 @@ type database struct {
 }
 
 func openDB(dsn string) (dataSource, error) {
-	source, err := sql.Open("nrmysql", dsn)
+	source, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("error opening %s: %v", dsn, err)
 	}
