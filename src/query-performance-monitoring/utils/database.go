@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"os"
 	"strconv"
 	"time"
 
@@ -107,7 +108,9 @@ func CollectMetrics[T any](app *newrelic.Application, db DataSource, preparedQue
 		_, err := newrelic.NewApplication(
 			newrelic.ConfigAppName("nri-mysql-integration"),
 			newrelic.ConfigLicense(mysql_apm.ArgsGlobal),
-			newrelic.ConfigAppLogForwardingEnabled(true),
+			newrelic.ConfigDebugLogger(os.Stdout),
+			newrelic.ConfigDatastoreRawQuery(true),
+			newrelic.ConfigDistributedTracerEnabled(true),
 		)
 		if err != nil {
 			log.Error("Error creating new relic application: %s", err.Error())
