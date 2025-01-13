@@ -1,7 +1,6 @@
 package queryperformancemonitoring
 
 import (
-	"context"
 	"fmt"
 	"time"
 
@@ -37,11 +36,11 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 
 	// Populate metrics for slow queries
 	start := time.Now()
-	ctx := context.Background()
+	// ctx := context.Background()
 	txn := app.StartTransaction("MysqlSlowQueriesSample")
-	ctx = newrelic.NewContext(ctx, txn)
+	// ctx = newrelic.NewContext(ctx, txn)
 	log.Debug("Beginning to retrieve slow query metrics")
-	queryIDList := performancemetricscollectors.PopulateSlowQueryMetrics(ctx, i, e, db, args, excludedDatabases)
+	queryIDList := performancemetricscollectors.PopulateSlowQueryMetrics(i, e, db, args, excludedDatabases)
 	log.Debug("Completed fetching slow query metrics in %v", time.Since(start))
 	defer txn.End()
 
