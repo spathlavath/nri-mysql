@@ -48,36 +48,36 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 	if len(queryIDList) > 0 {
 		// Populate metrics for individual queries
 		start = time.Now()
-		txn = app.StartTransaction("MysqlIndividualQueriesSample")
+		IndividualTxn := app.StartTransaction("MysqlIndividualQueriesSample")
 		// ctx = newrelic.NewContext(ctx, txn)
 		log.Debug("Beginning to retrieve individual query metrics")
 		groupQueriesByDatabase := performancemetricscollectors.PopulateIndividualQueryDetails(app, db, queryIDList, i, e, args)
 		log.Debug("Completed fetching individual query metrics in %v", time.Since(start))
-		defer txn.End()
+		defer IndividualTxn.End()
 
 		// Populate execution plan details
 		start = time.Now()
-		txn = app.StartTransaction("MysqlQueryExecutionSample")
+		execPlanTxn := app.StartTransaction("MysqlQueryExecutionSample")
 		log.Debug("Beginning to retrieve query execution plan metrics")
 		performancemetricscollectors.PopulateExecutionPlans(db, groupQueriesByDatabase, i, e, args)
 		log.Debug("Completed fetching query execution plan metrics in %v", time.Since(start))
-		defer txn.End()
+		defer execPlanTxn.End()
 	}
 
 	// Populate wait event metrics
 	start = time.Now()
-	txn = app.StartTransaction("MysqlWaitEventsSample")
+	waitEventsTxn := app.StartTransaction("MysqlWaitEventsSample")
 	log.Debug("Beginning to retrieve wait event metrics")
 	performancemetricscollectors.PopulateWaitEventMetrics(app, db, i, e, args, excludedDatabases)
 	log.Debug("Completed fetching wait event metrics in %v", time.Since(start))
-	defer txn.End()
+	defer waitEventsTxn.End()
 
 	// Populate blocking session metrics
 	start = time.Now()
-	txn = app.StartTransaction("MysqlBlockingSessionSample")
+	blockingSessionsTxn := app.StartTransaction("MysqlBlockingSessionSample")
 	log.Debug("Beginning to retrieve blocking session metrics")
 	performancemetricscollectors.PopulateBlockingSessionMetrics(app, db, i, e, args, excludedDatabases)
 	log.Debug("Completed fetching blocking session metrics in %v", time.Since(start))
 	log.Debug("Query analysis completed.")
-	defer txn.End()
+	defer blockingSessionsTxn.End()
 }
