@@ -61,7 +61,8 @@ func fatalIfErr(err error) {
 func (db *Database) QueryxContext(app *newrelic.Application, ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error) {
 	// Initialize New Relic application
 	if app == nil {
-		_, err := newrelic.NewApplication(
+		var err error
+		app, err = newrelic.NewApplication(
 			newrelic.ConfigAppName("nri-mysql-integration"),
 			newrelic.ConfigLicense(mysql_apm.ArgsGlobal),
 			newrelic.ConfigDebugLogger(os.Stdout),
