@@ -16,10 +16,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/newrelic/go-agent/v3/newrelic"
+	// "github.com/newrelic/go-agent/v3/newrelic"
 	arguments "github.com/newrelic/nri-mysql/src/args"
 	queryperformancemonitoring "github.com/newrelic/nri-mysql/src/query-performance-monitoring"
-	mysql_apm "github.com/newrelic/nri-mysql/src/query-performance-monitoring/mysql-apm"
+	// mysql_apm "github.com/newrelic/nri-mysql/src/query-performance-monitoring/mysql-apm"
 )
 
 const (
@@ -81,25 +81,25 @@ func createNodeEntity(
 func main() {
 	i, err := integration.New(integrationName, integrationVersion, integration.Args(&args))
 	fatalIfErr(err)
-	mysql_apm.ArgsGlobal = args.LicenseKey
-	app, err := newrelic.NewApplication(
-		newrelic.ConfigAppName("nri-mysql-integration"),
-		newrelic.ConfigLicense(args.LicenseKey),
-		newrelic.ConfigDebugLogger(os.Stderr),
-		newrelic.ConfigDatastoreRawQuery(true),
-	)
-	if err != nil {
-		log.Error("Error creating new relic application: %s", err.Error())
-	}
+	// mysql_apm.ArgsGlobal = args.LicenseKey
+	// app, err := newrelic.NewApplication(
+	// 	newrelic.ConfigAppName("nri-mysql-integration"),
+	// 	newrelic.ConfigLicense(args.LicenseKey),
+	// 	newrelic.ConfigDebugLogger(os.Stderr),
+	// 	newrelic.ConfigDatastoreRawQuery(true),
+	// )
+	// if err != nil {
+	// 	log.Error("Error creating new relic application: %s", err.Error())
+	// }
 
-	mysql_apm.NewrelicApp = *app
+	// mysql_apm.NewrelicApp = *app
 
-	txn := app.StartTransaction("test_performance_monitoring")
-	defer txn.End()
-	if err != nil {
-		log.Error(err.Error())
-		os.Exit(1)
-	}
+	// txn := app.StartTransaction("performance_monitoring")
+	// defer txn.End()
+	// if err != nil {
+	// 	log.Error(err.Error())
+	// 	os.Exit(1)
+	// }
 
 	if args.ShowVersion {
 		fmt.Printf(
@@ -142,7 +142,7 @@ func main() {
 	fatalIfErr(i.Publish())
 
 	if args.EnableQueryPerformance {
-		queryperformancemonitoring.PopulateQueryPerformanceMetrics(args, e, i, app)
+		queryperformancemonitoring.PopulateQueryPerformanceMetrics(args, e, i)
 	}
 }
 

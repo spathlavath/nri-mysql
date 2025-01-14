@@ -2,21 +2,42 @@ package queryperformancemonitoring
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	arguments "github.com/newrelic/nri-mysql/src/args"
+	mysql_apm "github.com/newrelic/nri-mysql/src/query-performance-monitoring/mysql-apm"
 	performancemetricscollectors "github.com/newrelic/nri-mysql/src/query-performance-monitoring/performance-metrics-collectors"
 	utils "github.com/newrelic/nri-mysql/src/query-performance-monitoring/utils"
 	validator "github.com/newrelic/nri-mysql/src/query-performance-monitoring/validator"
 )
 
 // main
-func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration.Entity, i *integration.Integration, app *newrelic.Application) {
+func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration.Entity, i *integration.Integration) {
 	var database string
 
+	mysql_apm.ArgsGlobal = args.LicenseKey
+	app, err := newrelic.NewApplication(
+		newrelic.ConfigAppName("nri-mysql-integration"),
+		newrelic.ConfigLicense(args.LicenseKey),
+		newrelic.ConfigDebugLogger(os.Stderr),
+		newrelic.ConfigDatastoreRawQuery(true),
+	)
+	if err != nil {
+		log.Error("Error creating new relic application: %s", err.Error())
+	}
+
+	mysql_apm.NewrelicApp = *app
+
+	txn := app.StartTransaction("performance_monitoring")
+	defer txn.End()
+	if err != nil {
+		log.Error(err.Error())
+		os.Exit(1)
+	}
 	// Generate Data Source Name (DSN) for database connection
 	dsn := utils.GenerateDSN(args, database)
 
@@ -36,11 +57,11 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 
 	// Populate metrics for slow queries
 	start := time.Now()
-	txn := app.StartTransaction("MysqlSlowQueriesSample")
+	slowQueriesTxn := app.StartTransaction("MysqlSlowQueriesSample")
 	log.Debug("Beginning to retrieve slow query metrics")
 	queryIDList := performancemetricscollectors.PopulateSlowQueryMetrics(app, i, e, db, args, excludedDatabases)
 	log.Debug("Completed fetching slow query metrics in %v", time.Since(start))
-	defer txn.End()
+	defer slowQueriesTxn.End()
 
 	if len(queryIDList) > 0 {
 		// Populate metrics for individual queries
