@@ -30,7 +30,13 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 		log.Error("Error creating new relic application: %s", err.Error())
 	}
 
-	mysql_apm.NewrelicApp = *app
+	// Log application connection status
+	if app != nil {
+		log.Debug("New Relic application initialized successfully")
+		mysql_apm.NewrelicApp = *app
+	} else {
+		log.Error("New Relic application initialization failed")
+	}
 
 	var txn *newrelic.Transaction
 	for i := 0; i < 3; i++ { // Retry up to 3 times
