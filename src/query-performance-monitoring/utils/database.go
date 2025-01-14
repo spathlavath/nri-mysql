@@ -15,7 +15,7 @@ import (
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	arguments "github.com/newrelic/nri-mysql/src/args"
 	constants "github.com/newrelic/nri-mysql/src/query-performance-monitoring/constants"
-	mysql_apm "github.com/newrelic/nri-mysql/src/query-performance-monitoring/mysql-apm"
+	mysqlapm "github.com/newrelic/nri-mysql/src/query-performance-monitoring/mysql-apm"
 )
 
 type DataSource interface {
@@ -64,7 +64,7 @@ func (db *Database) QueryxContext(app *newrelic.Application, ctx context.Context
 		var err error
 		app, err = newrelic.NewApplication(
 			newrelic.ConfigAppName("nri-mysql-integration"),
-			newrelic.ConfigLicense(mysql_apm.ArgsGlobal),
+			newrelic.ConfigLicense(mysqlapm.ArgsGlobal),
 			newrelic.ConfigDebugLogger(os.Stdout),
 			newrelic.ConfigDatastoreRawQuery(true),
 		)
@@ -79,12 +79,11 @@ func (db *Database) QueryxContext(app *newrelic.Application, ctx context.Context
 		return nil, waitErr
 	}
 
-	txn := app.StartTransaction("nrmysqlQuery")
-	ctx = newrelic.NewContext(ctx, txn)
+	ctx = newrelic.NewContext(ctx, mysqlapm.Txn)
 	s := newrelic.DatastoreSegment{
-		StartTime: txn.StartSegmentNow(),
-		Product:   newrelic.DatastoreMySQL,
-		Operation: "SELECT",
+		StartTime:          mysqlapm.Txn.StartSegmentNow(),
+		Product:            newrelic.DatastoreMySQL,
+		Operation:          "SELECT",
 		ParameterizedQuery: query,
 	}
 	defer s.End()
