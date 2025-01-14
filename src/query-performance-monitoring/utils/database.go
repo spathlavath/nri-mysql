@@ -81,6 +81,13 @@ func (db *Database) QueryxContext(app *newrelic.Application, ctx context.Context
 
 	txn := app.StartTransaction("nrmysqlQuery")
 	ctx = newrelic.NewContext(ctx, txn)
+	s := newrelic.DatastoreSegment{
+		StartTime: txn.StartSegmentNow(),
+		Product:   newrelic.DatastoreMySQL,
+		Operation: "SELECT",
+		ParameterizedQuery: query,
+	}
+	defer s.End()
 	return db.source.QueryxContext(ctx, query, args...)
 }
 
