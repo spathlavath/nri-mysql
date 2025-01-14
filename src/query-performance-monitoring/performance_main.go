@@ -9,7 +9,7 @@ import (
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	arguments "github.com/newrelic/nri-mysql/src/args"
-	mysql_apm "github.com/newrelic/nri-mysql/src/query-performance-monitoring/mysql-apm"
+	mysqlapm "github.com/newrelic/nri-mysql/src/query-performance-monitoring/mysql-apm"
 	performancemetricscollectors "github.com/newrelic/nri-mysql/src/query-performance-monitoring/performance-metrics-collectors"
 	utils "github.com/newrelic/nri-mysql/src/query-performance-monitoring/utils"
 	validator "github.com/newrelic/nri-mysql/src/query-performance-monitoring/validator"
@@ -19,16 +19,19 @@ import (
 func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration.Entity, i *integration.Integration) {
 	var database string
 
-	mysql_apm.ArgsGlobal = args.LicenseKey
+	mysqlapm.ArgsGlobal = args.LicenseKey
 	app, err := newrelic.NewApplication(
-		newrelic.ConfigAppName("nri-mysql-integration"),
+		newrelic.ConfigAppName("MySQLSecurity"),
 		newrelic.ConfigLicense(args.LicenseKey),
 		newrelic.ConfigDebugLogger(os.Stdout),
 		newrelic.ConfigDatastoreRawQuery(true),
+		newrelic.ConfigAppLogForwardingEnabled(true),
 	)
+
 	if err != nil {
 		log.Error("Error creating new relic application: %s", err.Error())
 	}
+
 	defer app.Shutdown(10 * time.Second)
 
 	// Ensure the application is connected
@@ -40,7 +43,7 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 	// Log application connection status
 	if app != nil {
 		log.Debug("New Relic application initialized successfully")
-		mysql_apm.NewrelicApp = *app
+		mysqlapm.NewrelicApp = *app
 	} else {
 		log.Error("New Relic application initialization failed")
 	}
@@ -53,13 +56,11 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 	utils.FatalIfErr(err)
 	defer db.Close()
 
-	preCheckTxn := app.StartTransaction("MysqlSlowQueriesSample")
 	// Validate preconditions before proceeding
 	preValidationErr := validator.ValidatePreconditions(db)
 	if preValidationErr != nil {
 		utils.FatalIfErr(fmt.Errorf("preconditions failed: %w", preValidationErr))
 	}
-	preCheckTxn.End()
 
 	// Get the list of unique excluded databases
 	excludedDatabases := utils.GetExcludedDatabases(args.ExcludedDatabases)
@@ -72,6 +73,7 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 		log.Error("Failed to start New Relic transaction for slow queries")
 		return
 	}
+	mysqlapm.Txn = slowQueriesTxn
 	log.Debug("Beginning to retrieve slow query metrics")
 	queryIDList := performancemetricscollectors.PopulateSlowQueryMetrics(app, i, e, db, args, excludedDatabases)
 	log.Debug("Completed fetching slow query metrics in %v", time.Since(start))
@@ -84,6 +86,7 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 			log.Error("Failed to start New Relic transaction for individual queries")
 			return
 		}
+		mysqlapm.Txn = individualTxn
 		log.Debug("Beginning to retrieve individual query metrics")
 		groupQueriesByDatabase := performancemetricscollectors.PopulateIndividualQueryDetails(app, db, queryIDList, i, e, args)
 		log.Debug("Completed fetching individual query metrics in %v", time.Since(start))
@@ -96,6 +99,7 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 			log.Error("Failed to start New Relic transaction for query execution plans")
 			return
 		}
+		mysqlapm.Txn = execPlanTxn
 		log.Debug("Beginning to retrieve query execution plan metrics")
 		performancemetricscollectors.PopulateExecutionPlans(app, db, groupQueriesByDatabase, i, e, args)
 		log.Debug("Completed fetching query execution plan metrics in %v", time.Since(start))
@@ -109,6 +113,7 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 		log.Error("Failed to start New Relic transaction for wait events")
 		return
 	}
+	mysqlapm.Txn = waitEventsTxn
 	log.Debug("Beginning to retrieve wait event metrics")
 	performancemetricscollectors.PopulateWaitEventMetrics(app, db, i, e, args, excludedDatabases)
 	log.Debug("Completed fetching wait event metrics in %v", time.Since(start))
@@ -121,6 +126,7 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 		log.Error("Failed to start New Relic transaction for blocking sessions")
 		return
 	}
+	mysqlapm.Txn = blockingSessionsTxn
 	log.Debug("Beginning to retrieve blocking session metrics")
 	performancemetricscollectors.PopulateBlockingSessionMetrics(app, db, i, e, args, excludedDatabases)
 	log.Debug("Completed fetching blocking session metrics in %v", time.Since(start))
