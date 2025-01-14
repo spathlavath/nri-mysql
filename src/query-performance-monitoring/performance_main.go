@@ -23,7 +23,7 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 	app, err := newrelic.NewApplication(
 		newrelic.ConfigAppName("nri-mysql-integration"),
 		newrelic.ConfigLicense(args.LicenseKey),
-		newrelic.ConfigDebugLogger(os.Stderr),
+		newrelic.ConfigDebugLogger(os.Stdout),
 		newrelic.ConfigDatastoreRawQuery(true),
 	)
 	if err != nil {

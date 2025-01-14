@@ -64,7 +64,7 @@ func (db *Database) QueryxContext(app *newrelic.Application, ctx context.Context
 		_, err := newrelic.NewApplication(
 			newrelic.ConfigAppName("nri-mysql-integration"),
 			newrelic.ConfigLicense(mysql_apm.ArgsGlobal),
-			newrelic.ConfigDebugLogger(os.Stderr),
+			newrelic.ConfigDebugLogger(os.Stdout),
 			newrelic.ConfigDatastoreRawQuery(true),
 		)
 		if err != nil {
