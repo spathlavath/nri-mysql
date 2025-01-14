@@ -21,7 +21,7 @@ import (
 type DataSource interface {
 	Close()
 	QueryX(string) (*sqlx.Rows, error)
-	QueryxContext(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error)
+	QueryxContext(app *newrelic.Application, ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error)
 }
 
 type Database struct {
@@ -58,7 +58,28 @@ func fatalIfErr(err error) {
 }
 
 // QueryxContext method implementation
-func (db *Database) QueryxContext(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error) {
+func (db *Database) QueryxContext(app *newrelic.Application, ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error) {
+	// Initialize New Relic application
+	if app == nil {
+		_, err := newrelic.NewApplication(
+			newrelic.ConfigAppName("nri-mysql-integration"),
+			newrelic.ConfigLicense(mysql_apm.ArgsGlobal),
+			newrelic.ConfigDebugLogger(os.Stderr),
+			newrelic.ConfigDatastoreRawQuery(true),
+		)
+		if err != nil {
+			log.Error("Error creating new relic application: %s", err.Error())
+			return nil, err
+		}
+	}
+	waitErr := app.WaitForConnection(5 * time.Second)
+	if waitErr != nil {
+		log.Error("Error waiting for connection: %s", waitErr.Error())
+		return nil, waitErr
+	}
+
+	txn := app.StartTransaction("nrmysqlQuery")
+	ctx = newrelic.NewContext(ctx, txn)
 	return db.source.QueryxContext(ctx, query, args...)
 }
 
@@ -102,43 +123,10 @@ func determineDatabase(args arguments.ArgumentList, database string) string {
 
 // collectMetrics collects metrics from the performance schema database
 func CollectMetrics[T any](app *newrelic.Application, db DataSource, preparedQuery string, preparedArgs ...interface{}) ([]T, error) {
-	// Initialize New Relic application
-	if app == nil {
-		_, err := newrelic.NewApplication(
-			newrelic.ConfigAppName("nri-mysql-integration"),
-			newrelic.ConfigLicense(mysql_apm.ArgsGlobal),
-			newrelic.ConfigDebugLogger(os.Stderr),
-			newrelic.ConfigDatastoreRawQuery(true),
-		)
-		if err != nil {
-			log.Error("Error creating new relic application: %s", err.Error())
-			return []T{}, err
-		}
-	}
-
-	waitErr := app.WaitForConnection(5 * time.Second)
-	if waitErr != nil {
-		log.Error("Error waiting for connection: %s", waitErr.Error())
-		return []T{}, waitErr
-	}
-
-	txn := app.StartTransaction("nrmysqlQuery")
-	defer txn.End()
-
-	ctx := newrelic.NewContext(context.Background(), txn)
-	ctx, cancel := context.WithTimeout(ctx, constants.TimeoutDuration)
+	ctx, cancel := context.WithTimeout(context.Background(), constants.TimeoutDuration)
 	defer cancel()
 
-	// Wrap database calls in Datastore Segments
-	segment := newrelic.DatastoreSegment{
-		StartTime:          txn.StartSegmentNow(),
-		Product:            newrelic.DatastoreMySQL,
-		Operation:          "SELECT",
-		ParameterizedQuery: preparedQuery, // The query being executed
-	}
-	defer segment.End()
-
-	rows, err := db.QueryxContext(ctx, preparedQuery, preparedArgs...)
+	rows, err := db.QueryxContext(app, ctx, preparedQuery, preparedArgs...)
 	if err != nil {
 		return []T{}, err
 	}
