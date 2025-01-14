@@ -29,6 +29,13 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 	if err != nil {
 		log.Error("Error creating new relic application: %s", err.Error())
 	}
+	defer app.Shutdown(10 * time.Second)
+
+	// Ensure the application is connected
+	if err := app.WaitForConnection(10 * time.Second); err != nil {
+		log.Debug("New Relic Application did not connect:", err)
+		return
+	}
 
 	// Log application connection status
 	if app != nil {
@@ -38,21 +45,6 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 		log.Error("New Relic application initialization failed")
 	}
 
-	var txn *newrelic.Transaction
-	for i := 0; i < 3; i++ { // Retry up to 3 times
-		txn = app.StartTransaction("performance_monitoring")
-		if txn != nil {
-			break
-		}
-		time.Sleep(1 * time.Second) // Wait before retrying
-	}
-
-	if txn == nil {
-		log.Error("Failed to start New Relic transaction after retries")
-		return
-	}
-	defer txn.End()
-
 	// Generate Data Source Name (DSN) for database connection
 	dsn := utils.GenerateDSN(args, database)
 
@@ -61,11 +53,13 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 	utils.FatalIfErr(err)
 	defer db.Close()
 
+	preCheckTxn := app.StartTransaction("MysqlSlowQueriesSample")
 	// Validate preconditions before proceeding
 	preValidationErr := validator.ValidatePreconditions(db)
 	if preValidationErr != nil {
 		utils.FatalIfErr(fmt.Errorf("preconditions failed: %w", preValidationErr))
 	}
+	preCheckTxn.End()
 
 	// Get the list of unique excluded databases
 	excludedDatabases := utils.GetExcludedDatabases(args.ExcludedDatabases)
