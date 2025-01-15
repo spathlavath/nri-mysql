@@ -21,7 +21,7 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 
 	mysqlapm.ArgsGlobal = args.LicenseKey
 	app, err := newrelic.NewApplication(
-		newrelic.ConfigAppName("nri-mysql-integration"),
+		newrelic.ConfigAppName("nri-mysql-security"),
 		newrelic.ConfigLicense(args.LicenseKey),
 		newrelic.ConfigDebugLogger(os.Stdout),
 		newrelic.ConfigDatastoreRawQuery(true),
