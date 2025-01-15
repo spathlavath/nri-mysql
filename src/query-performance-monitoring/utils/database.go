@@ -5,19 +5,23 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"os"
 	"strconv"
+	"time"
 
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
+	_ "github.com/newrelic/go-agent/v3/integrations/nrmysql"
+	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	arguments "github.com/newrelic/nri-mysql/src/args"
 	constants "github.com/newrelic/nri-mysql/src/query-performance-monitoring/constants"
+	mysqlapm "github.com/newrelic/nri-mysql/src/query-performance-monitoring/mysql-apm"
 )
 
 type DataSource interface {
 	Close()
 	QueryX(string) (*sqlx.Rows, error)
-	QueryxContext(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error)
+	QueryxContext(app *newrelic.Application, ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error)
 }
 
 type Database struct {
@@ -25,7 +29,7 @@ type Database struct {
 }
 
 func OpenDB(dsn string) (DataSource, error) {
-	source, err := sqlx.Open("mysql", dsn)
+	source, err := sqlx.Open("nrmysql", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("error opening DSN: %w", err)
 	}
@@ -54,7 +58,35 @@ func fatalIfErr(err error) {
 }
 
 // QueryxContext method implementation
-func (db *Database) QueryxContext(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error) {
+func (db *Database) QueryxContext(app *newrelic.Application, ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error) {
+	// Initialize New Relic application
+	if app == nil {
+		var err error
+		app, err = newrelic.NewApplication(
+			newrelic.ConfigAppName(mysqlapm.ArgsAppName),
+			newrelic.ConfigLicense(mysqlapm.ArgsKey),
+			newrelic.ConfigDebugLogger(os.Stdout),
+			newrelic.ConfigDatastoreRawQuery(true),
+		)
+		if err != nil {
+			log.Error("Error creating new relic application: %s", err.Error())
+			return nil, err
+		}
+	}
+	waitErr := app.WaitForConnection(5 * time.Second)
+	if waitErr != nil {
+		log.Error("Error waiting for connection: %s", waitErr.Error())
+		return nil, waitErr
+	}
+
+	ctx = newrelic.NewContext(ctx, mysqlapm.Txn)
+	s := newrelic.DatastoreSegment{
+		StartTime:          mysqlapm.Txn.StartSegmentNow(),
+		Product:            newrelic.DatastoreMySQL,
+		Operation:          "SELECT",
+		ParameterizedQuery: query,
+	}
+	defer s.End()
 	return db.source.QueryxContext(ctx, query, args...)
 }
 
@@ -97,11 +129,11 @@ func determineDatabase(args arguments.ArgumentList, database string) string {
 }
 
 // collectMetrics collects metrics from the performance schema database
-func CollectMetrics[T any](db DataSource, preparedQuery string, preparedArgs ...interface{}) ([]T, error) {
+func CollectMetrics[T any](app *newrelic.Application, db DataSource, preparedQuery string, preparedArgs ...interface{}) ([]T, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), constants.TimeoutDuration)
 	defer cancel()
 
-	rows, err := db.QueryxContext(ctx, preparedQuery, preparedArgs...)
+	rows, err := db.QueryxContext(app, ctx, preparedQuery, preparedArgs...)
 	if err != nil {
 		return []T{}, err
 	}
