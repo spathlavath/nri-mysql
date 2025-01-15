@@ -3,13 +3,15 @@ package performancemetricscollectors
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/jmoiron/sqlx"
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
-	"github.com/newrelic/nri-mysql/src/args"
+
 	arguments "github.com/newrelic/nri-mysql/src/args"
 	utils "github.com/newrelic/nri-mysql/src/query-performance-monitoring/utils"
 	"github.com/stretchr/testify/assert"
@@ -67,16 +69,34 @@ func TestPopulateBlockingSessionMetrics(t *testing.T) {
 
 	mockRows := sqlmock.NewRows([]string{})
 
-	query := `SELECT r.trx_id AS blocked_txn_id, r.trx_mysql_thread_id AS blocked_thread_id, wt.PROCESSLIST_ID AS blocked_pid, wt.PROCESSLIST_HOST AS blocked_host, wt.PROCESSLIST_DB AS database_name, wt.PROCESSLIST_STATE AS blocked_status, b.trx_id AS blocking_txn_id, b.trx_mysql_thread_id AS blocking_thread_id, bt.PROCESSLIST_ID AS blocking_pid, bt.PROCESSLIST_HOST AS blocking_host, es_waiting.DIGEST_TEXT AS blocked_query, es_blocking.DIGEST_TEXT AS blocking_query, es_waiting.DIGEST AS blocked_query_id, es_blocking.DIGEST AS blocking_query_id, bt.PROCESSLIST_STATE AS blocking_status FROM performance_schema.data_lock_waits w JOIN performance_schema.threads wt ON wt.THREAD_ID = w.REQUESTING_THREAD_ID JOIN information_schema.innodb_trx r ON r.trx_mysql_thread_id = wt.PROCESSLIST_ID JOIN performance_schema.threads bt ON bt.THREAD_ID = w.BLOCKING_THREAD_ID JOIN information_schema.innodb_trx b ON b.trx_mysql_thread_id = bt.PROCESSLIST_ID JOIN performance_schema.events_statements_current esc_waiting ON esc_waiting.THREAD_ID = wt.THREAD_ID JOIN performance_schema.events_statements_summary_by_digest es_waiting ON esc_waiting.DIGEST = es_waiting.DIGEST JOIN performance_schema.events_statements_current esc_blocking ON esc_blocking.THREAD_ID = bt.THREAD_ID JOIN performance_schema.events_statements_summary_by_digest es_blocking ON esc_blocking.DIGEST = es_blocking.DIGEST WHERE wt.PROCESSLIST_DB IS NOT NULL AND wt.PROCESSLIST_DB NOT IN (?, ?, ?, ?, ?) LIMIT ?;`
+	query := utils.BlockingSessionsQuery
 
-	mock.ExpectQuery(regexp.QuoteMeta(query)).WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).WillReturnRows(mockRows)
+	// Define the arguments
+	excludedDatabases := []string{"", "mysql", "information_schema", "performance_schema", "sys"}
+	queryCountThreshold := 10
+
+	// Use sqlx.In to bind the arguments
+	query, args, err := sqlx.In(query, excludedDatabases, queryCountThreshold)
+	if err != nil {
+		t.Fatalf("failed to bind query arguments: %v", err)
+	}
+
+	//mock.ExpectQuery(regexp.QuoteMeta(query)).WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).WillReturnRows(mockRows)
+
+	driverArgs := make([]driver.Value, len(args))
+	for i, arg := range args {
+		driverArgs[i] = driver.Value(arg)
+	}
+	mock.ExpectQuery(regexp.QuoteMeta(query)).WithArgs(driverArgs...).WillReturnRows(mockRows)
 
 	dataSource := &dbWrapper{DB: sqlx.NewDb(db, "sqlmock")}
 	i, _ := integration.New("test", "1.0.0")
 	e := i.LocalEntity()
-	args := args.ArgumentList{ExcludedDatabases: `["", " mysql", "information_schema", "performance_schema", "sys"]`, QueryCountThreshold: 10}
+	// Convert []string to string
+	excludedDatabasesStr := strings.Join(excludedDatabases, ",")
+	argList := arguments.ArgumentList{ExcludedDatabases: excludedDatabasesStr, QueryCountThreshold: queryCountThreshold}
 
-	PopulateBlockingSessionMetrics(dataSource, i, e, args, []string{})
+	PopulateBlockingSessionMetrics(dataSource, i, e, argList, []string{})
 	assert.NoError(t, err)
 }
 
@@ -84,7 +104,7 @@ func TestSetBlockingQueryMetrics(t *testing.T) {
 	i, err := integration.New("test", "1.0.0")
 	assert.NoError(t, err)
 	e := i.LocalEntity()
-	args := args.ArgumentList{}
+	args := arguments.ArgumentList{}
 	metrics := []utils.BlockingSessionMetrics{
 		{
 			BlockedTxnID:     convertNullString(sql.NullString{String: "blocked_txn_id", Valid: true}),
