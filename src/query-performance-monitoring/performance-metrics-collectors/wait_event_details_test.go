@@ -10,7 +10,6 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/nri-mysql/src/args"
-	arguments "github.com/newrelic/nri-mysql/src/args"
 	constants "github.com/newrelic/nri-mysql/src/query-performance-monitoring/constants"
 	utils "github.com/newrelic/nri-mysql/src/query-performance-monitoring/utils"
 
@@ -18,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func (m *MockIntegration) IngestMetric(metricList []interface{}, eventType string, i *integration.Integration, args arguments.ArgumentList) error {
+func (m *MockIntegration) IngestMetric(metricList []interface{}, eventType string, i *integration.Integration, args args.ArgumentList) error {
 	argsMock := m.Called(metricList, eventType, i, args)
 	return argsMock.Error(0)
 }

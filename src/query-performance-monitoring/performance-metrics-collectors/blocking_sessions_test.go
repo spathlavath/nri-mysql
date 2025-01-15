@@ -122,7 +122,7 @@ func TestSetBlockingQueryMetrics(t *testing.T) {
 			BlockingQuery:    convertNullString(sql.NullString{String: "blocking_query", Valid: true}),
 		},
 	}
-	setBlockingQueryMetrics(metrics, i, args)
+	err = setBlockingQueryMetrics(metrics, i, args)
 	assert.NoError(t, err)
 	ms := e.Metrics[0]
 	assert.Equal(t, "blocked_txn_id", ms.Metrics["blocked_txn_id"])
