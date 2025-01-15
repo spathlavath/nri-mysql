@@ -81,8 +81,6 @@ func TestPopulateBlockingSessionMetrics(t *testing.T) {
 		t.Fatalf("failed to bind query arguments: %v", err)
 	}
 
-	//mock.ExpectQuery(regexp.QuoteMeta(query)).WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).WillReturnRows(mockRows)
-
 	driverArgs := make([]driver.Value, len(args))
 	for i, arg := range args {
 		driverArgs[i] = driver.Value(arg)
