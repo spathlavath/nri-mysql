@@ -113,6 +113,7 @@ func PopulateIndividualQueryDetails(app *newrelic.Application, db utils.DataSour
 	copy(newMetricsList, queryList)
 	metricList := make([]interface{}, 0, len(newMetricsList))
 	for i := range newMetricsList {
+		// QueryText is used only for fetching query execution plan and not ingested to New Relic
 		newMetricsList[i].QueryText = nil
 		metricList = append(metricList, newMetricsList[i])
 	}
