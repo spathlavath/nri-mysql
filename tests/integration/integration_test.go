@@ -31,6 +31,8 @@ var (
 	defaultMysqlPass = "DBpwd1234"
 	defaultMysqlPort = 3306
 	defaultMysqlDB   = "database"
+	defaultEnableQueryPerformance = false
+	defaultSlowQueryFetchInterval = 3000
 
 	// cli flags
 	container = flag.String("container", defaultContainer, "container where the integration is installed")
@@ -39,6 +41,8 @@ var (
 	psw       = flag.String("psw", defaultMysqlPass, "Mysql user password")
 	port      = flag.Int("port", defaultMysqlPort, "Mysql port")
 	database  = flag.String("database", defaultMysqlDB, "Mysql database")
+	enableQueryPerformance = flag.Bool("enable_query_performance", defaultEnableQueryPerformance, "flag to enable and disable collecting performance metrics")
+	slowQueryFetchInterval = flag.Int("slow_query_fetch_interval", defaultSlowQueryFetchInterval, "retrives slow queries that ran in last n seconds")
 )
 
 type MysqlConfig struct {
@@ -76,6 +80,31 @@ var (
 	}
 )
 
+type MysqlPerformanceConfig struct {
+	Version  string // Mysql server version
+	Hostname string // Hostname for the Mysql service. (Will be the master mysql service inside the docker-compose file).
+}
+
+var (
+	// TODO uncomment the version 8.4.0, 9.1.0 after the epic branch is updated with main repo
+	// TODO as check if the existing integration tests are passing
+	// TODO add new test to check if we are getting expected error while running unconfigured mysql server with enable_query_performance flag as true
+	MysqlPerfConfigs = []MysqlPerformanceConfig{
+		{
+			Version:  "8.0.40",
+			Hostname: "mysql_perf_8-0-40",
+		},
+		{
+			Version:  "8.4.0",
+			Hostname: "mysql_perf_8-4-0",
+		},
+		{
+			Version:  "9.1.0",
+			Hostname: "mysql_perf_latest-supported",
+		},
+	}
+)
+
 // Returns the standard output, or fails testing if the command returned an error
 func runIntegration(t *testing.T, targetContainer string, envVars ...string) string {
 	t.Helper()
@@ -104,6 +133,31 @@ func runIntegration(t *testing.T, targetContainer string, envVars ...string) str
 	require.NoError(t, err)
 
 	return stdout
+}
+
+func runIntegrationAndGetStdoutWithError(t *testing.T, targetContainer string, envVars ...string) (string, string, error) {
+	t.Helper()
+
+	command := make([]string, 0)
+	command = append(command, *binPath)
+	if user != nil {
+		command = append(command, "--username", *user)
+	}
+	if psw != nil {
+		command = append(command, "--password", *psw)
+	}
+	if targetContainer != "" {
+		command = append(command, "--hostname", targetContainer)
+	}
+	if port != nil {
+		command = append(command, "--port", strconv.Itoa(*port))
+	}
+	if slowQueryFetchInterval != nil {
+		command = append(command, "-slow_query_fetch_interval="+strconv.Itoa(*slowQueryFetchInterval))
+	}
+	stdout, stderr, err := helpers.ExecInContainer(*container, command, envVars...)
+
+	return stdout, stderr, err
 }
 
 func checkVersion(dbVersion string) bool {
@@ -192,6 +246,34 @@ func setup(mysqlConfig MysqlConfig) error {
 	return nil
 }
 
+func executeBlockingSessionQuery(mysqlPerfConfig MysqlPerformanceConfig) error {
+	flag.Parse()
+
+	if testing.Verbose() {
+		log.SetLevel(log.DebugLevel)
+	}
+
+	masterErr := helpers.WaitForPort(*container, mysqlPerfConfig.Hostname, *port, 60*time.Second)
+	if masterErr != nil {
+		return masterErr
+	}
+
+	// wait for the performance docker compose to run the same query we are using below to lock particular row.
+	time.Sleep(10 * time.Second)
+
+	blockingSessionQuery := "SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ; USE employees; START TRANSACTION; UPDATE employees SET last_name = 'Blocking' WHERE emp_no = 10001;"
+	blockingSessionCmd := []string{`mysql`, `-u`, `root`, `-e`, blockingSessionQuery}
+	// uncomment line 110-113 and comment line 114 to see if the below mysql query is blocked and doesn't execute.
+	// _, blockingSessionErr, err := helpers.ExecInContainer(mysqlPerfConfig.Hostname, blockingSessionCmd, fmt.Sprintf("MYSQL_PWD=%s", *psw))
+	// if blockingSessionErr != "" {
+	// 	log.Debug("Error exec blocking session queries: ", blockingSessionErr, err)
+	// }
+	go helpers.ExecInContainer(mysqlPerfConfig.Hostname, blockingSessionCmd, fmt.Sprintf("MYSQL_PWD=%s", *psw))
+	log.Info("Executing blocking sessions complete!")
+
+	return nil
+}
+
 func teardown() error {
 	return nil
 }
@@ -199,6 +281,18 @@ func teardown() error {
 func TestMain(m *testing.M) {
 	for _, mysqlConfig := range MysqlConfigs {
 		err := setup(mysqlConfig)
+		if err != nil {
+			fmt.Println(err)
+			tErr := teardown()
+			if tErr != nil {
+				fmt.Printf("Error during the teardown of the tests: %s\n", tErr)
+			}
+			os.Exit(1)
+		}
+	}
+
+	for _, mysqlPerfConfig := range MysqlPerfConfigs {
+		err := executeBlockingSessionQuery(mysqlPerfConfig)
 		if err != nil {
 			fmt.Println(err)
 			tErr := teardown()
@@ -304,5 +398,194 @@ func testMySQLIntegrationOnlySlaveMetrics(t *testing.T, mysqlConfig MysqlConfig)
 func TestMySQLIntegrationOnlySlaveMetrics(t *testing.T) {
 	for _, mysqlConfig := range MysqlConfigs {
 		testMySQLIntegrationOnlySlaveMetrics(t, mysqlConfig)
+	}
+}
+
+func testPerfOutputIsValidJSON(t *testing.T, mysqlPerfConfig MysqlPerformanceConfig) {
+	stdout, stderr, err := runIntegrationAndGetStdoutWithError(t, mysqlPerfConfig.Hostname)
+	if stderr != "" {
+		log.Debug("Integration command Standard Error: ", stderr)
+	}
+	require.NoError(t, err)
+	outputMetricsList := strings.Split(stdout, "\n")
+	for _, outputMetrics := range outputMetricsList {
+		outputMetrics = strings.TrimSpace(outputMetrics)
+		if outputMetrics == "" {
+			continue
+		}
+		var j map[string]interface{}
+		err := json.Unmarshal([]byte(outputMetrics), &j)
+		assert.NoError(t, err, "Integration output should be a JSON dict")
+	}
+}
+
+func TestPerfOutputIsValidJSON(t *testing.T) {
+	for _, mysqlConfig := range MysqlPerfConfigs {
+		testPerfOutputIsValidJSON(t, mysqlConfig)
+	}
+}
+
+func runValidMysqlPerfConfigTest(t *testing.T, args []string, outputMetricsFile string, testName string) {
+	for _, mysqlPerfConfig := range MysqlPerfConfigs {
+		t.Run(testName+mysqlPerfConfig.Version, func(t *testing.T) {
+			args = append(args, fmt.Sprintf("NRIA_CACHE_PATH=/tmp/%v.json", testName))
+			stdout, stderr, err := runIntegrationAndGetStdoutWithError(t, mysqlPerfConfig.Hostname, args...)
+			if stderr != "" {
+				log.Debug("Integration command Standard Error: ", stderr)
+			}
+			require.NoError(t, err)
+			outputMetricsList := strings.Split(stdout, "\n")
+			outputMetricsConfigs := []struct {
+				name           string
+				stdout         string
+				schemaFileName string
+			}{
+				{
+					"DeafutlMetrics",
+					outputMetricsList[0],
+					outputMetricsFile,
+				},
+				{
+					"SlowQueryMetrics",
+					outputMetricsList[1],
+					"mysql-schema-slow-queries.json",
+				},
+				{
+					"IndividualQueryMetrics",
+					outputMetricsList[2],
+					"mysql-schema-individual-queries.json",
+				},
+				{
+					"QueryExecutionMetrics",
+					outputMetricsList[3],
+					"mysql-schema-query-execution.json",
+				},
+				{
+					"WaitEventsMetrics",
+					outputMetricsList[4],
+					"mysql-schema-wait-events.json",
+				},
+				{
+					"BlockingSessionMetrics",
+					outputMetricsList[5],
+					"mysql-schema-blocking-sessions.json",
+				},
+			}
+			for _, outputConfig := range outputMetricsConfigs {
+				schemaPath := filepath.Join("json-schema-performance-files", outputConfig.schemaFileName)
+				err := jsonschema.Validate(schemaPath, outputConfig.stdout)
+				require.NoError(t, err, "The output of MySQL integration doesn't have expected format")
+			}
+		})
+	}
+}
+
+func TestPerfMySQLIntegrationValidArguments(t *testing.T) {
+	testCases := []struct {
+		name              string
+		args              []string
+		outputMetricsFile string
+	}{
+		{
+			name: "RemoteEntity_EnableQueryPerformance",
+			args: []string{
+				"REMOTE_MONITORING=true",
+				"ENABLE_QUERY_PERFORMANCE=true",
+			},
+			outputMetricsFile: "mysql-schema-master.json",
+		},
+		{
+			name: "LocalEntity_EnableQueryPerformance",
+			args: []string{
+				"ENABLE_QUERY_PERFORMANCE=true",
+			},
+			outputMetricsFile: "mysql-schema-master-localentity.json",
+		},
+		{
+			name: "OnlyMetrics_EnableQueryPerformance",
+			args: []string{
+				"METRICS=true",
+				"ENABLE_QUERY_PERFORMANCE=true",
+			},
+			outputMetricsFile: "mysql-schema-metrics-master.json",
+		},
+		{
+			name: "OnlyInventory_EnableQueryPerformance",
+			args: []string{
+				"INVENTORY=true",
+				"ENABLE_QUERY_PERFORMANCE=true",
+			},
+			outputMetricsFile: "mysql-schema-inventory-master.json",
+		},
+	}
+
+	for _, testCase := range testCases {
+		runValidMysqlPerfConfigTest(t, testCase.args, testCase.outputMetricsFile, testCase.name)
+	}
+}
+
+func runUnconfiguredMysqlPerfConfigTest(t *testing.T, args []string, outputMetricsFile string, expectedError string, testName string) {
+	for _, mysqlUnconfiguredPerfConfig := range MysqlConfigs {
+		if isDBVersionLessThan8(mysqlUnconfiguredPerfConfig.Version) {
+			continue
+		}
+		t.Run(testName+mysqlUnconfiguredPerfConfig.Version, func(t *testing.T) {
+			args = append(args, fmt.Sprintf("NRIA_CACHE_PATH=/tmp/%v.json", testName))
+			stdout, stderr, err := runIntegrationAndGetStdoutWithError(t, mysqlUnconfiguredPerfConfig.MasterHostname, args...)
+			outputMetricsList := strings.Split(stdout, "\n")
+			assert.Empty(t, outputMetricsList[1], "Unexpected stdout content")
+			helpers.AssertReceivedErrors(t, expectedError, strings.Split(stderr, "\n")...)
+			schemaPath := filepath.Join("json-schema-performance-files", outputMetricsFile)
+			err = jsonschema.Validate(schemaPath, outputMetricsList[0])
+			require.NoError(t, err, "The output of MySQL integration doesn't have expected format")
+		})
+	}
+}
+
+func TestUnconfiguredPerfMySQLIntegration(t *testing.T) {
+	testCases := []struct {
+		name              string
+		args              []string
+		outputMetricsFile string
+		expectedError     string
+	}{
+		{
+			name: "RemoteEntity_EnableQueryPerformance",
+			args: []string{
+				"REMOTE_MONITORING=true",
+				"ENABLE_QUERY_PERFORMANCE=true",
+			},
+			outputMetricsFile: "mysql-schema-master.json",
+			expectedError:     "essential consumer is not enabled: events_stages_current",
+		},
+		{
+			name: "LocalEntity_EnableQueryPerformance",
+			args: []string{
+				"ENABLE_QUERY_PERFORMANCE=true",
+			},
+			outputMetricsFile: "mysql-schema-master-localentity.json",
+			expectedError:     "essential consumer is not enabled: events_stages_current",
+		},
+		{
+			name: "OnlyMetrics_EnableQueryPerformance",
+			args: []string{
+				"METRICS=true",
+				"ENABLE_QUERY_PERFORMANCE=true",
+			},
+			outputMetricsFile: "mysql-schema-metrics-master.json",
+			expectedError:     "essential consumer is not enabled: events_stages_current",
+		},
+		{
+			name: "OnlyInventory_EnableQueryPerformance",
+			args: []string{
+				"INVENTORY=true",
+				"ENABLE_QUERY_PERFORMANCE=true",
+			},
+			outputMetricsFile: "mysql-schema-inventory-master.json",
+			expectedError:     "essential consumer is not enabled: events_stages_current",
+		},
+	}
+	for _, testCase := range testCases {
+		runUnconfiguredMysqlPerfConfigTest(t, testCase.args, testCase.outputMetricsFile, testCase.expectedError, testCase.name)
 	}
 }
