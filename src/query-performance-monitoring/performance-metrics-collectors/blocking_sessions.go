@@ -2,6 +2,7 @@ package performancemetricscollectors
 
 import (
 	"github.com/jmoiron/sqlx"
+	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	arguments "github.com/newrelic/nri-mysql/src/args"
@@ -10,7 +11,7 @@ import (
 )
 
 // PopulateBlockingSessionMetrics retrieves blocking session metrics from the database and populates them into the integration entity.
-func PopulateBlockingSessionMetrics(db utils.DataSource, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList, excludedDatabases []string) {
+func PopulateBlockingSessionMetrics(app *newrelic.Application, db utils.DataSource, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList, excludedDatabases []string) {
 	// Prepare the SQL query with the provided parameters
 	query, inputArgs, err := sqlx.In(utils.BlockingSessionsQuery, excludedDatabases, min(args.QueryCountThreshold, constants.MaxQueryCountThreshold))
 	if err != nil {
@@ -18,7 +19,7 @@ func PopulateBlockingSessionMetrics(db utils.DataSource, i *integration.Integrat
 	}
 
 	// Collect the blocking session metrics
-	metrics, err := utils.CollectMetrics[utils.BlockingSessionMetrics](db, query, inputArgs...)
+	metrics, err := utils.CollectMetrics[utils.BlockingSessionMetrics](app, db, query, inputArgs...)
 	if err != nil {
 		log.Error("Error collecting blocking session metrics: %v", err)
 	}
