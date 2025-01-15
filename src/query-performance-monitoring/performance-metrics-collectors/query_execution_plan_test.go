@@ -17,6 +17,7 @@ import (
 // Mock DataSource
 type MockDataSource struct {
 	mock.Mock
+	db *sqlx.DB
 }
 
 // QueryX is a mock implementation of the QueryX method.
