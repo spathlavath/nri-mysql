@@ -1,5 +1,7 @@
 #!/bin/bash
-set -e
+set -x
+
+usermod -d /var/lib/mysql/ mysql
 
 # Run the MySQL default entrypoint setup
 /usr/local/bin/docker-entrypoint.sh mysqld &
@@ -13,13 +15,15 @@ done
 # Populated Employees Sample Data
 echo "started copying sample employees data"
 
-mysql -u root -p${MYSQL_ROOT_PASSWORD} -t < employees.sql
+mysql --user=root --password="${MYSQL_ROOT_PASSWORD}" -t < employees.sql
 
 echo "completed copying sample employees data"
 
+sleep 5
+
 # Execute slow queries
 echo "started executing slow queries"
-mysql -u root -p${MYSQL_ROOT_PASSWORD} -e "
+mysql --user=root --password="${MYSQL_ROOT_PASSWORD}" -e "
 USE employees;
 SELECT e.emp_no, e.first_name, e.last_name
 FROM employees e
@@ -35,7 +39,9 @@ WHERE EXISTS (
 ) LIMIT 10;
 "
 
-mysql -u root -p${MYSQL_ROOT_PASSWORD} -e "
+sleep 5
+
+mysql --user=root --password="${MYSQL_ROOT_PASSWORD}" -e "
 USE employees;
 SELECT e.emp_no, e.first_name, e.last_name, 
        (SELECT COUNT(*) FROM dept_emp de WHERE de.emp_no = e.emp_no) AS dept_count,
@@ -48,8 +54,10 @@ echo "finshed executing slow queries"
 
 # Execute blocking session queries
 
+sleep 5
+
 echo "started executing blocking session query 1"
-mysql -u root -pDBpwd1234 -e "
+mysql --user=root --password="${MYSQL_ROOT_PASSWORD}" -e "
 SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ;
 USE employees;
 START TRANSACTION;
@@ -57,12 +65,13 @@ UPDATE employees SET last_name = 'Blocking' WHERE emp_no = 10001;
 SELECT SLEEP(10);"
 echo "finished executing blocking session query 1"
 
+sleep 5
 # Start a new tmux session named 'mysession'
 tmux new-session -d -s mysql_block_test
 # First window
 
 echo "started executing blocking session query 2"
-tmux send-keys -t mysql_block_test:0 "mysql -u root -pDBpwd1234 -e \"
+tmux send-keys -t mysql_block_test:0 "mysql --user=root --password="${MYSQL_ROOT_PASSWORD}" -e \"
 SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ;
 USE employees;
 START TRANSACTION;
@@ -70,9 +79,11 @@ UPDATE employees SET last_name = 'Blocked' WHERE emp_no = 10001;
 SELECT SLEEP(3000);\"" C-m
 echo "finished executing blocking session query 2"
 
+sleep 5
+
 tmux split-window -t mysql_block_test:0
 
-tmux send-keys -t mysql_block_test:0.1 "docker exec -i mysql_8-0-40 mysql -u root -pDBpwd1234 -e \"
+tmux send-keys -t mysql_block_test:0.1 "docker exec -i mysql_8-0-40 mysql --user=root --password="${MYSQL_ROOT_PASSWORD}" -e \"
 SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ;
 USE employees;
 START TRANSACTION;

@@ -2,7 +2,7 @@ FROM mysql:8.4
 # Create and set permissions for log directory
 RUN mkdir -p /var/log/mysql && \
     chown -R mysql:mysql /var/log/mysql
-COPY tests/integration/mysql-performance-config/versions/8.4.0/mysql.conf.cnf /etc/mysql/conf.d/mysql.conf.cnf
+COPY tests/integration/mysql-performance-config/versions/8.4.0/mysql.conf.cnf /etc/mysql/my.cnf
 COPY tests/integration/mysql-performance-config/init.sql /etc/mysql/init.sql
 
 
@@ -26,8 +26,7 @@ WORKDIR /tmp/test_db
 # Copy the custom entrypoint script to the image
 COPY tests/integration/mysql-performance-config/custom-entrypoint.sh /usr/local/bin/custom-entrypoint.sh
 RUN chmod +x /usr/local/bin/custom-entrypoint.sh
-RUN ls /usr/local/bin/
 
-ENV MYSQL_ROOT_PASSWORD=DBpwd1234
+ENV MYSQL_ROOT_PASSWORD=""
 # Replace the default entrypoint with the custom script
 ENTRYPOINT ["/usr/local/bin/custom-entrypoint.sh"]
