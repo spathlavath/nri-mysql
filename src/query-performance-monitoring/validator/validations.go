@@ -83,12 +83,7 @@ func checkEssentialConsumers(db utils.DataSource) error {
 
 	// Build the query to check the status of essential consumers
 	query := "SELECT NAME, ENABLED FROM performance_schema.setup_consumers WHERE NAME IN ("
-	for i, consumer := range consumers {
-		if i > 0 {
-			query += ", "
-		}
-		query += fmt.Sprintf("'%s'", consumer)
-	}
+	query += "'" + strings.Join(consumers, "', '") + "'"
 	query += ");"
 
 	rows, err := db.QueryX(query)
@@ -114,7 +109,7 @@ func checkEssentialConsumers(db utils.DataSource) error {
 	}
 
 	if err := rows.Err(); err != nil {
-		return fmt.Errorf("rows iteration error: %w", err)
+		return fmt.Errorf("query to check essential consumers failed: %w", err)
 	}
 
 	return nil
@@ -234,13 +229,13 @@ func parseVersion(version string) (int, int) {
 
 	majorVersion, err := strconv.Atoi(parts[0])
 	if err != nil {
-		log.Error("Failed to parse major version: %v", err)
+		log.Error("Failed to parse major version '%s': %v", parts[0], err)
 		return 0, 0
 	}
 
 	minorVersion, err := strconv.Atoi(parts[1])
 	if err != nil {
-		log.Error("Failed to parse minor version: %v", err)
+		log.Error("Failed to parse minor version '%s': %v", parts[1], err)
 		return 0, 0
 	}
 
