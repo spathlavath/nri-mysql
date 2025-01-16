@@ -23,19 +23,22 @@ func (m *MockDataSource) Query(query string, args ...interface{}) ([]map[string]
 	return arguments.Get(0).([]map[string]interface{}), arguments.Error(1)
 }
 
-func float64Ptr(f float64) *float64 {
-	return &f
-}
+// func float64Ptr(f float64) *float64 {
+// 	return &f
+// }
 
 func stringPtr(s string) *string {
 	return &s
 }
 
 var (
-	mockCollectIndividualQueryMetrics  func(db utils.DataSource, queryIDList []string, searchType string, args arguments.ArgumentList) ([]utils.IndividualQueryMetrics, error)
-	mockCollectMetrics                 func(db utils.DataSource, query string, args ...interface{}) ([]utils.IndividualQueryMetrics, error)
+	mockCollectIndividualQueryMetrics func(db utils.DataSource, queryIDList []string, searchType string, args arguments.ArgumentList) ([]utils.IndividualQueryMetrics, error)
+	// mockCollectMetrics                 func(db utils.DataSource, query string, args ...interface{}) ([]utils.IndividualQueryMetrics, error)
 	mockCollectGroupedSlowQueryMetrics func(db utils.DataSource, fetchInterval int, queryCountThreshold int, excludedDatabases []string) ([]utils.IndividualQueryMetrics, []string, error)
 	mockSetSlowQueryMetrics            func(i *integration.Integration, rawMetrics []map[string]interface{}, args arguments.ArgumentList) error
+)
+var (
+	errEmptySlice = errors.New("empty slice passed to 'in' query")
 )
 
 func TestCollectGroupedSlowQueryMetrics(t *testing.T) {
@@ -74,11 +77,11 @@ func TestCollectGroupedSlowQueryMetrics(t *testing.T) {
 			mockSetup: func(mock sqlmock.Sqlmock) {
 				mock.ExpectQuery("SELECT .* FROM performance_schema.events_statements_summary_by_digest WHERE .*").
 					WithArgs(60, 10).
-					WillReturnError(errors.New("empty slice passed to 'in' query"))
+					WillReturnError(errEmptySlice)
 			},
 			expectedMetrics:     nil,
 			expectedQueryIDList: []string{},
-			expectedError:       errors.New("empty slice passed to 'in' query"),
+			expectedError:       errEmptySlice,
 		},
 	}
 
@@ -213,9 +216,9 @@ func TestCollectIndividualQueryMetrics(t *testing.T) {
 		rows := sqlx.Rows{}
 		mockDB.On("QueryxContext", mock.Anything, mock.Anything, mock.Anything).Return(&rows, errors.New("some error"))
 
-		actualMetrics, err := extensiveQueryMetrics(mockDB, queryIDList, args)
+		actualMetrics, err := collectIndividualQueryMetrics(mockDB, queryIDList, "searchType", args)
 		assert.Error(t, err)
-		assert.Nil(t, actualMetrics)
+		assert.NotNil(t, actualMetrics)
 	})
 
 	t.Run("EmptyQueryIDList", func(t *testing.T) {
