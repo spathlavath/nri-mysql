@@ -229,5 +229,5 @@ func AssertReceivedErrors(t *testing.T, msg string, errLog ...string) {
 		}
 	}
 
-	assert.Failf(t, fmt.Sprintf("Expected to find the following error message: %s", msg), "but got %s", errLog)
+	assert.Failf(t, "Expected to find the following error message: %q, but it was not found in %v", msg, errLog)
 }

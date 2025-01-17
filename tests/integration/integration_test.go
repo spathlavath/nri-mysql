@@ -26,21 +26,21 @@ var (
 
 	defaultContainer = "integration_nri-mysql_1"
 	// mysql config
-	defaultBinPath   = "/nri-mysql"
-	defaultMysqlUser = "root"
-	defaultMysqlPass = "DBpwd1234"
-	defaultMysqlPort = 3306
-	defaultMysqlDB   = "database"
+	defaultBinPath                = "/nri-mysql"
+	defaultMysqlUser              = "root"
+	defaultMysqlPass              = "DBpwd1234"
+	defaultMysqlPort              = 3306
+	defaultMysqlDB                = "database"
 	defaultEnableQueryPerformance = false
 	defaultSlowQueryFetchInterval = 3000
 
 	// cli flags
-	container = flag.String("container", defaultContainer, "container where the integration is installed")
-	binPath   = flag.String("bin", defaultBinPath, "Integration binary path")
-	user      = flag.String("user", defaultMysqlUser, "Mysql user name")
-	psw       = flag.String("psw", defaultMysqlPass, "Mysql user password")
-	port      = flag.Int("port", defaultMysqlPort, "Mysql port")
-	database  = flag.String("database", defaultMysqlDB, "Mysql database")
+	container              = flag.String("container", defaultContainer, "container where the integration is installed")
+	binPath                = flag.String("bin", defaultBinPath, "Integration binary path")
+	user                   = flag.String("user", defaultMysqlUser, "Mysql user name")
+	psw                    = flag.String("psw", defaultMysqlPass, "Mysql user password")
+	port                   = flag.Int("port", defaultMysqlPort, "Mysql port")
+	database               = flag.String("database", defaultMysqlDB, "Mysql database")
 	enableQueryPerformance = flag.Bool("enable_query_performance", defaultEnableQueryPerformance, "flag to enable and disable collecting performance metrics")
 	slowQueryFetchInterval = flag.Int("slow_query_fetch_interval", defaultSlowQueryFetchInterval, "retrives slow queries that ran in last n seconds")
 )
@@ -339,6 +339,8 @@ func TestMySQLIntegrationOnlySlaveMetrics(t *testing.T) {
 func runUnconfiguredMysqlPerfConfigTest(t *testing.T, args []string, outputMetricsFile string, expectedError string, testName string) {
 	for _, mysqlUnconfiguredPerfConfig := range MysqlConfigs {
 		if isDBVersionLessThan8(mysqlUnconfiguredPerfConfig.Version) {
+			// performance metrics are supported for mysql version 8 and above
+			// so, skipping if the mysql version is less than 8
 			continue
 		}
 		t.Run(testName+mysqlUnconfiguredPerfConfig.Version, func(t *testing.T) {
@@ -354,6 +356,7 @@ func runUnconfiguredMysqlPerfConfigTest(t *testing.T, args []string, outputMetri
 	}
 }
 
+// Run integration with ENABLE_QUERY_PERFORMANCE flag enabled for mysql servers which don't have performance flags/extensions enabled
 func TestUnconfiguredPerfMySQLIntegration(t *testing.T) {
 	testCases := []struct {
 		name              string
