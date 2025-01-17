@@ -33,7 +33,7 @@ var (
 	defaultSlowQueryFetchInterval = 3000
 
 	// cli flags
-	perfContainer = flag.String("perfContainer", defaultPerfContainer, "container where the integration is installed and used for validating performance monitoring metrics")
+	perfContainer          = flag.String("perfContainer", defaultPerfContainer, "container where the integration is installed and used for validating performance monitoring metrics")
 	binPath                = flag.String("bin", defaultBinPath, "Integration binary path")
 	user                   = flag.String("user", defaultMysqlUser, "Mysql user name")
 	psw                    = flag.String("psw", defaultMysqlPass, "Mysql user password")
@@ -44,12 +44,10 @@ var (
 
 type MysqlPerformanceConfig struct {
 	Version  string // Mysql server version
-	Hostname string // Hostname for the Mysql service. (Will be the master mysql service inside the docker-compose file).
+	Hostname string // Hostname for the Mysql service. (Will be the mysql service inside the docker-compose-performance file).
 }
 
 var (
-	// Config's for version 8.0.40, 8.4.0 are commented because in github action's when we are trying to run mulitple mysql servers its failing
-	
 	MysqlPerfConfigs = []MysqlPerformanceConfig{
 		{
 			Version:  "8.0.40",
@@ -105,13 +103,13 @@ func executeBlockingSessionQuery(mysqlPerfConfig MysqlPerformanceConfig) error {
 
 	blockingSessionQuery := "SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ; USE employees; START TRANSACTION; UPDATE employees SET last_name = 'Blocking' WHERE emp_no = 10001;"
 	blockingSessionCmd := []string{`mysql`, `-u`, `root`, `-e`, blockingSessionQuery}
-	// uncomment line 110-113 and comment line 114 to see if the below mysql query is blocked and doesn't execute.
+	// uncomment line 109-112 and comment line 113 to see if the below mysql query is blocked and doesn't execute.
 	// _, blockingSessionErr, err := helpers.ExecInContainer(mysqlPerfConfig.Hostname, blockingSessionCmd, fmt.Sprintf("MYSQL_PWD=%s", *psw))
 	// if blockingSessionErr != "" {
 	// 	log.Debug("Error exec blocking session queries: ", blockingSessionErr, err)
 	// }
 	go helpers.ExecInContainer(mysqlPerfConfig.Hostname, blockingSessionCmd, fmt.Sprintf("MYSQL_PWD=%s", *psw))
-	log.Info("wait for the blocking session query to get executed for host :"+ mysqlPerfConfig.Hostname)
+	log.Info("wait for the blocking session query to get executed for host :" + mysqlPerfConfig.Hostname)
 	time.Sleep(10 * time.Second)
 	log.Info("wait complete")
 	log.Info("Executing blocking sessions complete!")
