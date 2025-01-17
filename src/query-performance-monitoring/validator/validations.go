@@ -159,7 +159,7 @@ func checkEssentialInstruments(db utils.DataSource) error {
 	}
 
 	if err := rows.Err(); err != nil {
-		return fmt.Errorf("rows iteration error: %w", err)
+		return fmt.Errorf("query to check essential instruments failed: %w", err)
 	}
 
 	return nil
@@ -216,8 +216,8 @@ func getMySQLVersion(db utils.DataSource) (string, error) {
 
 // isVersion8OrGreater checks if the MySQL version is 8.0 or greater.
 func isVersion8OrGreater(version string) bool {
-	majorVersion, minorVersion := parseVersion(version)
-	return (majorVersion > 8) || (majorVersion == 8 && minorVersion >= 0)
+	majorVersion, _ := parseVersion(version)
+	return (majorVersion >= 8)
 }
 
 // parseVersion extracts the major and minor version numbers from the version string
