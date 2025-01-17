@@ -5,22 +5,38 @@ import "time"
 const (
 	IntegrationName = "com.newrelic.mysql"
 	NodeEntityType  = "node"
-	// MetricSetLimit defines the maximum number of metrics that can be collected in a single set.
+	// New Relic's Integration SDK imposes a limit of 1000 metrics per ingestion.
+	// To handle metric sets exceeding this limit, we process and ingest metrics in smaller chunks
+	// to ensure all data is successfully reported without exceeding the limit.
 	MetricSetLimit = 100
-	// ExplainQueryFormat is the format string for generating EXPLAIN queries in JSON format.
+	// ExplainQueryFormat is a format string used to generate EXPLAIN queries in JSON format.
+	// Using JSON format simplifies programmatic parsing and analysis of query execution plans.
 	ExplainQueryFormat = "EXPLAIN FORMAT=JSON %s"
-	// SupportedStatements lists the SQL statements that are supported by this integration
-	// for fetching query execution plans.
+
+	// SupportedStatements defines the SQL statements for which this integration fetches query execution plans.
+	// Restricting the supported statements improves compatibility and reduces the complexity of plan analysis.
 	SupportedStatements = "SELECT INSERT UPDATE DELETE WITH"
-	// QueryPlanTimeoutDuration defines the timeout duration for fetching query plans
+
+	// QueryPlanTimeoutDuration sets the timeout for fetching query execution plans.
+	// This prevents indefinite waits when a query plan retrieval takes too long, ensuring system responsiveness.
 	QueryPlanTimeoutDuration = 10 * time.Second
-	// TimeoutDuration defines the timeout duration for fetching slow query metrics, individual query metrics, wait event metrics, and blocked session metrics
+
+	// TimeoutDuration sets a general timeout for various data collection operations (e.g., slow query metrics).
+	// This prevents long-running operations from causing the integration to hang and ensures timely data retrieval.
 	TimeoutDuration = 5 * time.Second
-	// MaxQueryCountThreshold specifies the upper limit for the number of collected queries, as customers might opt for a higher query count threshold, potentially leading to performance problems.
+
+	// MaxQueryCountThreshold limits the total number of collected queries to prevent performance issues
+	// that could arise from processing and storing an excessive amount of query data.
+	// This helps maintain reasonable resource usage by the integration.
 	MaxQueryCountThreshold = 30
-	// IndividualQueryCountThreshold specifies the upper limit for the number of individual queries to be collected, as customers might choose a higher query count threshold, potentially leading to performance problems.
+
+	// IndividualQueryCountThreshold limits the number of individual query metrics that are collected.
+	// This protects system resources by preventing the collection of a potentially overwhelming amount
+	// of detailed metrics from a large number of unique queries.
 	IndividualQueryCountThreshold = 10
-	// MinVersionParts defines the minimum number of version parts
+
+	// MinVersionParts defines the minimum number of parts expected when parsing a version string.
+	// This ensures version strings are formatted correctly and allows for proper version comparison.
 	MinVersionParts = 2
 )
 
