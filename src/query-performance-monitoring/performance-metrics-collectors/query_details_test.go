@@ -210,7 +210,7 @@ func TestCollectIndividualQueryMetrics(t *testing.T) {
 
 	runCollectIndividualQueryMetricsTest := func(name string, queryIDList []string, expectedError error, expectedMetrics []utils.IndividualQueryMetrics) {
 		t.Run(name, func(t *testing.T) {
-			mockCollectIndividualQueryMetrics = func(_ utils.DataSource, queryIDList []string, searchType string, args arguments.ArgumentList) ([]utils.IndividualQueryMetrics, error) {
+			mockCollectIndividualQueryMetrics = func(_ utils.DataSource, _ []string, _ string, args arguments.ArgumentList) ([]utils.IndividualQueryMetrics, error) {
 				return expectedMetrics, expectedError
 			}
 
@@ -239,7 +239,7 @@ func TestExtensiveQueryMetrics(t *testing.T) {
 
 	runExtensiveQueryMetricsTest := func(name string, queryIDList []string, expectedError error, expectedMetrics []utils.IndividualQueryMetrics) {
 		t.Run(name, func(t *testing.T) {
-			mockCollectIndividualQueryMetrics = func(_ utils.DataSource, queryIDList []string, searchType string, args arguments.ArgumentList) ([]utils.IndividualQueryMetrics, error) {
+			mockCollectIndividualQueryMetrics = func(_ utils.DataSource, _ []string, _ string, _ arguments.ArgumentList) ([]utils.IndividualQueryMetrics, error) {
 				return expectedMetrics, expectedError
 			}
 
@@ -259,64 +259,6 @@ func TestExtensiveQueryMetrics(t *testing.T) {
 
 	runExtensiveQueryMetricsTest("Error", queryIDList, errSomeError, nil)
 	runExtensiveQueryMetricsTest("EmptyQueryIDList", []string{}, nil, []utils.IndividualQueryMetrics{})
-}
-
-func TestCurrentQueryMetrics(t *testing.T) {
-	mockDB := new(MockDataSource)
-	queryIDList := []string{"1", "2", "3"}
-	args := arguments.ArgumentList{}
-
-	runCurrentQueryMetricsTest := func(name string, queryIDList []string, expectedError error, expectedMetrics []utils.IndividualQueryMetrics) {
-		t.Run(name, func(t *testing.T) {
-			mockCollectIndividualQueryMetrics = func(_ utils.DataSource, queryIDList []string, searchType string, args arguments.ArgumentList) ([]utils.IndividualQueryMetrics, error) {
-				return expectedMetrics, expectedError
-			}
-
-			rows := sqlx.Rows{}
-			mockDB.On("QueryxContext", mock.Anything, mock.Anything, mock.Anything).Return(&rows, expectedError)
-
-			actualMetrics, err := currentQueryMetrics(mockDB, queryIDList, args)
-			if expectedError != nil {
-				assert.Error(t, err)
-				assert.Nil(t, actualMetrics)
-			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, expectedMetrics, actualMetrics)
-			}
-		})
-	}
-
-	runCurrentQueryMetricsTest("Error", queryIDList, errSomeError, nil)
-	runCurrentQueryMetricsTest("EmptyQueryIDList", []string{}, nil, []utils.IndividualQueryMetrics{})
-}
-
-func TestRecentQueryMetrics(t *testing.T) {
-	mockDB := new(MockDataSource)
-	queryIDList := []string{"1", "2", "3"}
-	args := arguments.ArgumentList{}
-
-	runRecentQueryMetricsTest := func(name string, queryIDList []string, expectedError error, expectedMetrics []utils.IndividualQueryMetrics) {
-		t.Run(name, func(t *testing.T) {
-			mockCollectIndividualQueryMetrics = func(_ utils.DataSource, queryIDList []string, searchType string, args arguments.ArgumentList) ([]utils.IndividualQueryMetrics, error) {
-				return expectedMetrics, expectedError
-			}
-
-			rows := sqlx.Rows{}
-			mockDB.On("QueryxContext", mock.Anything, mock.Anything, mock.Anything).Return(&rows, expectedError)
-
-			actualMetrics, err := recentQueryMetrics(mockDB, queryIDList, args)
-			if expectedError != nil {
-				assert.Error(t, err)
-				assert.Nil(t, actualMetrics)
-			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, expectedMetrics, actualMetrics)
-			}
-		})
-	}
-
-	runRecentQueryMetricsTest("Error", queryIDList, errSomeError, nil)
-	runRecentQueryMetricsTest("EmptyQueryIDList", []string{}, nil, []utils.IndividualQueryMetrics{})
 }
 
 func TestPopulateSlowQueryMetrics(t *testing.T) {
