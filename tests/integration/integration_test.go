@@ -31,7 +31,7 @@ var (
 	defaultMysqlPass              = "DBpwd1234"
 	defaultMysqlPort              = 3306
 	defaultMysqlDB                = "database"
-	defaultEnableQueryPerformance = false
+	defaultEnableQueryMonitoring  = false
 	defaultSlowQueryFetchInterval = 3000
 
 	// cli flags
@@ -41,7 +41,7 @@ var (
 	psw                    = flag.String("psw", defaultMysqlPass, "Mysql user password")
 	port                   = flag.Int("port", defaultMysqlPort, "Mysql port")
 	database               = flag.String("database", defaultMysqlDB, "Mysql database")
-	enableQueryPerformance = flag.Bool("enable_query_performance", defaultEnableQueryPerformance, "flag to enable and disable collecting performance metrics")
+	enableQueryMonitoring  = flag.Bool("enable_query_monitoring", defaultEnableQueryMonitoring, "flag to enable and disable collecting query metrics")
 	slowQueryFetchInterval = flag.Int("slow_query_fetch_interval", defaultSlowQueryFetchInterval, "retrives slow queries that ran in last n seconds")
 )
 
@@ -316,7 +316,7 @@ func runUnconfiguredMysqlPerfConfigTest(t *testing.T, args []string, outputMetri
 	}
 }
 
-// Run integration with ENABLE_QUERY_PERFORMANCE flag enabled for mysql servers which don't have performance flags/extensions enabled
+// Run integration with ENABLE_QUERY_MONITORING flag enabled for mysql servers which don't have performance flags/extensions enabled
 func TestUnconfiguredPerfMySQLIntegration(t *testing.T) {
 	testCases := []struct {
 		name              string
@@ -325,39 +325,43 @@ func TestUnconfiguredPerfMySQLIntegration(t *testing.T) {
 		expectedError     string
 	}{
 		{
-			name: "RemoteEntity_EnableQueryPerformance",
+			name: "RemoteEntity_EnableQueryMonitoring",
 			args: []string{
 				"REMOTE_MONITORING=true",
-				"ENABLE_QUERY_PERFORMANCE=true",
+				"ENABLE_QUERY_MONITORING=true",
 			},
 			outputMetricsFile: "mysql-schema-master.json",
 			expectedError:     "essential consumer is not enabled: events_stages_current",
 		},
 		{
-			name: "LocalEntity_EnableQueryPerformance",
+			name: "LocalEntity_EnableQueryMonitoring",
 			args: []string{
-				"ENABLE_QUERY_PERFORMANCE=true",
+				"ENABLE_QUERY_MONITORING=true",
 			},
 			outputMetricsFile: "mysql-schema-master-localentity.json",
 			expectedError:     "essential consumer is not enabled: events_stages_current",
 		},
 		{
-			name: "OnlyMetrics_EnableQueryPerformance",
+			name: "OnlyMetrics_EnableQueryMonitoring",
 			args: []string{
 				"METRICS=true",
-				"ENABLE_QUERY_PERFORMANCE=true",
+				"ENABLE_QUERY_MONITORING=true",
 			},
 			outputMetricsFile: "mysql-schema-metrics-master.json",
 			expectedError:     "essential consumer is not enabled: events_stages_current",
 		},
 		{
-			name: "OnlyInventory_EnableQueryPerformance",
+			name: "OnlyInventory_EnableQueryMonitoring",
 			args: []string{
 				"INVENTORY=true",
-				"ENABLE_QUERY_PERFORMANCE=true",
+				"ENABLE_QUERY_MONITORING=true",
 			},
 			outputMetricsFile: "mysql-schema-inventory-master.json",
-			expectedError:     "essential consumer is not enabled: events_stages_current",
+			/*
+				 	Note: Expected error is empty as integration will report query performance monitoring data when both metrics and enable_query_monitoring are enabled.
+					Refer args.HasMetrics() implementation here https://github.com/newrelic/infra-integrations-sdk/blob/12ee4e8a20a479f2b3d9ba328d2f80c9dc663c79/args/args.go#L33
+			*/
+			expectedError: "",
 		},
 	}
 	for _, testCase := range testCases {

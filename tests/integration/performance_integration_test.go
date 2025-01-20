@@ -28,7 +28,7 @@ var (
 	defaultMysqlUser              = "root"
 	defaultMysqlPass              = ""
 	defaultMysqlPort              = 3306
-	defaultEnableQueryPerformance = false
+	defaultEnableQueryMonitoring  = false
 	defaultSlowQueryFetchInterval = 3000
 
 	// cli flags
@@ -37,7 +37,7 @@ var (
 	user                   = flag.String("user", defaultMysqlUser, "Mysql user name")
 	psw                    = flag.String("psw", defaultMysqlPass, "Mysql user password")
 	port                   = flag.Int("port", defaultMysqlPort, "Mysql port")
-	enableQueryPerformance = flag.Bool("enable_query_performance", defaultEnableQueryPerformance, "flag to enable and disable collecting performance metrics")
+	enableQueryMonitoring  = flag.Bool("enable_query_monitoring", defaultEnableQueryMonitoring, "flag to enable and disable collecting query metrics")
 	slowQueryFetchInterval = flag.Int("slow_query_fetch_interval", defaultSlowQueryFetchInterval, "retrives slow queries that ran in last n seconds")
 )
 
@@ -176,46 +176,59 @@ func runValidMysqlPerfConfigTest(t *testing.T, args []string, outputMetricsFile 
 			}
 			require.NoError(t, err)
 			outputMetricsList := strings.Split(stdout, "\n")
-			outputMetricsConfigs := []struct {
-				name           string
-				stdout         string
-				schemaFileName string
-			}{
-				{
-					"DeafutlMetrics",
-					outputMetricsList[0],
-					outputMetricsFile,
-				},
-				{
-					"SlowQueryMetrics",
-					outputMetricsList[1],
-					"mysql-schema-slow-queries.json",
-				},
-				{
-					"IndividualQueryMetrics",
-					outputMetricsList[2],
-					"mysql-schema-individual-queries.json",
-				},
-				{
-					"QueryExecutionMetrics",
-					outputMetricsList[3],
-					"mysql-schema-query-execution.json",
-				},
-				{
-					"WaitEventsMetrics",
-					outputMetricsList[4],
-					"mysql-schema-wait-events.json",
-				},
-				{
-					"BlockingSessionMetrics",
-					outputMetricsList[5],
-					"mysql-schema-blocking-sessions.json",
-				},
-			}
-			for _, outputConfig := range outputMetricsConfigs {
-				schemaPath := filepath.Join("json-schema-performance-files", outputConfig.schemaFileName)
-				err := jsonschema.Validate(schemaPath, outputConfig.stdout)
+			if testName == "OnlyInventory_EnableQueryMonitoring" {
+				/*
+					 	Note: Only standard integration metrics json with we present in the stdout.
+						Integration will report query performance monitoring data when both metrics and enable_query_monitoring are enabled.
+						Refer args.HasMetrics() implementation here https://github.com/newrelic/infra-integrations-sdk/blob/12ee4e8a20a479f2b3d9ba328d2f80c9dc663c79/args/args.go#L33
+
+						In this testcase metrics flag is disabled. So, validation of the standard json output is being done.
+				*/
+				schemaPath := filepath.Join("json-schema-performance-files", outputMetricsFile)
+				err := jsonschema.Validate(schemaPath, outputMetricsList[0])
 				require.NoError(t, err, "The output of MySQL integration doesn't have expected format")
+			} else {
+				outputMetricsConfigs := []struct {
+					name           string
+					stdout         string
+					schemaFileName string
+				}{
+					{
+						"DeafutlMetrics",
+						outputMetricsList[0],
+						outputMetricsFile,
+					},
+					{
+						"SlowQueryMetrics",
+						outputMetricsList[1],
+						"mysql-schema-slow-queries.json",
+					},
+					{
+						"IndividualQueryMetrics",
+						outputMetricsList[2],
+						"mysql-schema-individual-queries.json",
+					},
+					{
+						"QueryExecutionMetrics",
+						outputMetricsList[3],
+						"mysql-schema-query-execution.json",
+					},
+					{
+						"WaitEventsMetrics",
+						outputMetricsList[4],
+						"mysql-schema-wait-events.json",
+					},
+					{
+						"BlockingSessionMetrics",
+						outputMetricsList[5],
+						"mysql-schema-blocking-sessions.json",
+					},
+				}
+				for _, outputConfig := range outputMetricsConfigs {
+					schemaPath := filepath.Join("json-schema-performance-files", outputConfig.schemaFileName)
+					err := jsonschema.Validate(schemaPath, outputConfig.stdout)
+					require.NoError(t, err, "The output of MySQL integration doesn't have expected format")
+				}
 			}
 		})
 	}
@@ -228,33 +241,33 @@ func TestPerfMySQLIntegrationValidArguments(t *testing.T) {
 		outputMetricsFile string
 	}{
 		{
-			name: "RemoteEntity_EnableQueryPerformance",
+			name: "RemoteEntity_EnableQueryMonitoring",
 			args: []string{
 				"REMOTE_MONITORING=true",
-				"ENABLE_QUERY_PERFORMANCE=true",
+				"ENABLE_QUERY_MONITORING=true",
 			},
 			outputMetricsFile: "mysql-schema-master.json",
 		},
 		{
-			name: "LocalEntity_EnableQueryPerformance",
+			name: "LocalEntity_EnableQueryMonitoring",
 			args: []string{
-				"ENABLE_QUERY_PERFORMANCE=true",
+				"ENABLE_QUERY_MONITORING=true",
 			},
 			outputMetricsFile: "mysql-schema-master-localentity.json",
 		},
 		{
-			name: "OnlyMetrics_EnableQueryPerformance",
+			name: "OnlyMetrics_EnableQueryMonitoring",
 			args: []string{
 				"METRICS=true",
-				"ENABLE_QUERY_PERFORMANCE=true",
+				"ENABLE_QUERY_MONITORING=true",
 			},
 			outputMetricsFile: "mysql-schema-metrics-master.json",
 		},
 		{
-			name: "OnlyInventory_EnableQueryPerformance",
+			name: "OnlyInventory_EnableQueryMonitoring",
 			args: []string{
 				"INVENTORY=true",
-				"ENABLE_QUERY_PERFORMANCE=true",
+				"ENABLE_QUERY_MONITORING=true",
 			},
 			outputMetricsFile: "mysql-schema-inventory-master.json",
 		},

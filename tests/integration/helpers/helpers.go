@@ -230,7 +230,7 @@ func AssertReceivedErrors(t *testing.T, msg string, errLog ...string) {
 		}
 	}
 
-	assert.Failf(t, "Expected to find the following error message: %q, but it was not found in %v", msg, errLog)
+	assert.Failf(t, fmt.Sprintf("Expected to find the following error message: %s", msg), "but got %s", errLog)
 }
 
 func RunIntegrationAndGetStdout(t *testing.T, binPath *string, user *string, psw *string, port *int, slowQueryFetchInterval *int, container *string, targetContainer string, envVars []string) (string, string, error) {
