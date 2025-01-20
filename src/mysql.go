@@ -89,7 +89,7 @@ func main() {
 	}
 	fatalIfErr(i.Publish())
 
-	if args.EnableQueryPerformance && args.HasMetrics() {
+	if args.EnableQueryMonitoring && args.HasMetrics() {
 		queryperformancemonitoring.PopulateQueryPerformanceMetrics(args, e, i)
 	}
 }
