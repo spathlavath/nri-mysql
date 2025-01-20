@@ -1,7 +1,6 @@
 package validator
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
 	"strconv"
@@ -67,33 +66,12 @@ func isPerformanceSchemaEnabled(db utils.DataSource) (bool, error) {
 	return performanceSchemaEnabled == "ON", nil
 }
 
-// checkEssentialConsumers checks if the essential consumers are enabled in the Performance Schema.
-func checkEssentialConsumers(db utils.DataSource) error {
-	consumers := []string{
-		"events_waits_current",
-		"events_waits_history_long",
-		"events_waits_history",
-		"events_statements_history_long",
-		"events_statements_history",
-		"events_statements_current",
-		"events_statements_cpu",
-		"events_transactions_current",
-		"events_stages_current",
-	}
-
-	// Build the query to check the status of essential consumers
-	query := "SELECT NAME, ENABLED FROM performance_schema.setup_consumers WHERE NAME IN ("
-	for i, consumer := range consumers {
-		if i > 0 {
-			query += ", "
-		}
-		query += fmt.Sprintf("'%s'", consumer)
-	}
-	query += ");"
-
+// checkEssentialStatus executes a query to check if essential items are enabled.
+func checkEssentialStatus(db utils.DataSource, query string, updateSQLTemplate string, errMsgTemplate error) error {
+	// Execute the query
 	rows, err := db.QueryX(query)
 	if err != nil {
-		return fmt.Errorf("failed to check essential consumers: %w", err)
+		return fmt.Errorf("failed to check essential status: %w", err)
 	}
 	defer func() {
 		if err := rows.Close(); err != nil {
@@ -101,73 +79,37 @@ func checkEssentialConsumers(db utils.DataSource) error {
 		}
 	}()
 
-	// Check if each essential consumer is enabled
+	// Check if each essential item is enabled
 	for rows.Next() {
 		var name, enabled string
 		if err := rows.Scan(&name, &enabled); err != nil {
-			return fmt.Errorf("failed to scan consumer row: %w", err)
+			return fmt.Errorf("failed to scan row: %w", err)
 		}
 		if enabled != "YES" {
-			log.Error("Essential consumer %s is not enabled. To enable it, run: UPDATE performance_schema.setup_consumers SET ENABLED = 'YES' WHERE NAME = '%s';", name, name)
-			return fmt.Errorf("%w: %s", utils.ErrEssentialConsumerNotEnabled, name)
+			log.Error(updateSQLTemplate, name, name)
+			return fmt.Errorf("%w: %s", errMsgTemplate, name)
 		}
 	}
 
 	if err := rows.Err(); err != nil {
-		return fmt.Errorf("rows iteration error: %w", err)
+		return fmt.Errorf("query to check essential status failed: %w", err)
 	}
 
 	return nil
 }
 
+// checkEssentialConsumers checks if the essential consumers are enabled in the Performance Schema.
+func checkEssentialConsumers(db utils.DataSource) error {
+	query := buildConsumerStatusQuery()
+	updateSQLTemplate := "Essential consumer %s is not enabled. To enable it, run: UPDATE performance_schema.setup_consumers SET ENABLED = 'YES' WHERE NAME = '%s';"
+	return checkEssentialStatus(db, query, updateSQLTemplate, utils.ErrEssentialConsumerNotEnabled)
+}
+
 // checkEssentialInstruments checks if the essential instruments are enabled in the Performance Schema.
 func checkEssentialInstruments(db utils.DataSource) error {
-	instruments := []string{
-		// Add other essential instruments here
-		"wait/%",
-		"statement/%",
-		"%lock%",
-	}
-
-	// Pre-allocate the slice with the expected length
-	instrumentConditions := make([]string, 0, len(instruments))
-	for _, instrument := range instruments {
-		instrumentConditions = append(instrumentConditions, fmt.Sprintf("NAME LIKE '%s'", instrument))
-	}
-
-	// Build the query to check the status of essential instruments
-	query := "SELECT NAME, ENABLED, TIMED FROM performance_schema.setup_instruments WHERE "
-	query += strings.Join(instrumentConditions, " OR ")
-	query += ";"
-
-	rows, err := db.QueryX(query)
-	if err != nil {
-		return fmt.Errorf("failed to check essential instruments: %w", err)
-	}
-	defer func() {
-		if err := rows.Close(); err != nil {
-			log.Error("Failed to close rows: %v", err)
-		}
-	}()
-
-	// Check if each essential instrument is enabled and timed
-	for rows.Next() {
-		var name, enabled string
-		var timed sql.NullString
-		if err := rows.Scan(&name, &enabled, &timed); err != nil {
-			return fmt.Errorf("failed to scan instrument row: %w", err)
-		}
-		if enabled != "YES" || (timed.Valid && timed.String != "YES") {
-			log.Error("Essential instrument %s is not fully enabled. To enable it, run: UPDATE performance_schema.setup_instruments SET ENABLED = 'YES', TIMED = 'YES' WHERE NAME = '%s';", name, name)
-			return fmt.Errorf("%w: %s", utils.ErrEssentialInstrumentNotEnabled, name)
-		}
-	}
-
-	if err := rows.Err(); err != nil {
-		return fmt.Errorf("rows iteration error: %w", err)
-	}
-
-	return nil
+	query := buildInstrumentQuery()
+	updateSQLTemplate := "Essential instrument %s is not fully enabled. To enable it, run: UPDATE performance_schema.setup_instruments SET ENABLED = 'YES', TIMED = 'YES' WHERE NAME = '%s';"
+	return checkEssentialStatus(db, query, updateSQLTemplate, utils.ErrEssentialInstrumentNotEnabled)
 }
 
 // logEnablePerformanceSchemaInstructions logs instructions to enable the Performance Schema.
@@ -175,24 +117,13 @@ func logEnablePerformanceSchemaInstructions(db utils.DataSource) {
 	version, err := getMySQLVersion(db)
 	if err != nil {
 		log.Error("Failed to get MySQL version: %v", err)
-		utils.FatalIfErr(err)
 	}
 
 	if isVersion8OrGreater(version) {
 		log.Debug("To enable the Performance Schema, add the following lines to your MySQL configuration file (my.cnf or my.ini) in the [mysqld] section and restart the MySQL server:")
 		log.Debug("performance_schema=ON")
-
-		log.Debug("For MySQL 8.0 and higher, you may also need to set the following variables:")
-		log.Debug("performance_schema_instrument='%%=ON'")
-		log.Debug("performance_schema_consumer_events_statements_current=ON")
-		log.Debug("performance_schema_consumer_events_statements_history=ON")
-		log.Debug("performance_schema_consumer_events_statements_history_long=ON")
-		log.Debug("performance_schema_consumer_events_waits_current=ON")
-		log.Debug("performance_schema_consumer_events_waits_history=ON")
-		log.Debug("performance_schema_consumer_events_waits_history_long=ON")
 	} else {
 		log.Error("MySQL version %s is not supported. Only version 8.0+ is supported.", version)
-		utils.FatalIfErr(ErrMysqlVersion)
 	}
 }
 
@@ -221,28 +152,67 @@ func getMySQLVersion(db utils.DataSource) (string, error) {
 
 // isVersion8OrGreater checks if the MySQL version is 8.0 or greater.
 func isVersion8OrGreater(version string) bool {
-	majorVersion, minorVersion := parseVersion(version)
-	return (majorVersion > 8) || (majorVersion == 8 && minorVersion >= 0)
+	majorVersion := parseVersion(version)
+	return (majorVersion >= 8)
 }
 
 // parseVersion extracts the major and minor version numbers from the version string
-func parseVersion(version string) (int, int) {
+func parseVersion(version string) int {
 	parts := strings.Split(version, ".")
 	if len(parts) < constants.MinVersionParts {
-		return 0, 0 // Return 0 if the version string is improperly formatted
+		return 0 // Return 0 if the version string is improperly formatted
 	}
 
 	majorVersion, err := strconv.Atoi(parts[0])
 	if err != nil {
-		log.Error("Failed to parse major version: %v", err)
-		return 0, 0
+		log.Error("Failed to parse major version '%s': %v", parts[0], err)
+		return 0
 	}
 
-	minorVersion, err := strconv.Atoi(parts[1])
-	if err != nil {
-		log.Error("Failed to parse minor version: %v", err)
-		return 0, 0
+	return majorVersion
+}
+
+// buildConsumerStatusQuery constructs a SQL query to check the status of essential consumers
+func buildConsumerStatusQuery() string {
+	// List of essential consumers to check
+	consumers := []string{
+		"events_waits_current",
+		"events_waits_history_long",
+		"events_waits_history",
+		"events_statements_history_long",
+		"events_statements_history",
+		"events_statements_current",
+		"events_statements_cpu",
+		"events_transactions_current",
+		"events_stages_current",
 	}
 
-	return majorVersion, minorVersion
+	query := "SELECT NAME, ENABLED FROM performance_schema.setup_consumers WHERE NAME IN ("
+	query += "'" + strings.Join(consumers, "', '") + "'"
+	query += ");"
+
+	return query
+}
+
+// buildInstrumentQuery constructs a SQL query to check the status of essential instruments
+func buildInstrumentQuery() string {
+	// List of essential instruments to check
+	instruments := []string{
+		"wait/%",
+		"statement/%",
+		"%lock%",
+	}
+
+	// Pre-allocate the slice with the expected length
+	instrumentConditions := make([]string, 0, len(instruments))
+	for _, instrument := range instruments {
+		instrumentConditions = append(instrumentConditions, fmt.Sprintf("NAME LIKE '%s'", instrument))
+	}
+
+	// Build the query to check the status of essential instruments
+	query := "SELECT NAME, ENABLED FROM performance_schema.setup_instruments WHERE "
+	query += strings.Join(instrumentConditions, " OR ")
+	query += ";"
+
+	return query
 }

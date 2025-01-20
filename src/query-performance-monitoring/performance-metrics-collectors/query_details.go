@@ -13,7 +13,7 @@ import (
 )
 
 // PopulateSlowQueryMetrics collects and sets slow query metrics and returns the list of query IDs
-func PopulateSlowQueryMetrics(app *newrelic.Application, i *integration.Integration, e *integration.Entity, db utils.DataSource, args arguments.ArgumentList, excludedDatabases []string) []string {
+func PopulateSlowQueryMetrics(app *newrelic.Application, i *integration.Integration, db utils.DataSource, args arguments.ArgumentList, excludedDatabases []string) []string {
 	rawMetrics, queryIDList, err := collectGroupedSlowQueryMetrics(app, db, args.SlowQueryFetchInterval, args.QueryCountThreshold, excludedDatabases)
 	if err != nil {
 		log.Error("Failed to collect slow query metrics: %v", err)
@@ -89,7 +89,7 @@ func setSlowQueryMetrics(i *integration.Integration, metrics []utils.SlowQueryMe
 }
 
 // PopulateIndividualQueryDetails collects and sets individual query details
-func PopulateIndividualQueryDetails(app *newrelic.Application, db utils.DataSource, queryIDList []string, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList) []utils.QueryGroup {
+func PopulateIndividualQueryDetails(app *newrelic.Application, db utils.DataSource, queryIDList []string, i *integration.Integration, args arguments.ArgumentList) []utils.QueryGroup {
 	currentQueryMetrics, currentQueryMetricsErr := currentQueryMetrics(app, db, queryIDList, args)
 	if currentQueryMetricsErr != nil {
 		log.Error("Failed to collect current query metrics: %v", currentQueryMetricsErr)

@@ -17,20 +17,24 @@ import (
 )
 
 // PopulateExecutionPlans populates execution plans for the given queries.
-func PopulateExecutionPlans(app *newrelic.Application, db utils.DataSource, queryGroups []utils.QueryGroup, i *integration.Integration, e *integration.Entity, args arguments.ArgumentList) {
+func PopulateExecutionPlans(app *newrelic.Application, db utils.DataSource, queryGroups []utils.QueryGroup, i *integration.Integration, args arguments.ArgumentList) {
 	var events []utils.QueryPlanMetrics
 
 	for _, group := range queryGroups {
 		dsn := utils.GenerateDSN(args, group.Database)
 		// Open the DB connection
-		db, err := utils.OpenDB(dsn)
-		utils.FatalIfErr(err)
+		db, err := utils.OpenSQLXDB(dsn)
+		if err != nil {
+			log.Error("Error opening database connection: %v", err)
+			continue
+		}
 		defer db.Close()
 
 		for _, query := range group.Queries {
 			tableIngestionDataList, err := processExecutionPlanMetrics(app, db, query)
 			if err != nil {
 				log.Error("Error processing execution plan metrics: %v", err)
+				continue
 			}
 			events = append(events, tableIngestionDataList...)
 		}
@@ -44,6 +48,7 @@ func PopulateExecutionPlans(app *newrelic.Application, db utils.DataSource, quer
 	err := SetExecutionPlanMetrics(i, args, events)
 	if err != nil {
 		log.Error("Error publishing execution plan metrics: %v", err)
+		return
 	}
 }
 

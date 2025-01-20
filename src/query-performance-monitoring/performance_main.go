@@ -1,7 +1,6 @@
 package queryperformancemonitoring
 
 import (
-	"fmt"
 	"os"
 	"time"
 
@@ -49,18 +48,22 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 	dsn := utils.GenerateDSN(args, database)
 
 	// Open database connection
-	db, err := utils.OpenDB(dsn)
-	utils.FatalIfErr(err)
+	db, err := utils.OpenSQLXDB(dsn)
+	if err != nil {
+		log.Error("Error opening database connection: %v", err)
+		return
+	}
 	defer db.Close()
 
 	// Validate preconditions before proceeding
 	preValidationErr := validator.ValidatePreconditions(db)
 	if preValidationErr != nil {
-		utils.FatalIfErr(fmt.Errorf("preconditions failed: %w", preValidationErr))
+		log.Error("preconditions failed: %v", preValidationErr)
+		return
 	}
 
 	// Get the list of unique excluded databases
-	excludedDatabases := utils.GetExcludedDatabases(args.ExcludedDatabases)
+	excludedDatabases := utils.GetExcludedDatabases(args.ExcludedPerformanceDatabases)
 
 	// Populate metrics for slow queries
 	start := time.Now()
@@ -72,7 +75,7 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 	}
 	mysqlapm.Txn = slowQueriesTxn
 	log.Debug("Beginning to retrieve slow query metrics")
-	queryIDList := performancemetricscollectors.PopulateSlowQueryMetrics(app, i, e, db, args, excludedDatabases)
+	queryIDList := performancemetricscollectors.PopulateSlowQueryMetrics(app, i, db, args, excludedDatabases)
 	log.Debug("Completed fetching slow query metrics in %v", time.Since(start))
 
 	if len(queryIDList) > 0 {
@@ -85,7 +88,7 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 		}
 		mysqlapm.Txn = individualTxn
 		log.Debug("Beginning to retrieve individual query metrics")
-		groupQueriesByDatabase := performancemetricscollectors.PopulateIndividualQueryDetails(app, db, queryIDList, i, e, args)
+		groupQueriesByDatabase := performancemetricscollectors.PopulateIndividualQueryDetails(app, db, queryIDList, i, args)
 		log.Debug("Completed fetching individual query metrics in %v", time.Since(start))
 		defer individualTxn.End()
 
@@ -98,7 +101,7 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 		}
 		mysqlapm.Txn = execPlanTxn
 		log.Debug("Beginning to retrieve query execution plan metrics")
-		performancemetricscollectors.PopulateExecutionPlans(app, db, groupQueriesByDatabase, i, e, args)
+		performancemetricscollectors.PopulateExecutionPlans(app, db, groupQueriesByDatabase, i, args)
 		log.Debug("Completed fetching query execution plan metrics in %v", time.Since(start))
 		defer execPlanTxn.End()
 	}
@@ -112,7 +115,7 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 	}
 	mysqlapm.Txn = waitEventsTxn
 	log.Debug("Beginning to retrieve wait event metrics")
-	performancemetricscollectors.PopulateWaitEventMetrics(app, db, i, e, args, excludedDatabases)
+	performancemetricscollectors.PopulateWaitEventMetrics(app, db, i, args, excludedDatabases)
 	log.Debug("Completed fetching wait event metrics in %v", time.Since(start))
 	defer waitEventsTxn.End()
 
@@ -125,7 +128,7 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 	}
 	mysqlapm.Txn = blockingSessionsTxn
 	log.Debug("Beginning to retrieve blocking session metrics")
-	performancemetricscollectors.PopulateBlockingSessionMetrics(app, db, i, e, args, excludedDatabases)
+	performancemetricscollectors.PopulateBlockingSessionMetrics(app, db, i, args, excludedDatabases)
 	log.Debug("Completed fetching blocking session metrics in %v", time.Since(start))
 	log.Debug("Query analysis completed.")
 	defer blockingSessionsTxn.End()
