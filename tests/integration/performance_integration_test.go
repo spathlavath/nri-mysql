@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -65,28 +64,7 @@ var (
 )
 
 func runIntegrationAndGetStdoutWithError(t *testing.T, targetContainer string, envVars ...string) (string, string, error) {
-	t.Helper()
-
-	command := make([]string, 0)
-	command = append(command, *binPath)
-	if user != nil {
-		command = append(command, "-username="+*user)
-	}
-	if psw != nil {
-		command = append(command, "-password="+*psw)
-	}
-	if targetContainer != "" {
-		command = append(command, "-hostname="+targetContainer)
-	}
-	if port != nil {
-		command = append(command, "-port="+strconv.Itoa(*port))
-	}
-	if slowQueryFetchInterval != nil {
-		command = append(command, "-slow_query_fetch_interval="+strconv.Itoa(*slowQueryFetchInterval))
-	}
-	stdout, stderr, err := helpers.ExecInContainer(*perfContainer, command, envVars...)
-
-	return stdout, stderr, err
+	return helpers.RunIntegrationAndGetStdout(t, binPath, user, psw, port, slowQueryFetchInterval, perfContainer, targetContainer, envVars)
 }
 
 func executeBlockingSessionQuery(mysqlPerfConfig MysqlPerformanceConfig) error {
@@ -101,13 +79,28 @@ func executeBlockingSessionQuery(mysqlPerfConfig MysqlPerformanceConfig) error {
 		return masterErr
 	}
 
+	/*
+		Steps to create blocking session:
+			1. Create a lock on particular row of a table from one session. This can be found in /mysql-performance-config/custom-entrypoint.sh
+			2. Try to aquire lock on the same row as above by updating the same row of the table from another session. This is being done below.
+	*/
 	blockingSessionQuery := "SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ; USE employees; START TRANSACTION; UPDATE employees SET last_name = 'Blocking' WHERE emp_no = 10001;"
 	blockingSessionCmd := []string{`mysql`, `-u`, `root`, `-e`, blockingSessionQuery}
-	// uncomment line 109-112 and comment line 113 to see if the below mysql query is blocked and doesn't execute.
-	// _, blockingSessionErr, err := helpers.ExecInContainer(mysqlPerfConfig.Hostname, blockingSessionCmd, fmt.Sprintf("MYSQL_PWD=%s", *psw))
-	// if blockingSessionErr != "" {
-	// 	log.Debug("Error exec blocking session queries: ", blockingSessionErr, err)
-	// }
+	/*
+		Uncomment the below code to debug when the integration doesn't report blocking session metrics.
+		The code execution should stop below when you make sure there is another session already holding lock on the row of employees table having emp_no as 10001
+
+		if the code execution stops here then we simulated a blocking session succesfully
+			_, blockingSessionErr, err := helpers.ExecInContainer(mysqlPerfConfig.Hostname, blockingSessionCmd, fmt.Sprintf("MYSQL_PWD=%s", *psw))
+		if blockingSessionErr != "" {
+			log.Debug("Error exec blocking session queries: ", blockingSessionErr, err)
+		}
+
+		Note: The blocking session query is executed using go-routine because:
+			1. The nri-mysql integration reports only live blocking session metrics data
+			2. While executing the binary of nri-mysql integration there should be a live blocking session event in the mysql server
+			3. go-routine is used below to make sure the exectuion of the query & binary happen concurrently and blocking sessions metrics are reported in the stdout
+	*/
 	go helpers.ExecInContainer(mysqlPerfConfig.Hostname, blockingSessionCmd, fmt.Sprintf("MYSQL_PWD=%s", *psw))
 	log.Info("wait for the blocking session query to get executed for host :" + mysqlPerfConfig.Hostname)
 	time.Sleep(10 * time.Second)
@@ -123,7 +116,7 @@ func teardown() error {
 
 func TestMain(m *testing.M) {
 	log.Info("wait for mysql servers with performance schema/extensions enabled to come up and running")
-	time.Sleep(80 * time.Second)
+	time.Sleep(60 * time.Second)
 	log.Info("wait complete")
 	for _, mysqlPerfConfig := range MysqlPerfConfigs {
 		err := executeBlockingSessionQuery(mysqlPerfConfig)

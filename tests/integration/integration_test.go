@@ -82,26 +82,7 @@ var (
 
 // Returns the standard output, or fails testing if the command returned an error
 func runIntegration(t *testing.T, targetContainer string, envVars ...string) string {
-	t.Helper()
-
-	command := make([]string, 0)
-	command = append(command, *binPath)
-	if user != nil {
-		command = append(command, "--username", *user)
-	}
-	if psw != nil {
-		command = append(command, "--password", *psw)
-	}
-	if targetContainer != "" {
-		command = append(command, "--hostname", targetContainer)
-	}
-	if port != nil {
-		command = append(command, "--port", strconv.Itoa(*port))
-	}
-	if database != nil {
-		command = append(command, "--database", *database)
-	}
-	stdout, stderr, err := helpers.ExecInContainer(*container, command, envVars...)
+	stdout, stderr, err := helpers.RunIntegrationAndGetStdout(t, binPath, user, psw, port, slowQueryFetchInterval, container, targetContainer, envVars)
 	if stderr != "" {
 		log.Debug("Integration command Standard Error: ", stderr)
 	}
@@ -111,28 +92,7 @@ func runIntegration(t *testing.T, targetContainer string, envVars ...string) str
 }
 
 func runIntegrationAndGetStdoutWithError(t *testing.T, targetContainer string, envVars ...string) (string, string, error) {
-	t.Helper()
-
-	command := make([]string, 0)
-	command = append(command, *binPath)
-	if user != nil {
-		command = append(command, "--username", *user)
-	}
-	if psw != nil {
-		command = append(command, "--password", *psw)
-	}
-	if targetContainer != "" {
-		command = append(command, "--hostname", targetContainer)
-	}
-	if port != nil {
-		command = append(command, "--port", strconv.Itoa(*port))
-	}
-	if slowQueryFetchInterval != nil {
-		command = append(command, "-slow_query_fetch_interval="+strconv.Itoa(*slowQueryFetchInterval))
-	}
-	stdout, stderr, err := helpers.ExecInContainer(*container, command, envVars...)
-
-	return stdout, stderr, err
+	return helpers.RunIntegrationAndGetStdout(t, binPath, user, psw, port, slowQueryFetchInterval, container, targetContainer, envVars)
 }
 
 func checkVersion(dbVersion string) bool {
