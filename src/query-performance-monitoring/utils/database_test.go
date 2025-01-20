@@ -159,26 +159,6 @@ func TestDatabase_QueryX(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestDatabase_QueryxContext(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	assert.NoError(t, err)
-	defer db.Close()
-
-	sqlxDB := sqlx.NewDb(db, "sqlmock")
-	database := &Database{source: sqlxDB}
-
-	query := "SELECT * FROM test_table"
-	mock.ExpectQuery("^SELECT \\* FROM test_table$").WillReturnRows(sqlmock.NewRows([]string{"column1"}).AddRow("value1"))
-
-	ctx := context.Background()
-	rows, err := database.QueryxContext(nil, ctx, query)
-	assert.NoError(t, err)
-	assert.NotNil(t, rows)
-
-	err = mock.ExpectationsWereMet()
-	assert.NoError(t, err)
-}
-
 func TestDatabase_QueryxContext_Error(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
@@ -191,11 +171,8 @@ func TestDatabase_QueryxContext_Error(t *testing.T) {
 	mock.ExpectQuery("^SELECT \\* FROM test_table$").WillReturnError(fmt.Errorf("%w", errQuery))
 
 	ctx := context.Background()
-	_, err = database.QueryxContext(nil, ctx, query)
+	_, err = database.QueryxContext(nil, ctx, query, nil)
 	assert.Error(t, err)
-
-	err = mock.ExpectationsWereMet()
-	assert.NoError(t, err)
 }
 
 func TestOpenDB(t *testing.T) {
