@@ -103,9 +103,18 @@ func processExecutionPlanMetrics(db utils.DataSource, query utils.IndividualQuer
 	return dbPerformanceEvents, nil
 }
 
+// Escape backticks in the entire JSON string.
+func escapeInJSONString(jsonString string) string {
+	// Replace backticks with escaped backticks
+	return strings.ReplaceAll(jsonString, "`", "\\`")
+}
+
 // extractMetricsFromJSONString extracts metrics from a JSON string.
 func extractMetricsFromJSONString(jsonString string, eventID uint64, threadID uint64) ([]utils.QueryPlanMetrics, error) {
-	js, err := simplejson.NewJson([]byte(jsonString))
+	// Escape backticks in the JSON string
+	escapedJson := escapeInJSONString(jsonString)
+
+	js, err := simplejson.NewJson([]byte(escapedJson))
 	if err != nil {
 		log.Error("Error creating simplejson from byte slice: %v", err)
 		return []utils.QueryPlanMetrics{}, err
