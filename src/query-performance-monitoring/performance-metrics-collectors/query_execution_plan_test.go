@@ -231,3 +231,26 @@ func TestProcessSliceValue(t *testing.T) {
 		})
 	}
 }
+
+func TestEscapeAllStringsInJSON_Success(t *testing.T) {
+	input := `{"key1": "value1", "key2": "value with \"quotes\" and \\backslashes\\", "key3": ["array", "with", "strings"]}`
+	expectedOutput := `{"key1":"value1","key2":"value with \\\"quotes\\\" and \\\\backslashes\\\\","key3":["array","with","strings"]}`
+
+	output, err := escapeAllStringsInJSON(input)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if output != expectedOutput {
+		t.Errorf("Expected %v, got %v", expectedOutput, output)
+	}
+}
+
+func TestEscapeAllStringsInJSON_Error(t *testing.T) {
+	input := `{"key1": "value1", "key2": "value with "unterminated quote}`
+
+	_, err := escapeAllStringsInJSON(input)
+	if err == nil {
+		t.Fatalf("Expected an error, got nil")
+	}
+}
