@@ -194,9 +194,6 @@ func extractMetrics(js *simplejson.Json, dbPerformanceEvents []utils.QueryPlanMe
 	key, _ := js.Get("key").String()
 	usedKeyPartsArray, _ := js.Get("used_key_parts").StringArray()
 	refArray, _ := js.Get("ref").StringArray()
-	insert, _ := js.Get("insert").Bool()
-	update, _ := js.Get("update").Bool()
-	delete, _ := js.Get("delete").Bool()
 
 	possibleKeys := strings.Join(possibleKeysArray, ",")
 	usedKeyParts := strings.Join(usedKeyPartsArray, ",")
@@ -227,9 +224,6 @@ func extractMetrics(js *simplejson.Json, dbPerformanceEvents []utils.QueryPlanMe
 			DataReadPerJoin:     dataReadPerJoin,
 			UsingIndex:          fmt.Sprintf("%t", usingIndex),
 			KeyLength:           keyLength,
-			InsertOperation:     fmt.Sprintf("%t", insert),
-			UpdateOperation:     fmt.Sprintf("%t", update),
-			DeleteOperation:     fmt.Sprintf("%t", delete),
 		})
 		*stepID++
 	}
