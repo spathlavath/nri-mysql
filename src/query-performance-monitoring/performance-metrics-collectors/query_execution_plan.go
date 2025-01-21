@@ -106,10 +106,14 @@ func processExecutionPlanMetrics(db utils.DataSource, query utils.IndividualQuer
 	return dbPerformanceEvents, nil
 }
 
-// Escape backticks in the entire JSON string.
+// Escape backticks and other special characters in the entire JSON string.
 func escapeInJSONString(jsonString string) string {
 	// Replace backticks with escaped backticks
-	return strings.ReplaceAll(jsonString, "`", "\\`")
+	escapedJson := strings.ReplaceAll(jsonString, "`", "\\`")
+	// Escape other special characters if necessary
+	escapedJson = strings.ReplaceAll(escapedJson, "\\", "\\\\")
+	escapedJson = strings.ReplaceAll(escapedJson, "\"", "\\\"")
+	return escapedJson
 }
 
 // extractMetricsFromJSONString extracts metrics from a JSON string.
