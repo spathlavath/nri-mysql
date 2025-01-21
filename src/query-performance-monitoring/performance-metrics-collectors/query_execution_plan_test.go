@@ -119,15 +119,15 @@ func TestSetExecutionPlanMetrics(t *testing.T) {
 func TestIsSupportedStatement(t *testing.T) {
 	t.Run("Supported Statement", func(t *testing.T) {
 		assert.True(t, isSupportedStatement("SELECT * FROM test"))
-		assert.True(t, isSupportedStatement("INSERT INTO test VALUES (1)"))
-		assert.True(t, isSupportedStatement("UPDATE test SET value = 1"))
-		assert.True(t, isSupportedStatement("DELETE FROM test"))
 		assert.True(t, isSupportedStatement("WITH cte AS (SELECT * FROM test) SELECT * FROM cte"))
 	})
 
 	t.Run("Unsupported Statement", func(t *testing.T) {
 		assert.False(t, isSupportedStatement("DROP TABLE test"))
 		assert.False(t, isSupportedStatement("ALTER TABLE test ADD COLUMN value INT"))
+		assert.False(t, isSupportedStatement("INSERT INTO test VALUES (1)"))
+		assert.False(t, isSupportedStatement("UPDATE test SET value = 1"))
+		assert.False(t, isSupportedStatement("DELETE FROM test"))
 	})
 }
 
