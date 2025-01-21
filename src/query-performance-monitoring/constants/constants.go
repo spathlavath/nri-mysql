@@ -22,7 +22,7 @@ const (
 		SupportedStatements defines the SQL statements for which this integration fetches query execution plans.
 		Restricting the supported statements improves compatibility and reduces the complexity of plan analysis.
 	*/
-	SupportedStatements = "SELECT INSERT UPDATE DELETE WITH"
+	SupportedStatements = "SELECT WITH"
 
 	/*
 		QueryPlanTimeoutDuration sets the timeout for fetching query execution plans.
