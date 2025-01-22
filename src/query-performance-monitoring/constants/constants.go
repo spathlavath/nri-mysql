@@ -36,6 +36,12 @@ const (
 	*/
 	TimeoutDuration = 5 * time.Second
 
+	//  DefaultQueryFetchInterval defines the default interval for fetching individual query performance metrics. */
+	DefaultQueryResponseTimeThreshold = 500
+
+	// DefaultQueryCountThreshold defines the default query count limit for fetching grouped slow, wait events and blocking sessions query performance metrics. */
+	DefaultQueryCountThreshold = 20
+
 	/*
 		MaxQueryCountThreshold limits the total number of collected queries to prevent performance issues
 		that could arise from processing and storing an excessive amount of query data.
