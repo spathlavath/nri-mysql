@@ -12,7 +12,7 @@ import (
 	validator "github.com/newrelic/nri-mysql/src/query-performance-monitoring/validator"
 )
 
-// main
+// PopulateQueryPerformanceMetrics is the entry point for fetching and populating query performance metrics.
 func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration.Entity, i *integration.Integration) {
 	var database string
 

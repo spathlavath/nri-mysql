@@ -153,24 +153,28 @@ func getMySQLVersion(db utils.DataSource) (string, error) {
 
 // isVersion8OrGreater checks if the MySQL version is 8.0 or greater.
 func isVersion8OrGreater(version string) bool {
-	majorVersion := parseVersion(version)
+	majorVersion, err := extractMajorFromVersion(version)
+	if err != nil {
+		log.Error("Failed to extract major version: %v", err)
+		return false
+	}
 	return (majorVersion >= 8)
 }
 
-// parseVersion extracts the major and minor version numbers from the version string
-func parseVersion(version string) int {
+// extractMajorFromVersion extracts the major version number from a version string.
+func extractMajorFromVersion(version string) (int, error) {
 	parts := strings.Split(version, ".")
 	if len(parts) < constants.MinVersionParts {
-		return 0 // Return 0 if the version string is improperly formatted
+		return 0, errors.New("version string is improperly formatted")
 	}
 
 	majorVersion, err := strconv.Atoi(parts[0])
 	if err != nil {
 		log.Error("Failed to parse major version '%s': %v", parts[0], err)
-		return 0
+		return 0, err
 	}
 
-	return majorVersion
+	return majorVersion, nil
 }
 
 // buildConsumerStatusQuery constructs a SQL query to check the status of essential consumers

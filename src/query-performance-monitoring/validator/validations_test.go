@@ -177,17 +177,28 @@ func TestGetMySQLVersion(t *testing.T) {
 }
 func TestIsVersion8OrGreater(t *testing.T) {
 	assert.True(t, isVersion8OrGreater("8.0.23"))
+	assert.True(t, isVersion8OrGreater("8.4"))
 	assert.False(t, isVersion8OrGreater("5.7.31"))
+	assert.False(t, isVersion8OrGreater("5.6"))
+	assert.False(t, isVersion8OrGreater("invalid.version.string"))
+	assert.False(t, isVersion8OrGreater(""))
 }
 
-func TestParseVersion(t *testing.T) {
-	major := parseVersion("8.0.23")
+func TestExtractMajorFromVersion(t *testing.T) {
+	major, err := extractMajorFromVersion("8.0.23")
+	assert.NoError(t, err)
 	assert.Equal(t, 8, major)
 
-	major = parseVersion("5.7.31")
+	major, err = extractMajorFromVersion("5.7.31")
+	assert.NoError(t, err)
 	assert.Equal(t, 5, major)
 
-	major = parseVersion("invalid.version")
+	major, err = extractMajorFromVersion("invalid.version")
+	assert.Error(t, err)
+	assert.Equal(t, 0, major)
+
+	major, err = extractMajorFromVersion("")
+	assert.Error(t, err)
 	assert.Equal(t, 0, major)
 }
 
