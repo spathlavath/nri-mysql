@@ -9,7 +9,7 @@ const (
 
 		Arguments:
 		1. Interval in seconds (INT): The time period to look back for slow queries.
-		2. Excluded schemas (STRING): A comma-separated list of schema names to exclude from the results.
+		2. Excluded databases (STRING): A comma-separated list of database names to exclude from the results.
 		3. Limit (INT): The maximum number of results to return.
 	*/
 	SlowQueries = `
@@ -56,7 +56,7 @@ const (
 
 		Arguments:
 		1. Digest (STRING): The digest of the query to search for.
-		2. Minimum execution time in seconds (FLOAT): The minimum execution time to filter queries.
+		2. Minimum execution time in seconds (INT): The minimum execution time to filter queries.
 		3. Limit (INT): The maximum number of results to return.
 	*/
 	CurrentRunningQueriesSearch = `
@@ -87,7 +87,7 @@ const (
 
 		Arguments:
 		1. Digest (STRING): The digest of the query to search for.
-		2. Minimum execution time in seconds (FLOAT): The minimum execution time to filter queries.
+		2. Minimum execution time in seconds (INT): The minimum execution time to filter queries.
 		3. Limit (INT): The maximum number of results to return.
 	*/
 	RecentQueriesSearch = `
@@ -118,7 +118,7 @@ const (
 
 		Arguments:
 		1. Digest (STRING): The digest of the query to search for.
-		2. Minimum execution time in seconds (FLOAT): The minimum execution time to filter queries.
+		2. Minimum execution time in seconds (INT): The minimum execution time to filter queries.
 		3. Limit (INT): The maximum number of results to return.
 	*/
 	PastQueriesSearch = `
@@ -149,7 +149,7 @@ const (
 		impacting database performance.
 
 		Arguments:
-		1. Excluded schemas (STRING): A comma-separated list of schema names to exclude from the results.
+		1. Excluded databases (STRING): A comma-separated list of database names to exclude from the results.
 		2. Limit (INT): The maximum number of results to return.
 	*/
 	WaitEventsQuery = `
@@ -239,7 +239,7 @@ const (
 		occurrence.
 
 		Arguments:
-		1. Excluded schemas (STRING): A comma-separated list of schema names to exclude from the results.
+		1. Excluded databases (STRING): A comma-separated list of database names to exclude from the results.
 		2. Limit (INT): The maximum number of results to return.
 	*/
 	BlockingSessionsQuery = `
