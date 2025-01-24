@@ -13,7 +13,7 @@ import (
 func PopulateBlockingSessionMetrics(db utils.DataSource, i *integration.Integration, args arguments.ArgumentList, excludedDatabases []string) {
 	// Get the query count threshold
 	queryCountThreshold := validator.GetValidQueryCountThreshold(args.QueryCountThreshold)
-	
+
 	// Prepare the SQL query with the provided parameters
 	query, inputArgs, err := sqlx.In(utils.BlockingSessionsQuery, excludedDatabases, queryCountThreshold)
 	if err != nil {
