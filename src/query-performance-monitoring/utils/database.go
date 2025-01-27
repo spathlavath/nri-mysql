@@ -3,7 +3,6 @@ package utils
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -48,21 +47,8 @@ func (db *Database) QueryX(query string) (*sqlx.Rows, error) {
 
 // QueryxContext method implementation
 func (db *Database) QueryxContext(app *newrelic.Application, ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error) {
-	// Initialize New Relic application
-	if app == nil {
-		var err error
-		app, err = newrelic.NewApplication(
-			newrelic.ConfigAppName(mysqlapm.ArgsAppName),
-			newrelic.ConfigLicense(mysqlapm.ArgsKey),
-			newrelic.ConfigDebugLogger(os.Stdout),
-			newrelic.ConfigDatastoreRawQuery(true),
-		)
-		if err != nil {
-			log.Error("Error creating new relic application: %s", err.Error())
-			return nil, err
-		}
-	}
-	waitErr := app.WaitForConnection(5 * time.Second)
+
+	waitErr := mysqlapm.NewrelicApp.WaitForConnection(5 * time.Second)
 	if waitErr != nil {
 		log.Error("Error waiting for connection: %s", waitErr.Error())
 		return nil, waitErr

@@ -15,7 +15,6 @@ import (
 
 // PopulateQueryPerformanceMetrics serves as the entry point for retrieving and populating query performance metrics, including slow queries, detailed query information, query execution plans, wait events, and blocking sessions.
 func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration.Entity, i *integration.Integration) {
-	mysqlapm.InitNewRelicApp()
 	// Generate Data Source Name (DSN) for database connection
 	dsn := utils.GenerateDSN(args, "")
 
