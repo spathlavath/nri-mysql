@@ -41,7 +41,6 @@ var (
 )
 
 var (
-	errEmptySlice             = errors.New("empty slice passed to 'in' query")
 	errSomeError              = errors.New("some error")
 	errFailedToCollectMetrics = errors.New("failed to collect metrics")
 	errFailedToSetMetrics     = errors.New("failed to set metrics")

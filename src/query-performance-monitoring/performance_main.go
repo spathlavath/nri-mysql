@@ -1,6 +1,7 @@
 package queryperformancemonitoring
 
 import (
+	"fmt"
 	"os"
 	"time"
 
@@ -14,9 +15,8 @@ import (
 	validator "github.com/newrelic/nri-mysql/src/query-performance-monitoring/validator"
 )
 
-// main
+// PopulateQueryPerformanceMetrics serves as the entry point for retrieving and populating query performance metrics, including slow queries, detailed query information, query execution plans, wait events, and blocking sessions.
 func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration.Entity, i *integration.Integration) {
-	var database string
 	mysqlapm.ArgsKey = args.LicenseKey
 	mysqlapm.ArgsAppName = args.AppName
 	app, err := newrelic.NewApplication(
@@ -45,21 +45,17 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 	}
 
 	// Generate Data Source Name (DSN) for database connection
-	dsn := utils.GenerateDSN(args, database)
+	dsn := utils.GenerateDSN(args, "")
 
 	// Open database connection
 	db, err := utils.OpenSQLXDB(dsn)
-	if err != nil {
-		log.Error("Error opening database connection: %v", err)
-		return
-	}
+	utils.FatalIfErr(err)
 	defer db.Close()
 
 	// Validate preconditions before proceeding
 	preValidationErr := validator.ValidatePreconditions(db)
 	if preValidationErr != nil {
-		log.Error("preconditions failed: %v", preValidationErr)
-		return
+		utils.FatalIfErr(fmt.Errorf("preconditions failed: %w", preValidationErr))
 	}
 
 	// Get the list of unique excluded databases

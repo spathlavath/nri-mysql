@@ -8,6 +8,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/jmoiron/sqlx"
 	"github.com/newrelic/go-agent/v3/newrelic"
+	constants "github.com/newrelic/nri-mysql/src/query-performance-monitoring/constants"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -43,7 +44,7 @@ func TestCheckEssentialInstruments_AllEnabled(t *testing.T) {
 	sqlxDB := sqlx.NewDb(db, "sqlmock")
 	mockDataSource := &mockDataSource{db: sqlxDB}
 
-	mock.ExpectQuery("SELECT NAME, ENABLED FROM performance_schema.setup_instruments WHERE NAME LIKE 'wait/%' OR NAME LIKE 'statement/%' OR NAME LIKE '%lock%';").WillReturnRows(rows)
+	mock.ExpectQuery(buildInstrumentQuery()).WillReturnRows(rows)
 	err = checkEssentialInstruments(mockDataSource)
 	assert.NoError(t, err)
 }
@@ -62,48 +63,57 @@ func TestValidatePreconditions_PerformanceSchemaDisabled(t *testing.T) {
 	sqlxDB := sqlx.NewDb(db, "sqlmock")
 	mockDataSource := &mockDataSource{db: sqlxDB}
 
-	mock.ExpectQuery("SHOW GLOBAL VARIABLES LIKE 'performance_schema';").WillReturnRows(rows)
+	mock.ExpectQuery(performanceSchemaQuery).WillReturnRows(rows)
 	mock.ExpectQuery("SELECT VERSION();").WillReturnRows(versionRows)
 	err = ValidatePreconditions(mockDataSource)
 	assert.Error(t, err)
 	assert.Equal(t, ErrPerformanceSchemaDisabled, err)
 }
 
-func TestValidatePreconditions_EssentialConsumersCheckFailed(t *testing.T) {
-	rows := sqlmock.NewRows([]string{"Variable_name", "Value"}).
-		AddRow("performance_schema", "ON")
-	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
-	if err != nil {
-		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+func TestValidatePreconditions_EssentialChecksFailed(t *testing.T) {
+	testCases := []struct {
+		name            string
+		expectQueryFunc func(mock sqlmock.Sqlmock)
+		assertError     bool
+	}{
+		{
+			name: "EssentialConsumersCheckFailed",
+			expectQueryFunc: func(mock sqlmock.Sqlmock) {
+				mock.ExpectQuery(buildConsumerStatusQuery()).WillReturnError(errQuery)
+			},
+			assertError: true,
+		},
+		{
+			name: "EssentialInstrumentsCheckFailed",
+			expectQueryFunc: func(mock sqlmock.Sqlmock) {
+				mock.ExpectQuery(buildInstrumentQuery()).WillReturnError(errQuery)
+			},
+			assertError: true,
+		},
 	}
-	defer db.Close()
 
-	sqlxDB := sqlx.NewDb(db, "sqlmock")
-	mockDataSource := &mockDataSource{db: sqlxDB}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			rows := sqlmock.NewRows([]string{"Variable_name", "Value"}).
+				AddRow("performance_schema", "ON")
+			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+			if err != nil {
+				t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+			}
+			defer db.Close()
+			sqlxDB := sqlx.NewDb(db, "sqlmock")
+			mockDataSource := &mockDataSource{db: sqlxDB}
 
-	mock.ExpectQuery("SHOW GLOBAL VARIABLES LIKE 'performance_schema';").WillReturnRows(rows)
-	mock.ExpectQuery("SELECT NAME, ENABLED FROM performance_schema.setup_consumers WHERE NAME IN ('events_waits_current', 'events_waits_history_long', 'events_waits_history', 'events_statements_history_long', 'events_statements_history', 'events_statements_current', 'events_statements_cpu', 'events_transactions_current', 'events_stages_current');").WillReturnError(errQuery)
-	err = ValidatePreconditions(mockDataSource)
-	assert.Error(t, err)
-}
-
-func TestValidatePreconditions_EssentialInstrumentsCheckFailed(t *testing.T) {
-	rows := sqlmock.NewRows([]string{"Variable_name", "Value"}).
-		AddRow("performance_schema", "ON")
-	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
-	if err != nil {
-		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+			mock.ExpectQuery(performanceSchemaQuery).WillReturnRows(rows)
+			tc.expectQueryFunc(mock) // Dynamically call the query expectation function
+			err = ValidatePreconditions(mockDataSource)
+			if tc.assertError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
-	defer db.Close()
-
-	sqlxDB := sqlx.NewDb(db, "sqlmock")
-	mockDataSource := &mockDataSource{db: sqlxDB}
-
-	mock.ExpectQuery("SHOW GLOBAL VARIABLES LIKE 'performance_schema';").WillReturnRows(rows)
-	mock.ExpectQuery("SELECT NAME, ENABLED FROM performance_schema.setup_consumers WHERE NAME IN ('events_waits_current', 'events_waits_history_long', 'events_waits_history', 'events_statements_history_long', 'events_statements_history', 'events_statements_current', 'events_statements_cpu', 'events_transactions_current', 'events_stages_current');").WillReturnRows(sqlmock.NewRows([]string{"NAME", "ENABLED"}).AddRow("events_waits_current", "YES"))
-	mock.ExpectQuery("SELECT NAME, ENABLED, TIMED FROM performance_schema.setup_instruments WHERE NAME LIKE 'wait/%' OR NAME LIKE 'statement/%' OR NAME LIKE '%lock%';").WillReturnError(errQuery)
-	err = ValidatePreconditions(mockDataSource)
-	assert.Error(t, err)
 }
 
 func TestIsPerformanceSchemaEnabled_NoRowsFound(t *testing.T) {
@@ -116,7 +126,7 @@ func TestIsPerformanceSchemaEnabled_NoRowsFound(t *testing.T) {
 	sqlxDB := sqlx.NewDb(db, "sqlmock")
 	mockDataSource := &mockDataSource{db: sqlxDB}
 
-	mock.ExpectQuery("SHOW GLOBAL VARIABLES LIKE 'performance_schema';").WillReturnRows(sqlmock.NewRows([]string{"Variable_name", "Value"}))
+	mock.ExpectQuery(performanceSchemaQuery).WillReturnRows(sqlmock.NewRows([]string{"Variable_name", "Value"}))
 	enabled, err := isPerformanceSchemaEnabled(mockDataSource)
 	assert.Error(t, err)
 	assert.Equal(t, ErrNoRowsFound, err)
@@ -135,7 +145,7 @@ func TestCheckEssentialConsumers_ConsumerNotEnabled(t *testing.T) {
 	sqlxDB := sqlx.NewDb(db, "sqlmock")
 	mockDataSource := &mockDataSource{db: sqlxDB}
 
-	mock.ExpectQuery("SELECT NAME, ENABLED FROM performance_schema.setup_consumers WHERE NAME IN ('events_waits_current', 'events_waits_history_long', 'events_waits_history', 'events_statements_history_long', 'events_statements_history', 'events_statements_current', 'events_statements_cpu', 'events_transactions_current', 'events_stages_current');").WillReturnRows(rows)
+	mock.ExpectQuery(buildConsumerStatusQuery()).WillReturnRows(rows)
 	err = checkEssentialConsumers(mockDataSource)
 	assert.Error(t, err)
 }
@@ -152,7 +162,7 @@ func TestCheckEssentialInstruments_InstrumentNotEnabled(t *testing.T) {
 	sqlxDB := sqlx.NewDb(db, "sqlmock")
 	mockDataSource := &mockDataSource{db: sqlxDB}
 
-	mock.ExpectQuery("SELECT NAME, ENABLED, TIMED FROM performance_schema.setup_instruments WHERE NAME LIKE 'wait/%' OR NAME LIKE 'statement/%' OR NAME LIKE '%lock%';").WillReturnRows(rows)
+	mock.ExpectQuery(buildInstrumentQuery()).WillReturnRows(rows)
 	err = checkEssentialInstruments(mockDataSource)
 	assert.Error(t, err)
 }
@@ -176,16 +186,91 @@ func TestGetMySQLVersion(t *testing.T) {
 }
 func TestIsVersion8OrGreater(t *testing.T) {
 	assert.True(t, isVersion8OrGreater("8.0.23"))
+	assert.True(t, isVersion8OrGreater("8.4"))
 	assert.False(t, isVersion8OrGreater("5.7.31"))
+	assert.False(t, isVersion8OrGreater("5.6"))
+	assert.False(t, isVersion8OrGreater("5"))
+	assert.False(t, isVersion8OrGreater("invalid.version.string"))
+	assert.False(t, isVersion8OrGreater(""))
 }
 
-func TestParseVersion(t *testing.T) {
-	major := parseVersion("8.0.23")
+func TestExtractMajorFromVersion(t *testing.T) {
+	major, err := extractMajorFromVersion("8.0.23")
+	assert.NoError(t, err)
 	assert.Equal(t, 8, major)
 
-	major = parseVersion("5.7.31")
+	major, err = extractMajorFromVersion("5.7.31")
+	assert.NoError(t, err)
 	assert.Equal(t, 5, major)
 
-	major = parseVersion("invalid.version")
+	major, err = extractMajorFromVersion("5")
+	assert.Error(t, err)
 	assert.Equal(t, 0, major)
+
+	major, err = extractMajorFromVersion("invalid.version")
+	assert.Error(t, err)
+	assert.Equal(t, 0, major)
+
+	major, err = extractMajorFromVersion("")
+	assert.Error(t, err)
+	assert.Equal(t, 0, major)
+}
+
+func TestGetValidSlowQueryFetchIntervalThreshold(t *testing.T) {
+	tests := []struct {
+		name      string
+		threshold int
+		expected  int
+	}{
+		{"Negative threshold", -1, constants.DefaultSlowQueryFetchInterval},
+		{"Zero threshold", 0, 0},
+		{"Positive threshold", 100, 100},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := GetValidSlowQueryFetchIntervalThreshold(tt.threshold)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestGetValidQueryResponseTimeThreshold(t *testing.T) {
+	tests := []struct {
+		name      string
+		threshold int
+		expected  int
+	}{
+		{"Negative threshold", -1, constants.DefaultQueryResponseTimeThreshold},
+		{"Zero threshold", 0, 0},
+		{"Positive threshold", 100, 100},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := GetValidQueryResponseTimeThreshold(tt.threshold)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestGetValidQueryCountThreshold(t *testing.T) {
+	tests := []struct {
+		name      string
+		threshold int
+		expected  int
+	}{
+		{"Negative threshold", -1, constants.DefaultQueryCountThreshold},
+		{"Zero threshold", 0, 0},
+		{"Threshold greater than max", constants.MaxQueryCountThreshold + 1, constants.MaxQueryCountThreshold},
+		{"Threshold equal to max", constants.MaxQueryCountThreshold, constants.MaxQueryCountThreshold},
+		{"Positive threshold", constants.MaxQueryCountThreshold - 1, constants.MaxQueryCountThreshold - 1},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := GetValidQueryCountThreshold(tt.threshold)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
 }

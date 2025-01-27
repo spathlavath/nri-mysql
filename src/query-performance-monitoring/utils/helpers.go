@@ -101,13 +101,6 @@ func MetricSet(e *integration.Entity, eventType, hostname string, port int, remo
 	)
 }
 
-func PrintMetricSet(ms *metric.Set) {
-	fmt.Println("Metric Set Contents:")
-	for name, metric := range ms.Metrics {
-		fmt.Printf("Name: %s, Value: %v, Type: %v\n", name, metric, "unknown")
-	}
-}
-
 func getUniqueExcludedDatabases(excludedDBList []string) []string {
 	// Create a map to store unique databases
 	uniqueDatabases := make(map[string]struct{})
@@ -139,7 +132,7 @@ func GetExcludedDatabases(excludedDatabasesList string) []string {
 	// Parse the excluded databases list from JSON string
 	var excludedDatabasesSlice []string
 	if err := json.Unmarshal([]byte(excludedDatabasesList), &excludedDatabasesSlice); err != nil {
-		log.Warn("Error parsing excluded databases list: %v", err)
+		log.Warn("Failed to parse excluded databases list: %v. Using default list: %v", err, constants.DefaultExcludedDatabases)
 	}
 
 	// Get unique excluded databases
@@ -253,4 +246,10 @@ func publishMetrics(i *integration.Integration) error {
 		return err
 	}
 	return nil
+}
+
+func FatalIfErr(err error) {
+	if err != nil {
+		log.Fatal(err)
+	}
 }
