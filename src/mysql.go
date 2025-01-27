@@ -49,7 +49,7 @@ func main() {
 
 	log.SetupLogging(args.Verbose)
 
-	 txn := mysqlapm.NewrelicApp.StartTransaction("MysqlSample")
+	txn := mysqlapm.NewrelicApp.StartTransaction("MysqlSampleOld")
 	defer txn.End()
 
 	e, err := utils.CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
