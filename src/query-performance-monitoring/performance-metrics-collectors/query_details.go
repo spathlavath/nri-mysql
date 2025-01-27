@@ -15,8 +15,8 @@ import (
 )
 
 // PopulateSlowQueryMetrics collects and sets slow query metrics and returns the list of query IDs
-func PopulateSlowQueryMetrics(i *integration.Integration, db utils.DataSource, args arguments.ArgumentList, excludedDatabases []string) []string {
-	rawMetrics, queryIDList, err := collectGroupedSlowQueryMetrics(db, args.SlowQueryFetchInterval, args.QueryCountThreshold, excludedDatabases)
+func PopulateSlowQueryMetrics(app *newrelic.Application, i *integration.Integration, db utils.DataSource, args arguments.ArgumentList, excludedDatabases []string) []string {
+	rawMetrics, queryIDList, err := collectGroupedSlowQueryMetrics(app, db, args.SlowQueryFetchInterval, args.QueryCountThreshold, excludedDatabases)
 	if err != nil {
 		log.Error("Failed to collect slow query metrics: %v", err)
 		return []string{}
@@ -91,8 +91,32 @@ func setSlowQueryMetrics(i *integration.Integration, metrics []utils.SlowQueryMe
 }
 
 // PopulateIndividualQueryDetails collects and sets individual query details
-func PopulateIndividualQueryDetails(db utils.DataSource, queryIDList []string, i *integration.Integration, args arguments.ArgumentList) []utils.QueryGroup {
-	currentQueryMetrics, currentQueryMetricsErr := currentQueryMetrics(db, queryIDList, args)
+func PopulateIndividualQueryDetails(app *newrelic.Application, db utils.DataSource, queryIDList []string, i *integration.Integration, args arguments.ArgumentList) []utils.QueryGroup {
+	// Retrieve the list of individual queries with combined metrics
+	queryList, err := getIndividualQueryList(app, db, queryIDList, args)
+	if err != nil {
+		log.Error("Failed to collect query metrics: %v", err)
+		return []utils.QueryGroup{}
+	}
+
+	// Prepare a copy of the query list for reporting
+	queryListPatchedCopy := setupQueryListCopyForReporting(queryList)
+
+	// Ingest the patched copy of the query list for reporting
+	if err := utils.IngestMetric(queryListPatchedCopy, "MysqlIndividualQueriesSample", i, args); err != nil {
+		log.Error("Failed to ingest individual query metrics: %v", err)
+		return []utils.QueryGroup{}
+	}
+
+	// Group queries by database for further use or reporting
+	groupQueriesByDatabase := groupQueriesByDatabase(queryList)
+
+	return groupQueriesByDatabase
+}
+
+// getIndividualQueryList fetches and combines current, recent, and extensive query metrics
+func getIndividualQueryList(app *newrelic.Application, db utils.DataSource, queryIDList []string, args arguments.ArgumentList) ([]utils.IndividualQueryMetrics, error) {
+	currentQueryMetrics, currentQueryMetricsErr := currentQueryMetrics(app, db, queryIDList, args)
 	if currentQueryMetricsErr != nil {
 		return nil, fmt.Errorf("failed to collect current query metrics: %w", currentQueryMetricsErr)
 	}
