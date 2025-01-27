@@ -3,17 +3,14 @@ package main
 
 import (
 	"fmt"
-
+	"time"
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
-
 	"os"
 	"runtime"
 	"strings"
-
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
-
 	arguments "github.com/newrelic/nri-mysql/src/args"
 	queryperformancemonitoring "github.com/newrelic/nri-mysql/src/query-performance-monitoring"
 	constants "github.com/newrelic/nri-mysql/src/query-performance-monitoring/constants"
@@ -77,6 +74,10 @@ func main() {
 		populateMetrics(ms, rawMetrics, dbVersion)
 	}
 	utils.FatalIfErr(i.Publish())
+
+	if mysqlapm.ArgsAppName != "" {
+		defer mysqlapm.NewrelicApp.Shutdown(10 * time.Second)
+	}
 
 	if args.EnableQueryMonitoring && args.HasMetrics() {
 		queryperformancemonitoring.PopulateQueryPerformanceMetrics(args, e, i)

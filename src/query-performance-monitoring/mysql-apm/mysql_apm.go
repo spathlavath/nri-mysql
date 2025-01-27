@@ -23,7 +23,6 @@ func InitNewRelicApp() {
 	if err != nil {
 		log.Error("Error creating new relic application: %s", err.Error())
 	}
-	defer app.Shutdown(10 * time.Second)
 
 	// Ensure the application is connected
 	if err := app.WaitForConnection(10 * time.Second); err != nil {
