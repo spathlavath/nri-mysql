@@ -24,7 +24,7 @@ type database struct {
 }
 
 func openSQLDB(dsn string) (dataSource, error) {
-	source, err := sql.Open("mysql", dsn)
+	source, err := sql.Open("nrmysql", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("error opening %s: %w", dsn, err)
 	}
