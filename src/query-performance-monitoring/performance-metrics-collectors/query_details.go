@@ -96,7 +96,7 @@ func setSlowQueryMetrics(i *integration.Integration, metrics []utils.SlowQueryMe
 }
 
 // PopulateIndividualQueryDetails collects and sets individual query details
-func PopulateIndividualQueryDetails(db utils.DataSource, queryIDList []string, i *integration.Integration, args arguments.ArgumentList) ([]utils.QueryGroup, error) {
+func PopulateIndividualQueryDetails(db utils.DataSource, queryIDList []string, i *integration.Integration, args arguments.ArgumentList) (map[string][]utils.IndividualQueryMetrics, error) {
 	// Retrieve the list of individual queries with combined metrics
 	queryList, err := getIndividualQueryList(db, queryIDList, args)
 	if err != nil {
@@ -170,28 +170,35 @@ func setupQueryListCopyForReporting(originalQueryList []utils.IndividualQueryMet
 	return metricsForIngestion
 }
 
-// groupQueriesByDatabase groups queries by their database name
-func groupQueriesByDatabase(filteredList []utils.IndividualQueryMetrics) []utils.QueryGroup {
+// groupQueriesByDatabase groups a list of IndividualQueryMetrics by their database names.
+// It returns a map where the keys are database names and the values are slices of IndividualQueryMetrics
+// that belong to those databases.
+func groupQueriesByDatabase(filteredList []utils.IndividualQueryMetrics) map[string][]utils.IndividualQueryMetrics {
 	groupMap := make(map[string][]utils.IndividualQueryMetrics)
 
 	for _, query := range filteredList {
+		// Check if the database name is nil
 		if query.DatabaseName == nil {
-			log.Warn("Skipping query with nil database name: QueryText=%v", *query.QueryText)
+			// Log a warning if the query text is not nil
+			if query.QueryText != nil {
+				log.Warn("Skipping query with nil database name: QueryText=%v", *query.QueryText)
+			} else {
+				// Log a warning if both the database name and query text are nil
+				log.Warn("Skipping query with nil database name and nil query text")
+			}
 			continue
 		}
+		// Check if the query text is nil
+		if query.QueryText == nil {
+			// Log a warning if the query text is nil
+			log.Warn("Skipping query with nil query text for database: %v", *query.DatabaseName)
+			continue
+		}
+		// Group queries by their database names
 		groupMap[*query.DatabaseName] = append(groupMap[*query.DatabaseName], query)
 	}
 
-	// Pre-allocate the slice with the length of the groupMap
-	groupedQueries := make([]utils.QueryGroup, 0, len(groupMap))
-	for dbName, queries := range groupMap {
-		groupedQueries = append(groupedQueries, utils.QueryGroup{
-			Database: dbName,
-			Queries:  queries,
-		})
-	}
-
-	return groupedQueries
+	return groupMap
 }
 
 // collectIndividualQueryMetrics collects current query metrics from the performance schema database for the given query IDs

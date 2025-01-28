@@ -20,6 +20,7 @@ var (
 	ErrEssentialInstrumentNotEnabled = errors.New("essential instrument is not fully enabled")
 	ErrMySQLVersion                  = errors.New("failed to determine MySQL version")
 	ErrModelIsNotValid               = errors.New("model is not a valid struct")
+	ErrNoRowsReturned                = errors.New("no rows returned from EXPLAIN")
 )
 
 func CreateMetricSet(e *integration.Entity, sampleName string, args arguments.ArgumentList) *metric.Set {

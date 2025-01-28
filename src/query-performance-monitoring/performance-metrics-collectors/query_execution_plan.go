@@ -17,11 +17,11 @@ import (
 )
 
 // PopulateExecutionPlans populates execution plans for the given queries.
-func PopulateExecutionPlans(db utils.DataSource, queryGroups []utils.QueryGroup, i *integration.Integration, args arguments.ArgumentList) {
+func PopulateExecutionPlans(db utils.DataSource, queryGroups map[string][]utils.IndividualQueryMetrics, i *integration.Integration, args arguments.ArgumentList) {
 	var events []utils.QueryPlanMetrics
 
-	for _, group := range queryGroups {
-		dsn := dbutils.GenerateDSN(args, group.Database)
+	for dbName, queries := range queryGroups {
+		dsn := dbutils.GenerateDSN(args, dbName)
 		// Open the DB connection
 		db, err := utils.OpenSQLXDB(dsn)
 		if err != nil {
@@ -30,7 +30,7 @@ func PopulateExecutionPlans(db utils.DataSource, queryGroups []utils.QueryGroup,
 		}
 		defer db.Close()
 
-		for _, query := range group.Queries {
+		for _, query := range queries {
 			tableIngestionDataList, err := processExecutionPlanMetrics(db, query)
 			if err != nil {
 				log.Error("Error processing execution plan metrics: %v", err)
@@ -101,7 +101,7 @@ func processExecutionPlanMetrics(db utils.DataSource, query utils.IndividualQuer
 			return []utils.QueryPlanMetrics{}, err
 		}
 	} else {
-		err := fmt.Errorf("no rows returned from EXPLAIN for query '%s'", queryText)
+		err := fmt.Errorf("%w for query '%s'", utils.ErrNoRowsReturned, queryText)
 		log.Error(err.Error())
 		return []utils.QueryPlanMetrics{}, err
 	}

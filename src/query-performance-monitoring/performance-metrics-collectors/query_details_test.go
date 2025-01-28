@@ -63,7 +63,7 @@ func TestGroupQueriesByDatabase(t *testing.T) {
 	tests := []struct {
 		name           string
 		filteredList   []utils.IndividualQueryMetrics
-		expectedGroups []utils.QueryGroup
+		expectedGroups map[string][]utils.IndividualQueryMetrics
 	}{
 		{
 			name: "Group queries by database",
@@ -72,19 +72,13 @@ func TestGroupQueriesByDatabase(t *testing.T) {
 				{DatabaseName: &database1, QueryText: &queryText2},
 				{DatabaseName: &database2, QueryText: &queryText3},
 			},
-			expectedGroups: []utils.QueryGroup{
-				{
-					Database: database1,
-					Queries: []utils.IndividualQueryMetrics{
-						{DatabaseName: &database1, QueryText: &queryText1},
-						{DatabaseName: &database1, QueryText: &queryText2},
-					},
+			expectedGroups: map[string][]utils.IndividualQueryMetrics{
+				database1: {
+					{DatabaseName: &database1, QueryText: &queryText1},
+					{DatabaseName: &database1, QueryText: &queryText2},
 				},
-				{
-					Database: database2,
-					Queries: []utils.IndividualQueryMetrics{
-						{DatabaseName: &database2, QueryText: &queryText3},
-					},
+				database2: {
+					{DatabaseName: &database2, QueryText: &queryText3},
 				},
 			},
 		},
@@ -94,19 +88,16 @@ func TestGroupQueriesByDatabase(t *testing.T) {
 				{DatabaseName: nil, QueryText: &queryText1},
 				{DatabaseName: &database1, QueryText: &queryText2},
 			},
-			expectedGroups: []utils.QueryGroup{
-				{
-					Database: "db1",
-					Queries: []utils.IndividualQueryMetrics{
-						{DatabaseName: &database1, QueryText: &queryText2},
-					},
+			expectedGroups: map[string][]utils.IndividualQueryMetrics{
+				database1: {
+					{DatabaseName: &database1, QueryText: &queryText2},
 				},
 			},
 		},
 		{
 			name:           "Empty filtered list",
 			filteredList:   []utils.IndividualQueryMetrics{},
-			expectedGroups: []utils.QueryGroup{},
+			expectedGroups: map[string][]utils.IndividualQueryMetrics{},
 		},
 		{
 			name: "All nil database names",
@@ -114,15 +105,26 @@ func TestGroupQueriesByDatabase(t *testing.T) {
 				{DatabaseName: nil, QueryText: &queryText1},
 				{DatabaseName: nil, QueryText: &queryText2},
 			},
-			expectedGroups: []utils.QueryGroup{},
+			expectedGroups: map[string][]utils.IndividualQueryMetrics{},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			actualGroups := groupQueriesByDatabase(tt.filteredList)
-			assert.ElementsMatch(t, tt.expectedGroups, actualGroups)
+			assert.Equal(t, tt.expectedGroups, actualGroups)
 		})
+	}
+}
+
+// Helper function to handle assertions
+func assertQueryMetrics(t *testing.T, actualMetrics []utils.IndividualQueryMetrics, err error, expectedError error, expectedMetrics []utils.IndividualQueryMetrics) {
+	if expectedError != nil {
+		assert.Error(t, err)
+		assert.NotNil(t, actualMetrics)
+	} else {
+		assert.NoError(t, err)
+		assert.Equal(t, expectedMetrics, actualMetrics)
 	}
 }
 
@@ -163,13 +165,7 @@ func TestCollectIndividualQueryMetrics(t *testing.T) {
 			mockDB.On("QueryxContext", mock.Anything, mock.Anything, mock.Anything).Return(&rows, tt.expectedError)
 
 			actualMetrics, err := collectIndividualQueryMetrics(mockDB, tt.queryIDList, utils.CurrentRunningQueriesSearch, args)
-			if tt.expectedError != nil {
-				assert.Error(t, err)
-				assert.NotNil(t, actualMetrics)
-			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, tt.expectedMetrics, actualMetrics)
-			}
+			assertQueryMetrics(t, actualMetrics, err, tt.expectedError, tt.expectedMetrics)
 		})
 	}
 }
@@ -208,13 +204,7 @@ func TestExtensiveQueryMetrics(t *testing.T) {
 			mockDB.On("QueryxContext", mock.Anything, mock.Anything, mock.Anything).Return(&rows, tt.expectedError)
 
 			actualMetrics, err := collectIndividualQueryMetrics(mockDB, tt.queryIDList, utils.PastQueriesSearch, args)
-			if tt.expectedError != nil {
-				assert.Error(t, err)
-				assert.NotNil(t, actualMetrics)
-			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, tt.expectedMetrics, actualMetrics)
-			}
+			assertQueryMetrics(t, actualMetrics, err, tt.expectedError, tt.expectedMetrics)
 		})
 	}
 }

@@ -198,7 +198,11 @@ func TestPopulateExecutionPlans(t *testing.T) {
 			mockDB := new(MockDataSource)
 			mockIntegration := new(integration.Integration)
 
-			PopulateExecutionPlans(mockDB, tt.queryGroups, mockIntegration, tt.args)
+			queryGroupsMap := make(map[string][]utils.IndividualQueryMetrics)
+			for _, group := range tt.queryGroups {
+				queryGroupsMap[group.Database] = group.Queries
+			}
+			PopulateExecutionPlans(mockDB, queryGroupsMap, mockIntegration, tt.args)
 
 			mockDB.AssertExpectations(t)
 		})
