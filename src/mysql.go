@@ -67,7 +67,7 @@ func main() {
 	if args.HasMetrics() {
 		ms := utils.MetricSet(
 			e,
-			"MysqlSampleOld",
+			"MysqlSample",
 			args.Hostname,
 			args.Port,
 			args.RemoteMonitoring,
