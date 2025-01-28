@@ -140,7 +140,9 @@ func getIndividualQueryList(db utils.DataSource, queryIDList []string, args argu
 	}
 
 	// Combine all collected metrics into a single list
-	allMetrics := append(currentQueryMetrics, recentQueryMetrics...)
+	var allMetrics []utils.IndividualQueryMetrics
+	allMetrics = append(allMetrics, currentQueryMetrics...)
+	allMetrics = append(allMetrics, recentQueryMetrics...)
 	allMetrics = append(allMetrics, extensiveQueryMetrics...)
 
 	return allMetrics, nil
