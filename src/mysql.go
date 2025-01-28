@@ -79,7 +79,7 @@ func main() {
 	if args.EnableQueryMonitoring && args.HasMetrics() {
 		queryperformancemonitoring.PopulateQueryPerformanceMetrics(args, e, i)
 	}
-
+	mysqlapm.Txn = txn
 	if mysqlapm.ArgsAppName != "" {
 		defer mysqlapm.NewrelicApp.Shutdown(10 * time.Second)
 	}

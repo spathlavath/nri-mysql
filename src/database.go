@@ -62,12 +62,9 @@ func (db *database) query(query string) (map[string]interface{}, error) {
 		return nil, waitErr
 	}
 
-	txn := app.StartTransaction("MysqlSample")
-	defer txn.End()
-
-	ctx = newrelic.NewContext(ctx, txn)
+	ctx = newrelic.NewContext(ctx, mysqlapm.Txn)
 	s := newrelic.DatastoreSegment{
-		StartTime:          txn.StartSegmentNow(),
+		StartTime:          mysqlapm.Txn.StartSegmentNow(),
 		Product:            newrelic.DatastoreMySQL,
 		Operation:          "SHOW",
 		ParameterizedQuery: query,
