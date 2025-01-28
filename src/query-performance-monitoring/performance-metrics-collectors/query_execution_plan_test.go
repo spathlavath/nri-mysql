@@ -11,7 +11,6 @@ import (
 	"github.com/newrelic/nri-mysql/src/query-performance-monitoring/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
 )
 
 // Mock DataSource
@@ -31,27 +30,10 @@ func (m *MockDataSource) Close() {
 	// No-op
 }
 
-// Uint64Ptr returns a pointer to the uint64 value passed in.
-
-func Uint64Ptr(i uint64) *uint64 {
-	return &i
-}
-
-// StringPtr returns a pointer to the string value passed in.
-
-func StringPtr(s string) *string {
-	return &s
-}
-
 // QueryxContext is a mock implementation of the QueryxContext method.
 func (m *MockDataSource) QueryxContext(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error) {
 	calledArgs := m.Called(ctx, query, args)
 	return calledArgs.Get(0).(*sqlx.Rows), calledArgs.Error(1)
-}
-
-// MockUtils is a mock implementation of the Utils interface.
-type MockUtils struct {
-	mock.Mock
 }
 
 // MockDB is a mock implementation of a database connection.
@@ -70,16 +52,57 @@ type MockIntegration struct {
 
 func TestExtractMetricsFromJSONString(t *testing.T) {
 	t.Run("valid JSON input", func(t *testing.T) {
-		jsonString := `{"table_name": "test_table", "cost_info": {"query_cost": "10"}}`
+		jsonString := `{
+            "table_name": "test_table",
+            "cost_info": {
+                "query_cost": "1.23",
+                "read_cost": "0.45",
+                "eval_cost": "0.12",
+                "prefix_cost": "0.66",
+                "data_read_per_join": "1024"
+            },
+            "access_type": "ALL",
+            "rows_examined_per_scan": 100,
+            "rows_produced_per_join": 50,
+            "filtered": "10.00",
+            "using_index": true,
+            "key_length": "10",
+            "possible_keys": ["key1", "key2"],
+            "key": "key1",
+            "used_key_parts": ["key1_part1", "key1_part2"],
+            "ref": ["const"]
+        }`
 		eventID := uint64(1)
 		threadID := uint64(1)
+
+		expectedMetrics := []utils.QueryPlanMetrics{
+			{
+				EventID:             eventID,
+				ThreadID:            threadID,
+				TableName:           "test_table",
+				QueryCost:           "1.23",
+				ReadCost:            "0.45",
+				EvalCost:            "0.12",
+				PrefixCost:          "0.66",
+				DataReadPerJoin:     "1024",
+				AccessType:          "ALL",
+				RowsExaminedPerScan: 100,
+				RowsProducedPerJoin: 50,
+				Filtered:            "10.00",
+				UsingIndex:          "true",
+				KeyLength:           "10",
+				PossibleKeys:        "key1,key2",
+				Key:                 "key1",
+				UsedKeyParts:        "key1_part1,key1_part2",
+				Ref:                 "const",
+			},
+		}
 
 		metrics, err := extractMetricsFromJSONString(jsonString, eventID, threadID)
 
 		assert.NoError(t, err)
 		assert.NotNil(t, metrics)
-		assert.Equal(t, "test_table", metrics[0].TableName)
-		assert.Equal(t, "10", metrics[0].QueryCost)
+		assert.Equal(t, expectedMetrics, metrics)
 	})
 
 	t.Run("invalid JSON input", func(t *testing.T) {
@@ -132,6 +155,7 @@ func TestIsSupportedStatement(t *testing.T) {
 }
 
 func TestPopulateExecutionPlans(t *testing.T) {
+	queryText := "SELECT * FROM test_table"
 	tests := []struct {
 		name        string
 		queryGroups []utils.QueryGroup
@@ -154,7 +178,7 @@ func TestPopulateExecutionPlans(t *testing.T) {
 				{
 					Database: "test_db",
 					Queries: []utils.IndividualQueryMetrics{
-						{QueryText: StringPtr("SELECT * FROM test_table")},
+						{QueryText: &queryText},
 					},
 				},
 			},
@@ -190,10 +214,10 @@ func TestProcessSliceValue(t *testing.T) {
 		{
 			name: "Valid JSON Elements",
 			value: []interface{}{
-				map[string]interface{}{"key1": "value1"},
-				map[string]interface{}{"key2": "value2"},
+				map[string]interface{}{"table_name": "table1", "cost_info": map[string]interface{}{"query_cost": "10"}},
+				map[string]interface{}{"table_name": "table2", "cost_info": map[string]interface{}{"query_cost": "20"}},
 			},
-			expectedMetricsLen: 0,
+			expectedMetricsLen: 2,
 		},
 		{
 			name:               "Empty Slice",
@@ -208,26 +232,39 @@ func TestProcessSliceValue(t *testing.T) {
 			},
 			expectedMetricsLen: 0,
 		},
+		{
+			name: "Single Valid Metric",
+			value: []interface{}{
+				map[string]interface{}{"table_name": "table1", "cost_info": map[string]interface{}{"query_cost": "10"}},
+			},
+			expectedMetricsLen: 1,
+		},
+		{
+			name: "Multiple Valid Metrics",
+			value: []interface{}{
+				map[string]interface{}{"table_name": "table1", "cost_info": map[string]interface{}{"query_cost": "10"}},
+				map[string]interface{}{"table_name": "table2", "cost_info": map[string]interface{}{"query_cost": "20"}},
+			},
+			expectedMetricsLen: 2,
+		},
+		{
+			name: "Mixed Valid and Invalid Metrics",
+			value: []interface{}{
+				map[string]interface{}{"table_name": "table1", "cost_info": map[string]interface{}{"query_cost": "10"}},
+				"invalid element",
+				map[string]interface{}{"table_name": "table2", "cost_info": map[string]interface{}{"query_cost": "20"}},
+			},
+			expectedMetricsLen: 2,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Arrange
-			dbPerformanceEvents := make([]utils.QueryPlanMetrics, 0)
-			eventID := uint64(1)
-			threadID := uint64(1)
-			memo := utils.Memo{}
-			stepID := new(int)
-			*stepID = 1
-
-			// Act
-			metrics := processSliceValue(tt.value, dbPerformanceEvents, eventID, threadID, memo, stepID)
-
-			// Debug print
-			t.Logf("Metrics: %+v", metrics)
-
-			// Assert
-			require.Equal(t, tt.expectedMetricsLen, len(metrics))
+			stepID := 0
+			metrics := processSliceValue(tt.value, []utils.QueryPlanMetrics{}, 0, 0, utils.Memo{}, &stepID)
+			if len(metrics) != tt.expectedMetricsLen {
+				t.Errorf("expected %d, got %d", tt.expectedMetricsLen, len(metrics))
+			}
 		})
 	}
 }

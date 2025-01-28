@@ -23,10 +23,6 @@ func (m *MockDataSource) Query(query string, args ...interface{}) ([]map[string]
 	return arguments.Get(0).([]map[string]interface{}), arguments.Error(1)
 }
 
-func stringPtr(s string) *string {
-	return &s
-}
-
 var (
 	mockCollectIndividualQueryMetrics  func(db utils.DataSource, queryIDList []string, searchType string, args arguments.ArgumentList) ([]utils.IndividualQueryMetrics, error)
 	mockCollectGroupedSlowQueryMetrics func(db utils.DataSource, fetchInterval int, queryCountThreshold int, excludedDatabases []string) ([]utils.IndividualQueryMetrics, []string, error)
@@ -40,28 +36,30 @@ var (
 )
 
 func TestSetSlowQueryMetrics(t *testing.T) {
-	mockIntegration := new(MockIntegration)
-	mockIntegration.Integration, _ = integration.New("test", "1.0.0") // Properly initialize the Integration field
-	mockArgs := arguments.ArgumentList{}
+	selectQuery := "SELECT * FROM users"
+	updateQuery := "UPDATE users SET name = 'test' WHERE id = 1"
+	queryID := "1"
+	i, err := integration.New("test-integration", "1.0.0")
+	if err != nil {
+		t.Fatalf("Failed to create integration: %v", err)
+	}
 
-	t.Run("Successful Ingestion", func(t *testing.T) {
-		metrics := []utils.SlowQueryMetrics{
-			{QueryID: stringPtr("1"), QueryText: stringPtr("SELECT * FROM table1")},
-		}
-		mockIntegration.On("IngestMetric", mock.Anything, "MysqlSlowQuerySample", mockIntegration, mockArgs).Return(nil)
+	metrics := []utils.SlowQueryMetrics{
+		{QueryText: &selectQuery, QueryID: &queryID},
+		{QueryText: &updateQuery},
+	}
+	args := arguments.ArgumentList{}
 
-		err := setSlowQueryMetrics(mockIntegration.Integration, metrics, mockArgs)
-		assert.NoError(t, err)
-	})
-
-	t.Run("Empty Metrics", func(t *testing.T) {
-		metrics := []utils.SlowQueryMetrics{}
-		err := setSlowQueryMetrics(mockIntegration.Integration, metrics, mockArgs)
-		assert.NoError(t, err)
-	})
+	err = setSlowQueryMetrics(i, metrics, args)
+	assert.NoError(t, err)
 }
 
 func TestGroupQueriesByDatabase(t *testing.T) {
+	queryText1 := "SELECT * FROM test_table1"
+	queryText2 := "SELECT * FROM test_table2"
+	queryText3 := "SELECT * FROM test_table3"
+	database1 := "db1"
+	database2 := "db2"
 	tests := []struct {
 		name           string
 		filteredList   []utils.IndividualQueryMetrics
@@ -70,22 +68,22 @@ func TestGroupQueriesByDatabase(t *testing.T) {
 		{
 			name: "Group queries by database",
 			filteredList: []utils.IndividualQueryMetrics{
-				{DatabaseName: stringPtr("db1"), QueryText: stringPtr("SELECT * FROM table1")},
-				{DatabaseName: stringPtr("db1"), QueryText: stringPtr("SELECT * FROM table2")},
-				{DatabaseName: stringPtr("db2"), QueryText: stringPtr("SELECT * FROM table3")},
+				{DatabaseName: &database1, QueryText: &queryText1},
+				{DatabaseName: &database1, QueryText: &queryText2},
+				{DatabaseName: &database2, QueryText: &queryText3},
 			},
 			expectedGroups: []utils.QueryGroup{
 				{
-					Database: "db1",
+					Database: database1,
 					Queries: []utils.IndividualQueryMetrics{
-						{DatabaseName: stringPtr("db1"), QueryText: stringPtr("SELECT * FROM table1")},
-						{DatabaseName: stringPtr("db1"), QueryText: stringPtr("SELECT * FROM table2")},
+						{DatabaseName: &database1, QueryText: &queryText1},
+						{DatabaseName: &database1, QueryText: &queryText2},
 					},
 				},
 				{
-					Database: "db2",
+					Database: database2,
 					Queries: []utils.IndividualQueryMetrics{
-						{DatabaseName: stringPtr("db2"), QueryText: stringPtr("SELECT * FROM table3")},
+						{DatabaseName: &database2, QueryText: &queryText3},
 					},
 				},
 			},
@@ -93,14 +91,14 @@ func TestGroupQueriesByDatabase(t *testing.T) {
 		{
 			name: "Handle nil database name",
 			filteredList: []utils.IndividualQueryMetrics{
-				{DatabaseName: nil, QueryText: stringPtr("SELECT * FROM table1")},
-				{DatabaseName: stringPtr("db1"), QueryText: stringPtr("SELECT * FROM table2")},
+				{DatabaseName: nil, QueryText: &queryText1},
+				{DatabaseName: &database1, QueryText: &queryText2},
 			},
 			expectedGroups: []utils.QueryGroup{
 				{
 					Database: "db1",
 					Queries: []utils.IndividualQueryMetrics{
-						{DatabaseName: stringPtr("db1"), QueryText: stringPtr("SELECT * FROM table2")},
+						{DatabaseName: &database1, QueryText: &queryText2},
 					},
 				},
 			},
@@ -113,8 +111,8 @@ func TestGroupQueriesByDatabase(t *testing.T) {
 		{
 			name: "All nil database names",
 			filteredList: []utils.IndividualQueryMetrics{
-				{DatabaseName: nil, QueryText: stringPtr("SELECT * FROM table1")},
-				{DatabaseName: nil, QueryText: stringPtr("SELECT * FROM table2")},
+				{DatabaseName: nil, QueryText: &queryText1},
+				{DatabaseName: nil, QueryText: &queryText2},
 			},
 			expectedGroups: []utils.QueryGroup{},
 		},
@@ -130,64 +128,95 @@ func TestGroupQueriesByDatabase(t *testing.T) {
 
 func TestCollectIndividualQueryMetrics(t *testing.T) {
 	mockDB := new(MockDataSource)
-	queryIDList := []string{"1", "2", "3"}
-	queryString := "SELECT * FROM performance_schema.events_statements_current WHERE DIGEST = ? AND TIMER_WAIT / 1000000000 > ? ORDER BY TIMER_WAIT DESC LIMIT ?"
 	args := arguments.ArgumentList{
 		QueryResponseTimeThreshold: 1,
 		QueryCountThreshold:        10,
 	}
 
-	runCollectIndividualQueryMetricsTest := func(name string, queryIDList []string, expectedError error, expectedMetrics []utils.IndividualQueryMetrics) {
-		t.Run(name, func(t *testing.T) {
+	tests := []struct {
+		name            string
+		queryIDList     []string
+		expectedError   error
+		expectedMetrics []utils.IndividualQueryMetrics
+	}{
+		{
+			name:            "Error",
+			queryIDList:     []string{"1", "2", "3"},
+			expectedError:   errSomeError,
+			expectedMetrics: nil,
+		},
+		{
+			name:            "EmptyQueryIDList",
+			queryIDList:     []string{},
+			expectedError:   nil,
+			expectedMetrics: []utils.IndividualQueryMetrics{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 			mockCollectIndividualQueryMetrics = func(_ utils.DataSource, _ []string, _ string, args arguments.ArgumentList) ([]utils.IndividualQueryMetrics, error) {
-				return expectedMetrics, expectedError
+				return tt.expectedMetrics, tt.expectedError
 			}
 
 			rows := sqlx.Rows{}
-			mockDB.On("QueryxContext", mock.Anything, mock.Anything, mock.Anything).Return(&rows, expectedError)
+			mockDB.On("QueryxContext", mock.Anything, mock.Anything, mock.Anything).Return(&rows, tt.expectedError)
 
-			actualMetrics, err := collectIndividualQueryMetrics(mockDB, queryIDList, queryString, args)
-			if expectedError != nil {
+			actualMetrics, err := collectIndividualQueryMetrics(mockDB, tt.queryIDList, utils.CurrentRunningQueriesSearch, args)
+			if tt.expectedError != nil {
 				assert.Error(t, err)
 				assert.NotNil(t, actualMetrics)
 			} else {
 				assert.NoError(t, err)
-				assert.Equal(t, expectedMetrics, actualMetrics)
+				assert.Equal(t, tt.expectedMetrics, actualMetrics)
 			}
 		})
 	}
-
-	runCollectIndividualQueryMetricsTest("Error", queryIDList, errSomeError, nil)
-	runCollectIndividualQueryMetricsTest("EmptyQueryIDList", []string{}, nil, []utils.IndividualQueryMetrics{})
 }
 
 func TestExtensiveQueryMetrics(t *testing.T) {
 	mockDB := new(MockDataSource)
-	queryIDList := []string{"1", "2", "3"}
 	args := arguments.ArgumentList{}
 
-	runExtensiveQueryMetricsTest := func(name string, queryIDList []string, expectedError error, expectedMetrics []utils.IndividualQueryMetrics) {
-		t.Run(name, func(t *testing.T) {
+	tests := []struct {
+		name            string
+		queryIDList     []string
+		expectedError   error
+		expectedMetrics []utils.IndividualQueryMetrics
+	}{
+		{
+			name:            "Error",
+			queryIDList:     []string{"1", "2", "3"},
+			expectedError:   errSomeError,
+			expectedMetrics: nil,
+		},
+		{
+			name:            "EmptyQueryIDList",
+			queryIDList:     []string{},
+			expectedError:   nil,
+			expectedMetrics: []utils.IndividualQueryMetrics{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 			mockCollectIndividualQueryMetrics = func(_ utils.DataSource, _ []string, _ string, _ arguments.ArgumentList) ([]utils.IndividualQueryMetrics, error) {
-				return expectedMetrics, expectedError
+				return tt.expectedMetrics, tt.expectedError
 			}
 
 			rows := sqlx.Rows{}
-			mockDB.On("QueryxContext", mock.Anything, mock.Anything, mock.Anything).Return(&rows, expectedError)
+			mockDB.On("QueryxContext", mock.Anything, mock.Anything, mock.Anything).Return(&rows, tt.expectedError)
 
-			actualMetrics, err := extensiveQueryMetrics(mockDB, queryIDList, args)
-			if expectedError != nil {
+			actualMetrics, err := collectIndividualQueryMetrics(mockDB, tt.queryIDList, utils.PastQueriesSearch, args)
+			if tt.expectedError != nil {
 				assert.Error(t, err)
-				assert.Nil(t, actualMetrics)
+				assert.NotNil(t, actualMetrics)
 			} else {
 				assert.NoError(t, err)
-				assert.Equal(t, expectedMetrics, actualMetrics)
+				assert.Equal(t, tt.expectedMetrics, actualMetrics)
 			}
 		})
 	}
-
-	runExtensiveQueryMetricsTest("Error", queryIDList, errSomeError, nil)
-	runExtensiveQueryMetricsTest("EmptyQueryIDList", []string{}, nil, []utils.IndividualQueryMetrics{})
 }
 
 func TestPopulateSlowQueryMetrics(t *testing.T) {
@@ -197,8 +226,10 @@ func TestPopulateSlowQueryMetrics(t *testing.T) {
 	defer db.Close()
 
 	mockDB := NewMockDataSource(db)
-	mockIntegration := new(MockIntegration)
-	mockIntegration.Integration, _ = integration.New("test", "1.0.0")
+	i, err := integration.New("test-integration", "1.0.0")
+	if err != nil {
+		t.Fatalf("Failed to create integration: %v", err)
+	}
 	args := arguments.ArgumentList{
 		SlowQueryFetchInterval: 60,
 		QueryCountThreshold:    10,
@@ -210,7 +241,7 @@ func TestPopulateSlowQueryMetrics(t *testing.T) {
 			return nil, nil, errFailedToCollectMetrics
 		}
 
-		queryIDList := PopulateSlowQueryMetrics(mockIntegration.Integration, mockDB, args, excludedDatabases)
+		queryIDList := PopulateSlowQueryMetrics(i, mockDB, args, excludedDatabases)
 		assert.Empty(t, queryIDList)
 	})
 
@@ -219,7 +250,7 @@ func TestPopulateSlowQueryMetrics(t *testing.T) {
 			return []utils.IndividualQueryMetrics{}, []string{}, nil
 		}
 
-		queryIDList := PopulateSlowQueryMetrics(mockIntegration.Integration, mockDB, args, excludedDatabases)
+		queryIDList := PopulateSlowQueryMetrics(i, mockDB, args, excludedDatabases)
 		assert.Empty(t, queryIDList)
 	})
 
@@ -233,9 +264,11 @@ func TestPopulateSlowQueryMetrics(t *testing.T) {
 		mockCollectGroupedSlowQueryMetrics = func(_ utils.DataSource, _ int, _ int, _ []string) ([]utils.IndividualQueryMetrics, []string, error) {
 			metrics := []utils.IndividualQueryMetrics{}
 			for _, m := range expectedMetrics {
+				queryID := m["query_id"].(string)
+				queryText := m["query_text"].(string)
 				metrics = append(metrics, utils.IndividualQueryMetrics{
-					QueryID:   stringPtr(m["query_id"].(string)),
-					QueryText: stringPtr(m["query_text"].(string)),
+					QueryID:   &queryID,
+					QueryText: &queryText,
 				})
 			}
 			return metrics, expectedQueryIDList, nil
@@ -245,7 +278,7 @@ func TestPopulateSlowQueryMetrics(t *testing.T) {
 			return errFailedToSetMetrics
 		}
 
-		queryIDList := PopulateSlowQueryMetrics(mockIntegration.Integration, mockDB, args, excludedDatabases)
+		queryIDList := PopulateSlowQueryMetrics(i, mockDB, args, excludedDatabases)
 		assert.Empty(t, queryIDList)
 	})
 }

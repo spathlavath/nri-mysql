@@ -36,10 +36,10 @@ const (
 	*/
 	TimeoutDuration = 5 * time.Second
 
-	// DefaultSlowQueryFetchInterval defines the default interval for fetching grouped slow query performance metrics. */
-	DefaultSlowQueryFetchInterval = 500
+	// DefaultSlowQueryFetchInterval(sec) defines the default interval for fetching grouped slow query performance metrics. */
+	DefaultSlowQueryFetchInterval = 30
 
-	//  DefaultQueryFetchInterval defines the default interval for fetching individual query performance metrics. */
+	//  DefaultQueryFetchInterval(ms) defines the default interval for fetching individual query performance metrics. */
 	DefaultQueryResponseTimeThreshold = 500
 
 	// DefaultQueryCountThreshold defines the default query count limit for fetching grouped slow, wait events and blocking sessions query performance metrics. */
