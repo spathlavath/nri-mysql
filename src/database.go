@@ -48,7 +48,7 @@ func (db *database) query(query string) (map[string]interface{}, error) {
 	s := newrelic.DatastoreSegment{
 		StartTime:          mysqlapm.Txn.StartSegmentNow(),
 		Product:            newrelic.DatastoreMySQL,
-		Operation:          "SHOW",
+		Operation:          "SELECT",
 		ParameterizedQuery: query,
 	}
 	defer s.End()

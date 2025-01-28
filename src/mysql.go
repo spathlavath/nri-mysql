@@ -49,6 +49,10 @@ func main() {
 
 	txn := mysqlapm.NewrelicApp.StartTransaction("MysqlSampleOld")
 	defer txn.End()
+	if txn == nil {
+		log.Error("Failed to start New Relic transaction for mysql sample old")
+		return
+	}
 
 	mysqlapm.Txn = txn
 	e, err := utils.CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
