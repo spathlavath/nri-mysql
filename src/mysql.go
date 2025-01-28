@@ -33,6 +33,10 @@ func main() {
 	mysqlapm.ArgsAppName = args.AppName
 	mysqlapm.InitNewRelicApp()
 
+	if mysqlapm.ArgsAppName != "" {
+		defer mysqlapm.NewrelicApp.Shutdown(10 * time.Second)
+	}
+
 	if args.ShowVersion {
 		fmt.Printf(
 			"New Relic %s integration Version: %s, Platform: %s, GoVersion: %s, GitCommit: %s, BuildDate: %s\n",
@@ -48,7 +52,6 @@ func main() {
 	log.SetupLogging(args.Verbose)
 
 	txn := mysqlapm.NewrelicApp.StartTransaction("MysqlSampleOld")
-	defer txn.End()
 	if txn == nil {
 		log.Error("Failed to start New Relic transaction for mysql sample old")
 		return
@@ -84,7 +87,5 @@ func main() {
 	if args.EnableQueryMonitoring && args.HasMetrics() {
 		queryperformancemonitoring.PopulateQueryPerformanceMetrics(args, e, i)
 	}
-	if mysqlapm.ArgsAppName != "" {
-		defer mysqlapm.NewrelicApp.Shutdown(10 * time.Second)
-	}
+	defer txn.End()
 }
