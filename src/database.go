@@ -41,6 +41,9 @@ func (db *database) close() {
 func (db *database) query(app *newrelic.Application, query string) (map[string]interface{}, error) {
 	log.Debug("executing query: " + query)
 
+	if app != nil {
+		mysqlapm.NewrelicApp = *app
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), constants.TimeoutDuration)
 	defer cancel()
 
