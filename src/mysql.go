@@ -50,6 +50,7 @@ func main() {
 	txn := mysqlapm.NewrelicApp.StartTransaction("MysqlSampleOld")
 	defer txn.End()
 
+	mysqlapm.Txn = txn
 	e, err := utils.CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
 	utils.FatalIfErr(err)
 
@@ -79,7 +80,6 @@ func main() {
 	if args.EnableQueryMonitoring && args.HasMetrics() {
 		queryperformancemonitoring.PopulateQueryPerformanceMetrics(args, e, i)
 	}
-	mysqlapm.Txn = txn
 	if mysqlapm.ArgsAppName != "" {
 		defer mysqlapm.NewrelicApp.Shutdown(10 * time.Second)
 	}
