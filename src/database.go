@@ -4,8 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"os"
-	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/newrelic/go-agent/v3/newrelic"
@@ -45,22 +43,6 @@ func (db *database) query(query string) (map[string]interface{}, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), constants.TimeoutDuration)
 	defer cancel()
-
-	app, err := newrelic.NewApplication(
-		newrelic.ConfigAppName(mysqlapm.ArgsAppName),
-		newrelic.ConfigLicense(mysqlapm.ArgsKey),
-		newrelic.ConfigDebugLogger(os.Stdout),
-		newrelic.ConfigDatastoreRawQuery(true),
-	)
-	if err != nil {
-		log.Error("Error creating new relic application: %s", err.Error())
-		return nil, err
-	}
-	waitErr := app.WaitForConnection(5 * time.Second)
-	if waitErr != nil {
-		log.Error("Error waiting for connection: %s", waitErr.Error())
-		return nil, waitErr
-	}
 
 	ctx = newrelic.NewContext(ctx, mysqlapm.Txn)
 	s := newrelic.DatastoreSegment{
