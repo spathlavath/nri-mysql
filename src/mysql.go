@@ -62,7 +62,7 @@ func main() {
 	utils.FatalIfErr(err)
 	defer db.close()
 
-	rawInventory, rawMetrics, dbVersion, err := getRawData(db)
+	rawInventory, rawMetrics, dbVersion, err := getRawData(&mysqlapm.NewrelicApp, db)
 	utils.FatalIfErr(err)
 
 	if args.HasInventory() {

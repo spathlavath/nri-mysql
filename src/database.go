@@ -14,7 +14,7 @@ import (
 
 type dataSource interface {
 	close()
-	query(string) (map[string]interface{}, error)
+	query(*newrelic.Application, string) (map[string]interface{}, error)
 }
 
 type database struct {
@@ -38,7 +38,7 @@ func (db *database) close() {
 	db.source.Close()
 }
 
-func (db *database) query(query string) (map[string]interface{}, error) {
+func (db *database) query(app *newrelic.Application, query string) (map[string]interface{}, error) {
 	log.Debug("executing query: " + query)
 
 	ctx, cancel := context.WithTimeout(context.Background(), constants.TimeoutDuration)
