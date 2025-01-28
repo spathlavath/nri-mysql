@@ -3,19 +3,20 @@ package main
 
 import (
 	"fmt"
-	"time"
-	"github.com/newrelic/infra-integrations-sdk/v3/integration"
-	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	"os"
 	"runtime"
 	"strings"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
+	"time"
+
+	"github.com/newrelic/infra-integrations-sdk/v3/integration"
+	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	arguments "github.com/newrelic/nri-mysql/src/args"
 	queryperformancemonitoring "github.com/newrelic/nri-mysql/src/query-performance-monitoring"
 	constants "github.com/newrelic/nri-mysql/src/query-performance-monitoring/constants"
 	mysqlapm "github.com/newrelic/nri-mysql/src/query-performance-monitoring/mysql-apm"
 	utils "github.com/newrelic/nri-mysql/src/query-performance-monitoring/utils"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 var (
@@ -75,11 +76,11 @@ func main() {
 	}
 	utils.FatalIfErr(i.Publish())
 
-	if mysqlapm.ArgsAppName != "" {
-		defer mysqlapm.NewrelicApp.Shutdown(10 * time.Second)
-	}
-
 	if args.EnableQueryMonitoring && args.HasMetrics() {
 		queryperformancemonitoring.PopulateQueryPerformanceMetrics(args, e, i)
+	}
+
+	if mysqlapm.ArgsAppName != "" {
+		defer mysqlapm.NewrelicApp.Shutdown(10 * time.Second)
 	}
 }
