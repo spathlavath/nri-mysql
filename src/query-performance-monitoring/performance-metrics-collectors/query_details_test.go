@@ -157,7 +157,7 @@ func TestCollectIndividualQueryMetrics(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockCollectIndividualQueryMetrics = func(_ utils.DataSource, _ []string, _ string, args arguments.ArgumentList) ([]utils.IndividualQueryMetrics, error) {
+			mockCollectIndividualQueryMetrics = func(_ utils.DataSource, _ []string, _ string, _ arguments.ArgumentList) ([]utils.IndividualQueryMetrics, error) {
 				return tt.expectedMetrics, tt.expectedError
 			}
 
