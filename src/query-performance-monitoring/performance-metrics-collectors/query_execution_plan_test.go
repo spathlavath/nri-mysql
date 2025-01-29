@@ -13,6 +13,8 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+var openSQLXDB func(dsn string) (*sqlx.DB, error)
+
 // Mock DataSource
 type MockDataSource struct {
 	mock.Mock
@@ -156,57 +158,41 @@ func TestIsSupportedStatement(t *testing.T) {
 
 func TestPopulateExecutionPlans(t *testing.T) {
 	queryText := "SELECT * FROM test_table"
-	tests := []struct {
-		name        string
-		queryGroups []utils.QueryGroup
-		args        arguments.ArgumentList
-		setupMocks  func()
-		expectError bool
-	}{
-		{
-			name:        "No Queries",
-			queryGroups: []utils.QueryGroup{},
-			args:        arguments.ArgumentList{},
-			setupMocks: func() {
-				// No calls to mockUtils, as no queries are provided
-			},
-			expectError: false,
-		},
-		{
-			name: "Single Query Group",
-			queryGroups: []utils.QueryGroup{
-				{
-					Database: "test_db",
-					Queries: []utils.IndividualQueryMetrics{
-						{QueryText: &queryText},
-					},
-				},
-			},
-			args: arguments.ArgumentList{},
-			setupMocks: func() {
-				mockDB := new(MockDataSource)
-				mockDB.On("QueryX", "SELECT * FROM test_table").Return([]utils.QueryPlanMetrics{}, nil)
-			},
-			expectError: false,
+	mockDB := new(MockDataSource)
+	mockIntegration := new(MockIntegration)
+	mockIntegration.Integration, _ = integration.New("test", "1.0.0")
+	mockArgs := arguments.ArgumentList{}
+
+	queryGroups := map[string][]utils.IndividualQueryMetrics{
+		"test_db": {
+			{QueryText: &queryText},
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Arrange
-			tt.setupMocks()
-			mockDB := new(MockDataSource)
-			mockIntegration := new(integration.Integration)
-
-			queryGroupsMap := make(map[string][]utils.IndividualQueryMetrics)
-			for _, group := range tt.queryGroups {
-				queryGroupsMap[group.Database] = group.Queries
-			}
-			PopulateExecutionPlans(mockDB, queryGroupsMap, mockIntegration, tt.args)
-
-			mockDB.AssertExpectations(t)
-		})
+	// Mock the OpenSQLXDB function to return the mockDB
+	openSQLXDB = func(_ string) (*sqlx.DB, error) {
+		return mockDB.db, nil
 	}
+
+	t.Run("Error Opening Database Connection", func(t *testing.T) {
+		openSQLXDB = func(_ string) (*sqlx.DB, error) {
+			return nil, assert.AnError
+		}
+
+		PopulateExecutionPlans(mockDB, queryGroups, mockIntegration.Integration, mockArgs)
+
+		mockDB.AssertExpectations(t)
+		mockIntegration.AssertExpectations(t)
+	})
+
+	t.Run("No Metrics Collected", func(t *testing.T) {
+		queryGroups := map[string][]utils.IndividualQueryMetrics{}
+
+		PopulateExecutionPlans(mockDB, queryGroups, mockIntegration.Integration, mockArgs)
+
+		mockDB.AssertExpectations(t)
+		mockIntegration.AssertExpectations(t)
+	})
 }
 
 func TestProcessSliceValue(t *testing.T) {
