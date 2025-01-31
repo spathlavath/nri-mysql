@@ -71,9 +71,9 @@ func GetExcludedDatabases(excludedDatabasesList string) []string {
 	}
 
 	// Get unique excluded databases
-	// excludedDatabases := getUniqueExcludedDatabases(excludedDatabasesSlice)
+	excludedDatabases := getUniqueExcludedDatabases(excludedDatabasesSlice)
 
-	return excludedDatabasesSlice
+	return excludedDatabases
 }
 
 // Helper function to convert a slice of strings to a slice of interfaces
