@@ -44,7 +44,6 @@ const (
 		FROM performance_schema.events_statements_summary_by_digest
 		WHERE LAST_SEEN >= UTC_TIMESTAMP() - INTERVAL ? SECOND
 			AND SCHEMA_NAME IS NOT NULL
-        AND DIGEST_TEXT RLIKE '^(SELECT|INSERT|UPDATE|DELETE|WITH)'
     `
 	excludedSlowQueries = `
         AND SCHEMA_NAME NOT IN (?)
@@ -183,7 +182,6 @@ const (
 				DIGEST_TEXT AS query_text,
 				ROUND(TIMER_WAIT / 1000000000, 3) AS execution_time_ms
 			FROM performance_schema.events_statements_current
-			WHERE SQL_TEXT RLIKE '^(SELECT|INSERT|UPDATE|DELETE|WITH)'
 			UNION ALL
 			SELECT DISTINCT
 				THREAD_ID,
@@ -192,7 +190,6 @@ const (
 				DIGEST_TEXT AS query_text,
 				ROUND(TIMER_WAIT / 1000000000, 3) AS execution_time_ms
 			FROM performance_schema.events_statements_history
-			WHERE SQL_TEXT RLIKE '^(SELECT|INSERT|UPDATE|DELETE|WITH)'
 		)
 		SELECT
 			schema_data.DIGEST AS query_id,
@@ -223,7 +220,7 @@ const (
 		WHERE schema_data.database_name IS NOT NULL
     `
 	excludedSchemaWaitEventsQuery = `
-        AND schema_data.database_name NOT IN (?)
+        WHERE schema_data.database_name NOT IN (?)
     `
 
 	orderAndLimitWaitEventsQuery = `
