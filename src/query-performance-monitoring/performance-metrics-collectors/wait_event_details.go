@@ -17,11 +17,12 @@ func PopulateWaitEventMetrics(db utils.DataSource, i *integration.Integration, a
 	// Get the query count threshold
 	queryCountThreshold := validator.GetValidQueryCountThreshold(args.QueryMonitoringCountThreshold)
 
-	// Prepare the arguments for the query
-	excludedDatabasesArgs := []interface{}{excludedDatabases, excludedDatabases, queryCountThreshold}
+	// Prepare arguments for the query
+	var preparedArgs []interface{}
+	preparedArgs = append(preparedArgs, queryCountThreshold)
 
-	// Prepare the SQL query with the provided parameters
-	preparedQuery, preparedArgs, err := sqlx.In(waitEventsQuerySQL, excludedDatabasesArgs...)
+	// Use sqlx.In to handle excludedDatabases dynamically
+	preparedQuery, preparedArgs, err := sqlx.In(waitEventsQuerySQL, preparedArgs...)
 	if err != nil {
 		log.Error("Failed to prepare wait event query: %v", err)
 		return

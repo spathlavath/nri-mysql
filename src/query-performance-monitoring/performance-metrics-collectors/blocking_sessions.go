@@ -17,8 +17,12 @@ func PopulateBlockingSessionMetrics(db utils.DataSource, i *integration.Integrat
 	// Get the query count threshold
 	queryCountThreshold := validator.GetValidQueryCountThreshold(args.QueryMonitoringCountThreshold)
 
-	// Prepare the SQL query with the provided parameters
-	query, inputArgs, err := sqlx.In(blockingSessionsQuerySQL, excludedDatabases, queryCountThreshold)
+	// Prepare arguments for the query
+	var inputArgs []interface{}
+	inputArgs = append(inputArgs, queryCountThreshold)
+
+	// Use sqlx.In to handle excludedDatabases dynamically
+	query, inputArgs, err := sqlx.In(blockingSessionsQuerySQL, inputArgs...)
 	if err != nil {
 		log.Error("Failed to prepare blocking sessions query: %v", err)
 		return

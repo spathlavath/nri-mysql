@@ -47,15 +47,20 @@ func collectGroupedSlowQueryMetrics(db utils.DataSource, fetchInterval int, coun
 	// Get the slow query SQL statement
 	slowQuerySQL := utils.GetSlowQueriesSQL(excludedDatabases)
 
-	// Prepare the SQL query with the provided parameters
-	query, args, err := sqlx.In(slowQuerySQL, fetchInterval, excludedDatabases, countThreshold)
+	// Prepare arguments for the query
+	var queryArgs []interface{}
+	queryArgs = append(queryArgs, fetchInterval)
+	queryArgs = append(queryArgs, countThreshold)
+
+	// Use sqlx.In to handle excludedDatabases dynamically
+	query, queryArgs, err := sqlx.In(slowQuerySQL, queryArgs...)
 	if err != nil {
 		return nil, []string{}, err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), constants.TimeoutDuration)
 	defer cancel()
-	rows, err := db.QueryxContext(ctx, query, args...)
+	rows, err := db.QueryxContext(ctx, query, queryArgs...)
 	if err != nil {
 		return nil, []string{}, err
 	}
