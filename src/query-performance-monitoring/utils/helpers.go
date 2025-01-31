@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"reflect"
-	"strings"
 
 	"github.com/newrelic/infra-integrations-sdk/v3/data/metric"
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
@@ -36,32 +35,6 @@ func CreateMetricSet(e *integration.Entity, sampleName string, args arguments.Ar
 	)
 }
 
-func getUniqueExcludedDatabases(excludedDBList []string) []string {
-	// Create a map to store unique databases
-	uniqueDatabases := make(map[string]struct{})
-
-	// Populate the map with default excluded databases
-	for _, dbName := range constants.DefaultExcludedDatabases {
-		uniqueDatabases[dbName] = struct{}{}
-	}
-
-	// Populate the map with values from excludedDBList
-	for _, dbName := range excludedDBList {
-		trimmedDBName := strings.TrimSpace(dbName)
-		if trimmedDBName != "" {
-			uniqueDatabases[trimmedDBName] = struct{}{}
-		}
-	}
-
-	// Convert the map keys back into a slice
-	result := make([]string, 0, len(uniqueDatabases))
-	for dbName := range uniqueDatabases {
-		result = append(result, dbName)
-	}
-
-	return result
-}
-
 // GetExcludedDatabases parses the excluded databases list from a JSON string and returns a list of unique excluded databases.
 func GetExcludedDatabases(excludedDatabasesList string) []string {
 	// Parse the excluded databases list from JSON string
@@ -70,10 +43,7 @@ func GetExcludedDatabases(excludedDatabasesList string) []string {
 		log.Warn("Failed to parse excluded databases list: %v", err)
 	}
 
-	// Get unique excluded databases
-	excludedDatabases := getUniqueExcludedDatabases(excludedDatabasesSlice)
-
-	return excludedDatabases
+	return excludedDatabasesSlice
 }
 
 // Helper function to convert a slice of strings to a slice of interfaces

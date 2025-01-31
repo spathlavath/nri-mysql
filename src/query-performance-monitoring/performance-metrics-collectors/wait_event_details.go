@@ -11,14 +11,18 @@ import (
 
 // PopulateWaitEventMetrics retrieves wait event metrics from the database and sets them in the integration.
 func PopulateWaitEventMetrics(db utils.DataSource, i *integration.Integration, args arguments.ArgumentList, excludedDatabases []string) {
+	// Get the wait events query SQL
+	waitEventsQuerySQL := utils.GetWaitEventsSQL(excludedDatabases)
+
 	// Get the query count threshold
 	queryCountThreshold := validator.GetValidQueryCountThreshold(args.QueryMonitoringCountThreshold)
 
-	// Prepare the arguments for the query
-	excludedDatabasesArgs := []interface{}{excludedDatabases, excludedDatabases, queryCountThreshold}
+	// Prepare arguments for the query
+	var preparedArgs []interface{}
+	preparedArgs = append(preparedArgs, queryCountThreshold)
 
-	// Prepare the SQL query with the provided parameters
-	preparedQuery, preparedArgs, err := sqlx.In(utils.WaitEventsQuery, excludedDatabasesArgs...)
+	// Use sqlx.In to handle excludedDatabases dynamically
+	preparedQuery, preparedArgs, err := sqlx.In(waitEventsQuerySQL, preparedArgs...)
 	if err != nil {
 		log.Error("Failed to prepare wait event query: %v", err)
 		return

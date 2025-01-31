@@ -158,27 +158,27 @@ func TestGetExcludedDatabases(t *testing.T) {
         {
             "name": "Valid JSON with multiple databases",
             "excludedDBList": "[\"db1\",\"db2\"]",
-            "expectedDatabases": ["", "mysql", "information_schema", "performance_schema", "sys", "db1", "db2"]
+            "expectedDatabases": ["db1", "db2"]
         },
         {
             "name": "Valid JSON with single database",
             "excludedDBList": "[\"db1\"]",
-            "expectedDatabases": ["", "mysql", "information_schema", "performance_schema", "sys", "db1"]
+            "expectedDatabases": ["db1"]
         },
         {
             "name": "Invalid JSON",
             "excludedDBList": "[\"db1\",\"db2\"",
-            "expectedDatabases": ["", "mysql", "information_schema", "performance_schema", "sys"]
+            "expectedDatabases": []
         },
         {
             "name": "Empty JSON array",
             "excludedDBList": "[]",
-            "expectedDatabases": ["", "mysql", "information_schema", "performance_schema", "sys"]
+            "expectedDatabases": []
         },
         {
             "name": "Empty string",
             "excludedDBList": "",
-            "expectedDatabases": ["", "mysql", "information_schema", "performance_schema", "sys"]
+            "expectedDatabases": []
         }
     ]`
 
