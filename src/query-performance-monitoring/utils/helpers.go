@@ -67,13 +67,13 @@ func GetExcludedDatabases(excludedDatabasesList string) []string {
 	// Parse the excluded databases list from JSON string
 	var excludedDatabasesSlice []string
 	if err := json.Unmarshal([]byte(excludedDatabasesList), &excludedDatabasesSlice); err != nil {
-		log.Warn("Failed to parse excluded databases list: %v. Using default list: %v", err, constants.DefaultExcludedDatabases)
+		log.Warn("Failed to parse excluded databases list: %v", err)
 	}
 
 	// Get unique excluded databases
-	excludedDatabases := getUniqueExcludedDatabases(excludedDatabasesSlice)
+	// excludedDatabases := getUniqueExcludedDatabases(excludedDatabasesSlice)
 
-	return excludedDatabases
+	return excludedDatabasesSlice
 }
 
 // Helper function to convert a slice of strings to a slice of interfaces

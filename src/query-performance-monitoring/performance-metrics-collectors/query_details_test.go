@@ -182,8 +182,8 @@ func TestPopulateSlowQueryMetrics(t *testing.T) {
 		t.Fatalf("Failed to create integration: %v", err)
 	}
 	args := arguments.ArgumentList{
-		SlowQueryFetchInterval:        60,
-		QueryMonitoringCountThreshold: 10,
+		SlowQueryMonitoringFetchInterval: 60,
+		QueryMonitoringCountThreshold:    10,
 	}
 	excludedDatabases := []string{}
 
