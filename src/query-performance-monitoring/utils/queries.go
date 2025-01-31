@@ -1,5 +1,7 @@
 package utils
 
+import "fmt"
+
 const (
 	/*
 		SlowQueries: Retrieves a list of slow queries that have been executed within a certain period.
@@ -42,10 +44,14 @@ const (
 		FROM performance_schema.events_statements_summary_by_digest
 		WHERE LAST_SEEN >= UTC_TIMESTAMP() - INTERVAL ? SECOND
 			AND SCHEMA_NAME IS NOT NULL
-			AND SCHEMA_NAME NOT IN (?)
-			AND DIGEST_TEXT RLIKE '^(SELECT|INSERT|UPDATE|DELETE|WITH)'
-		ORDER BY avg_elapsed_time_ms DESC
-		LIMIT ?;
+        AND DIGEST_TEXT RLIKE '^(SELECT|INSERT|UPDATE|DELETE|WITH)'
+    `
+	excludedSlowQueries = `
+        AND SCHEMA_NAME NOT IN (?)
+    `
+	orderAndLimitSlowQueries = `
+        ORDER BY avg_elapsed_time_ms DESC
+        LIMIT ?;
     `
 
 	/*
@@ -177,8 +183,7 @@ const (
 				DIGEST_TEXT AS query_text,
 				ROUND(TIMER_WAIT / 1000000000, 3) AS execution_time_ms
 			FROM performance_schema.events_statements_current
-			WHERE CURRENT_SCHEMA NOT IN (?)
-			AND SQL_TEXT RLIKE '^(SELECT|INSERT|UPDATE|DELETE|WITH)'
+			WHERE SQL_TEXT RLIKE '^(SELECT|INSERT|UPDATE|DELETE|WITH)'
 			UNION ALL
 			SELECT DISTINCT
 				THREAD_ID,
@@ -187,8 +192,7 @@ const (
 				DIGEST_TEXT AS query_text,
 				ROUND(TIMER_WAIT / 1000000000, 3) AS execution_time_ms
 			FROM performance_schema.events_statements_history
-			WHERE CURRENT_SCHEMA NOT IN (?)
-			AND SQL_TEXT RLIKE '^(SELECT|INSERT|UPDATE|DELETE|WITH)'
+			WHERE SQL_TEXT RLIKE '^(SELECT|INSERT|UPDATE|DELETE|WITH)'
 		)
 		SELECT
 			schema_data.DIGEST AS query_id,
@@ -216,7 +220,14 @@ const (
 			DATE_FORMAT(UTC_TIMESTAMP(), '%Y-%m-%dT%H:%i:%sZ') AS collection_timestamp
 		FROM wait_data
 		JOIN schema_data ON wait_data.THREAD_ID = schema_data.THREAD_ID
-		GROUP BY
+		WHERE schema_data.database_name IS NOT NULL
+    `
+	excludedSchemaWaitEventsQuery = `
+        AND schema_data.database_name NOT IN (?)
+    `
+
+	orderAndLimitWaitEventsQuery = `
+        GROUP BY
 			query_id,
 			wait_data.instance_id,
 			schema_data.database_name,
@@ -226,7 +237,7 @@ const (
 		ORDER BY
 			total_wait_time_ms DESC
 		LIMIT ?;
-	`
+    `
 
 	/*
 		BlockingSessionsQuery: Identifies and details current database transactions that are blocked by others.
@@ -241,51 +252,81 @@ const (
 	*/
 	BlockingSessionsQuery = `
 		SELECT 
-                      r.trx_id AS blocked_txn_id,
-                      r.trx_mysql_thread_id AS blocked_thread_id,
-					  wt.PROCESSLIST_ID AS blocked_pid,
-                      wt.PROCESSLIST_HOST AS blocked_host,
-                      wt.PROCESSLIST_DB AS database_name,
-					  wt.PROCESSLIST_STATE AS blocked_status,
-                      b.trx_id AS blocking_txn_id,
-                      b.trx_mysql_thread_id AS blocking_thread_id,
-					  bt.PROCESSLIST_ID AS blocking_pid,
-                      bt.PROCESSLIST_HOST AS blocking_host,
-                      es_waiting.DIGEST_TEXT AS blocked_query,
-                      es_blocking.DIGEST_TEXT AS blocking_query,
-					  es_waiting.DIGEST AS blocked_query_id,
-                      es_blocking.DIGEST AS blocking_query_id,
-    				  bt.PROCESSLIST_STATE AS blocking_status,
-					  ROUND(esc_waiting.TIMER_WAIT / 1000000000, 3) AS blocked_query_time_ms,
-					  ROUND(esc_blocking.TIMER_WAIT / 1000000000, 3) AS blocking_query_time_ms,
-					  DATE_FORMAT(CONVERT_TZ(r.trx_started, @@session.time_zone, '+00:00'), '%Y-%m-%dT%H:%i:%sZ') AS blocked_txn_start_time,
-					  DATE_FORMAT(CONVERT_TZ(b.trx_started, @@session.time_zone, '+00:00'), '%Y-%m-%dT%H:%i:%sZ') AS blocking_txn_start_time,
-					  DATE_FORMAT(UTC_TIMESTAMP(), '%Y-%m-%dT%H:%i:%sZ') AS collection_timestamp
-                  FROM 
-                      performance_schema.data_lock_waits w
-                  JOIN 
-                      performance_schema.threads wt ON wt.THREAD_ID = w.REQUESTING_THREAD_ID
-                  JOIN 
-                      information_schema.innodb_trx r ON r.trx_mysql_thread_id = wt.PROCESSLIST_ID
-                  JOIN 
-                      performance_schema.threads bt ON bt.THREAD_ID = w.BLOCKING_THREAD_ID
-                  JOIN 
-                      information_schema.innodb_trx b ON b.trx_mysql_thread_id = bt.PROCESSLIST_ID
-                  JOIN 
-                      performance_schema.events_statements_current esc_waiting ON esc_waiting.THREAD_ID = wt.THREAD_ID
-                  JOIN 
-                      performance_schema.events_statements_summary_by_digest es_waiting 
-                      ON esc_waiting.DIGEST = es_waiting.DIGEST
-                  JOIN 
-                      performance_schema.events_statements_current esc_blocking ON esc_blocking.THREAD_ID = bt.THREAD_ID
-                  JOIN 
-                      performance_schema.events_statements_summary_by_digest es_blocking 
-                      ON esc_blocking.DIGEST = es_blocking.DIGEST
-				  WHERE
-					  wt.PROCESSLIST_DB IS NOT NULL
-					  AND wt.PROCESSLIST_DB NOT IN (?)
-				  ORDER BY 
-					  blocked_txn_start_time ASC
-				  LIMIT ?;
+			r.trx_id AS blocked_txn_id,
+			r.trx_mysql_thread_id AS blocked_thread_id,
+			wt.PROCESSLIST_ID AS blocked_pid,
+			wt.PROCESSLIST_HOST AS blocked_host,
+			wt.PROCESSLIST_DB AS database_name,
+			wt.PROCESSLIST_STATE AS blocked_status,
+			b.trx_id AS blocking_txn_id,
+			b.trx_mysql_thread_id AS blocking_thread_id,
+			bt.PROCESSLIST_ID AS blocking_pid,
+			bt.PROCESSLIST_HOST AS blocking_host,
+			es_waiting.DIGEST_TEXT AS blocked_query,
+			es_blocking.DIGEST_TEXT AS blocking_query,
+			es_waiting.DIGEST AS blocked_query_id,
+			es_blocking.DIGEST AS blocking_query_id,
+			bt.PROCESSLIST_STATE AS blocking_status,
+			ROUND(esc_waiting.TIMER_WAIT / 1000000000, 3) AS blocked_query_time_ms,
+			ROUND(esc_blocking.TIMER_WAIT / 1000000000, 3) AS blocking_query_time_ms,
+			DATE_FORMAT(CONVERT_TZ(r.trx_started, @@session.time_zone, '+00:00'), '%Y-%m-%dT%H:%i:%sZ') AS blocked_txn_start_time,
+			DATE_FORMAT(CONVERT_TZ(b.trx_started, @@session.time_zone, '+00:00'), '%Y-%m-%dT%H:%i:%sZ') AS blocking_txn_start_time,
+			DATE_FORMAT(UTC_TIMESTAMP(), '%Y-%m-%dT%H:%i:%sZ') AS collection_timestamp
+		FROM 
+			performance_schema.data_lock_waits w
+		JOIN 
+			performance_schema.threads wt ON wt.THREAD_ID = w.REQUESTING_THREAD_ID
+		JOIN 
+			information_schema.innodb_trx r ON r.trx_mysql_thread_id = wt.PROCESSLIST_ID
+		JOIN 
+			performance_schema.threads bt ON bt.THREAD_ID = w.BLOCKING_THREAD_ID
+		JOIN 
+			information_schema.innodb_trx b ON b.trx_mysql_thread_id = bt.PROCESSLIST_ID
+		JOIN 
+			performance_schema.events_statements_current esc_waiting ON esc_waiting.THREAD_ID = wt.THREAD_ID
+		JOIN 
+			performance_schema.events_statements_summary_by_digest es_waiting 
+			ON esc_waiting.DIGEST = es_waiting.DIGEST
+		JOIN 
+			performance_schema.events_statements_current esc_blocking ON esc_blocking.THREAD_ID = bt.THREAD_ID
+		JOIN 
+			performance_schema.events_statements_summary_by_digest es_blocking 
+			ON esc_blocking.DIGEST = es_blocking.DIGEST
+		WHERE
+			wt.PROCESSLIST_DB IS NOT NULL
+    `
+
+	excludedSchemaBlockingSessionsQuery = `
+		AND wt.PROCESSLIST_DB NOT IN (?)
+    `
+
+	orderAndLimitBlockingSessionsQuery = `
+		ORDER BY 
+			blocked_txn_start_time ASC
+		LIMIT ?;
 	`
 )
+
+// Function to generate the Slow Queries SQL based on excluded databases.
+func GetSlowQueriesSQL(excludedDatabases []string) string {
+	if len(excludedDatabases) == 0 {
+		return fmt.Sprintf("%s %s", SlowQueries, orderAndLimitSlowQueries)
+	}
+	return fmt.Sprintf("%s %s %s", SlowQueries, excludedSlowQueries, orderAndLimitSlowQueries)
+}
+
+// Function to generate wait events SQL based on excluded databases.
+func GetWaitEventsSQL(excludedDatabases []string) string {
+	if len(excludedDatabases) == 0 {
+		return fmt.Sprintf("%s %s", WaitEventsQuery, orderAndLimitWaitEventsQuery)
+	}
+	return fmt.Sprintf("%s %s %s", WaitEventsQuery, excludedSchemaWaitEventsQuery, orderAndLimitWaitEventsQuery)
+}
+
+// Function to generate blocking sessions SQL based on excluded databases.
+func GetBlockingSessionsSQL(excludedDatabases []string) string {
+	if len(excludedDatabases) == 0 {
+		return fmt.Sprintf("%s %s", BlockingSessionsQuery, orderAndLimitBlockingSessionsQuery)
+	}
+	return fmt.Sprintf("%s %s %s", BlockingSessionsQuery, excludedSchemaBlockingSessionsQuery, orderAndLimitBlockingSessionsQuery)
+}

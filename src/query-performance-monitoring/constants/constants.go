@@ -82,24 +82,3 @@ const (
 	*/
 	MinVersionParts = 2
 )
-
-/*
-DefaultExcludedDatabases defines a list of database names that are excluded by default.
-These databases are typically system databases in MySQL that are used for internal purposes
-and typically do not require user interactions or modifications.
-
-  - "mysql": This database contains the system user accounts and privileges information.
-  - "information_schema": This database provides access to database metadata,
-    i.e., data about data. It is read-only and is used for querying about database objects.
-  - "performance_schema": This database provides performance-related data and metrics
-    about server execution and resource usage. It is mainly used for monitoring purposes.
-  - "sys": This database provides simplified views and functions for easier system
-    administration and performance tuning.
-  - "": The empty string is included because some queries may not be associated with
-    any specific database. Including "" ensures that these undetermined or global queries
-    are not incorrectly related to a specific user database.
-
-Excluding these databases by default helps to prevent accidental modifications
-and focuses system operations only on user-defined databases.
-*/
-var DefaultExcludedDatabases = []string{"", "mysql", "information_schema", "performance_schema", "sys"}
