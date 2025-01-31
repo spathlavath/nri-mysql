@@ -32,6 +32,7 @@ func PopulateSlowQueryMetrics(i *integration.Integration, db utils.DataSource, a
 		return []string{}
 	}
 
+	// Set the slow query metrics to the integration entity and ingest them
 	err = setSlowQueryMetrics(i, rawMetrics, args)
 	if err != nil {
 		log.Error("Failed to set slow query metrics: %v", err)
