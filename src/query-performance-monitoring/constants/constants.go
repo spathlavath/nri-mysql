@@ -56,7 +56,7 @@ const (
 			- Wait events would number 50.
 			- Blocking sessions would also total 50.
 
-		With a configuration interval set at 30 seconds, processing these results can consume significant time and resources. This, in turn, imposes additional overhead on the customer's database.
+		With a configuration interval set at 30 seconds, processing these results can consume significant time and resources.
 	*/
 
 	// DefaultQueryCountThreshold defines the default query count limit for fetching grouped slow, wait events and blocking sessions query performance metrics. */
