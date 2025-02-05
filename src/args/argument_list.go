@@ -24,4 +24,6 @@ type ArgumentList struct {
 	QueryMonitoringResponseTimeThreshold int    `default:"500" help:"Threshold in milliseconds for query response time to fetch individual query performance metrics."`
 	QueryMonitoringCountThreshold        int    `default:"20" help:"Query count limit for fetching grouped slow and individual query performance metrics."`
 	ExcludedPerformanceDatabases         string `default:"[]" help:"A JSON array that lists databases to be excluded from performance metrics collection. System databases are always excluded."`
+	LicenseKey                           string `default:"" help:"New Relic license key."`
+	AppName                              string `default:"nri-mysql" help:"New Relic application name."`
 }

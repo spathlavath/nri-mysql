@@ -18,7 +18,7 @@ import (
 )
 
 // PopulateExecutionPlans populates execution plans for the given queries.
-func PopulateExecutionPlans(app *newrelic.Application, db utils.DataSource, queryGroups []utils.QueryGroup, i *integration.Integration, args arguments.ArgumentList) {
+func PopulateExecutionPlans(app *newrelic.Application, db utils.DataSource, queryGroups map[string][]utils.IndividualQueryMetrics, i *integration.Integration, args arguments.ArgumentList) {
 	var events []utils.QueryPlanMetrics
 
 	for dbName, queries := range queryGroups {
@@ -32,7 +32,7 @@ func PopulateExecutionPlans(app *newrelic.Application, db utils.DataSource, quer
 		defer db.Close()
 
 		for _, query := range queries {
-			tableIngestionDataList, err := processExecutionPlanMetrics(db, query)
+			tableIngestionDataList, err := processExecutionPlanMetrics(app, db, query)
 			if err != nil {
 				log.Error("Error processing execution plan metrics: %v", err)
 				continue
@@ -79,7 +79,7 @@ func processExecutionPlanMetrics(app *newrelic.Application, db utils.DataSource,
 		return []utils.QueryPlanMetrics{}, nil
 	}
 
-	execPlanJSON, err := executeExplainQuery(ctx, db, queryText)
+	execPlanJSON, err := executeExplainQuery(app, ctx, db, queryText)
 	if err != nil {
 		return []utils.QueryPlanMetrics{}, err
 	}
@@ -123,7 +123,7 @@ func getQueryText(query utils.IndividualQueryMetrics, queryID string) (string, e
 }
 
 // executeExplainQuery executes the EXPLAIN query and returns the result as a JSON string.
-func executeExplainQuery(ctx context.Context, db utils.DataSource, queryText string) (string, error) {
+func executeExplainQuery(app *newrelic.Application, ctx context.Context, db utils.DataSource, queryText string) (string, error) {
 	execPlanQuery := fmt.Sprintf(constants.ExplainQueryFormat, queryText)
 	rows, err := db.QueryxContext(app, ctx, execPlanQuery)
 	if err != nil {
