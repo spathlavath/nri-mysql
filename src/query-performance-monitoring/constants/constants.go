@@ -3,15 +3,18 @@ package constants
 import "time"
 
 const (
-	IntegrationName    = "com.newrelic.mysql"
-	NodeEntityType     = "node"
-	IntegrationVersion = "0.0.0"
+	IntegrationName = "com.newrelic.mysql"
+	NodeEntityType  = "node"
 	/*
 		New Relic's Integration SDK imposes a limit of 1000 metrics per ingestion.
 		To handle metric sets exceeding this limit, we process and ingest metrics in smaller chunks
 		to ensure all data is successfully reported without exceeding the limit.
+
+		For instance, if QueryCountThreshold is set to 100, then in the worst-case scenario for Individual queries & Query execution plans:
+			- Individual queries would amount to 100 * 10 (IndividualQueryCountThreshold), equaling 1000.
+			- When considering the execution plan for queries, assuming there are 5 objects in the execution plan JSON for each individual query, this would result in 5000 objects to handle.
 	*/
-	MetricSetLimit = 100
+	MetricSetLimit = 600
 
 	/*
 		ExplainQueryFormat is a format string used to generate EXPLAIN queries in JSON format.
@@ -37,11 +40,24 @@ const (
 	*/
 	TimeoutDuration = 5 * time.Second
 
-	// DefaultSlowQueryFetchInterval defines the default interval for fetching grouped slow query performance metrics. */
-	DefaultSlowQueryFetchInterval = 500
+	// DefaultSlowQueryFetchInterval(sec) defines the default interval for fetching grouped slow query performance metrics. */
+	DefaultSlowQueryFetchInterval = 30
 
-	//  DefaultQueryFetchInterval defines the default interval for fetching individual query performance metrics. */
+	//  DefaultQueryFetchInterval(ms) defines the default interval for fetching individual query performance metrics. */
 	DefaultQueryResponseTimeThreshold = 500
+
+	/*
+		NOTE: The default and max values chosen may be adjusted in the future. Assumptions made to choose the defaults and max values:
+
+		For instance, if QueryCountThreshold is set to 50, then in the worst-case scenario:
+			- Slow queries would total 50.
+			- Individual queries would amount to 50 * 10 (IndividualQueryCountThreshold), equaling 500.
+			- When considering the execution plan for queries, assuming there are 5 objects in the execution plan JSON for each individual query, this would result in 2500 objects to handle.
+			- Wait events would number 50.
+			- Blocking sessions would also total 50.
+
+		With a configuration interval set at 30 seconds, processing these results can consume significant time and resources.
+	*/
 
 	// DefaultQueryCountThreshold defines the default query count limit for fetching grouped slow, wait events and blocking sessions query performance metrics. */
 	DefaultQueryCountThreshold = 20

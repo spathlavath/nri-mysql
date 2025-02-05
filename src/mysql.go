@@ -11,23 +11,25 @@ import (
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	arguments "github.com/newrelic/nri-mysql/src/args"
+	dbutils "github.com/newrelic/nri-mysql/src/dbutils"
+	infrautils "github.com/newrelic/nri-mysql/src/infrautils"
 	queryperformancemonitoring "github.com/newrelic/nri-mysql/src/query-performance-monitoring"
 	constants "github.com/newrelic/nri-mysql/src/query-performance-monitoring/constants"
 	mysqlapm "github.com/newrelic/nri-mysql/src/query-performance-monitoring/mysql-apm"
-	utils "github.com/newrelic/nri-mysql/src/query-performance-monitoring/utils"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
 
 var (
-	args      arguments.ArgumentList
-	gitCommit = ""
-	buildDate = ""
+	args               arguments.ArgumentList
+	integrationVersion = "0.0.0"
+	gitCommit          = ""
+	buildDate          = ""
 )
 
 func main() {
-	i, err := integration.New(constants.IntegrationName, constants.IntegrationVersion, integration.Args(&args))
-	utils.FatalIfErr(err)
+	i, err := integration.New(constants.IntegrationName, integrationVersion, integration.Args(&args))
+	infrautils.FatalIfErr(err)
 
 	mysqlapm.ArgsKey = args.LicenseKey
 	mysqlapm.ArgsAppName = args.AppName
@@ -41,7 +43,7 @@ func main() {
 		fmt.Printf(
 			"New Relic %s integration Version: %s, Platform: %s, GoVersion: %s, GitCommit: %s, BuildDate: %s\n",
 			cases.Title(language.Und).String(strings.Replace(constants.IntegrationName, "com.newrelic.", "", 1)),
-			constants.IntegrationVersion,
+			integrationVersion,
 			fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH),
 			runtime.Version(),
 			gitCommit,
@@ -58,22 +60,22 @@ func main() {
 	}
 
 	mysqlapm.Txn = txn
-	e, err := utils.CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
-	utils.FatalIfErr(err)
+	e, err := infrautils.CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
+	infrautils.FatalIfErr(err)
 
-	db, err := openSQLDB(utils.GenerateDSN(args, ""))
-	utils.FatalIfErr(err)
+	db, err := openSQLDB(dbutils.GenerateDSN(args, ""))
+	infrautils.FatalIfErr(err)
 	defer db.close()
 
 	rawInventory, rawMetrics, dbVersion, err := getRawData(&mysqlapm.NewrelicApp, db)
-	utils.FatalIfErr(err)
+	infrautils.FatalIfErr(err)
 
 	if args.HasInventory() {
 		populateInventory(e.Inventory, rawInventory)
 	}
 
 	if args.HasMetrics() {
-		ms := utils.MetricSet(
+		ms := infrautils.MetricSet(
 			e,
 			"MysqlSampleOld",
 			args.Hostname,
@@ -82,9 +84,9 @@ func main() {
 		)
 		populateMetrics(ms, rawMetrics, dbVersion)
 	}
-	utils.FatalIfErr(i.Publish())
+	infrautils.FatalIfErr(i.Publish())
 
-	if args.EnableQueryMonitoring && args.HasMetrics() {
+	if args.EnableQueryMonitoring {
 		queryperformancemonitoring.PopulateQueryPerformanceMetrics(args, e, i)
 	}
 	defer txn.End()

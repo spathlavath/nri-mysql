@@ -13,7 +13,7 @@ import (
 // PopulateBlockingSessionMetrics retrieves blocking session metrics from the database and populates them into the integration entity.
 func PopulateBlockingSessionMetrics(app *newrelic.Application, db utils.DataSource, i *integration.Integration, args arguments.ArgumentList, excludedDatabases []string) {
 	// Get the query count threshold
-	queryCountThreshold := validator.GetValidQueryCountThreshold(args.QueryCountThreshold)
+	queryCountThreshold := validator.GetValidQueryCountThreshold(args.QueryMonitoringCountThreshold)
 
 	// Prepare the SQL query with the provided parameters
 	query, inputArgs, err := sqlx.In(utils.BlockingSessionsQuery, excludedDatabases, queryCountThreshold)
@@ -34,7 +34,7 @@ func PopulateBlockingSessionMetrics(app *newrelic.Application, db utils.DataSour
 		return
 	}
 
-	// Set the blocking query metrics in the integration entity
+	// Set the blocking query metrics in the integration entity and ingest them
 	err = setBlockingQueryMetrics(metrics, i, args)
 	if err != nil {
 		log.Error("Error setting blocking session metrics: %v", err)

@@ -13,7 +13,7 @@ import (
 // PopulateWaitEventMetrics retrieves wait event metrics from the database and sets them in the integration.
 func PopulateWaitEventMetrics(app *newrelic.Application, db utils.DataSource, i *integration.Integration, args arguments.ArgumentList, excludedDatabases []string) {
 	// Get the query count threshold
-	queryCountThreshold := validator.GetValidQueryCountThreshold(args.QueryCountThreshold)
+	queryCountThreshold := validator.GetValidQueryCountThreshold(args.QueryMonitoringCountThreshold)
 
 	// Prepare the arguments for the query
 	excludedDatabasesArgs := []interface{}{excludedDatabases, excludedDatabases, queryCountThreshold}
@@ -36,7 +36,8 @@ func PopulateWaitEventMetrics(app *newrelic.Application, db utils.DataSource, i 
 	if len(metrics) == 0 {
 		return
 	}
-	// Set the retrieved metrics in the integration
+
+	// Set the wait event metrics in the integration entity and ingest them
 	err = setWaitEventMetrics(i, args, metrics)
 	if err != nil {
 		log.Error("Error setting wait event metrics: %v", err)

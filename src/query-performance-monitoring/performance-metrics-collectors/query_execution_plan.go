@@ -12,6 +12,7 @@ import (
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	arguments "github.com/newrelic/nri-mysql/src/args"
+	dbutils "github.com/newrelic/nri-mysql/src/dbutils"
 	"github.com/newrelic/nri-mysql/src/query-performance-monitoring/constants"
 	utils "github.com/newrelic/nri-mysql/src/query-performance-monitoring/utils"
 )
@@ -20,8 +21,8 @@ import (
 func PopulateExecutionPlans(app *newrelic.Application, db utils.DataSource, queryGroups []utils.QueryGroup, i *integration.Integration, args arguments.ArgumentList) {
 	var events []utils.QueryPlanMetrics
 
-	for _, group := range queryGroups {
-		dsn := utils.GenerateDSN(args, group.Database)
+	for dbName, queries := range queryGroups {
+		dsn := dbutils.GenerateDSN(args, dbName)
 		// Open the DB connection
 		db, err := utils.OpenSQLXDB(dsn)
 		if err != nil {
@@ -30,8 +31,8 @@ func PopulateExecutionPlans(app *newrelic.Application, db utils.DataSource, quer
 		}
 		defer db.Close()
 
-		for _, query := range group.Queries {
-			tableIngestionDataList, err := processExecutionPlanMetrics(app, db, query)
+		for _, query := range queries {
+			tableIngestionDataList, err := processExecutionPlanMetrics(db, query)
 			if err != nil {
 				log.Error("Error processing execution plan metrics: %v", err)
 				continue
@@ -45,6 +46,7 @@ func PopulateExecutionPlans(app *newrelic.Application, db utils.DataSource, quer
 		return
 	}
 
+	// Set the execution plan metrics in the integration entity and ingest them
 	err := SetExecutionPlanMetrics(i, args, events)
 	if err != nil {
 		log.Error("Error publishing execution plan metrics: %v", err)
@@ -57,30 +59,75 @@ func processExecutionPlanMetrics(app *newrelic.Application, db utils.DataSource,
 	ctx, cancel := context.WithTimeout(context.Background(), constants.QueryPlanTimeoutDuration)
 	defer cancel()
 
-	if query.QueryText == nil || strings.TrimSpace(*query.QueryText) == "" {
-		log.Warn("Query text is empty or nil, skipping.")
-		return []utils.QueryPlanMetrics{}, nil
+	queryID, err := getQueryID(query)
+	if err != nil {
+		log.Warn("Query ID is nil, skipping. Error: %v", err)
+		return []utils.QueryPlanMetrics{}, err
 	}
-	queryText := strings.TrimSpace(*query.QueryText)
-	upperQueryText := strings.ToUpper(queryText)
-
-	// Check if the query is a supported statement
-	if !isSupportedStatement(upperQueryText) {
-		log.Warn("Skipping unsupported query for EXPLAIN: %s", queryText)
-		return []utils.QueryPlanMetrics{}, nil
+	queryText, err := getQueryText(query, queryID)
+	if err != nil {
+		return []utils.QueryPlanMetrics{}, err
 	}
 
-	// Skip queries with placeholders
+	if !isSupportedStatement(queryText) {
+		log.Warn("Skipping unsupported query for EXPLAIN: %s. Query ID: %s", queryText, queryID)
+		return []utils.QueryPlanMetrics{}, nil
+	}
+
 	if strings.Contains(queryText, "?") {
-		log.Warn("Skipping query with placeholders for EXPLAIN: %s", queryText)
+		log.Warn("Skipping query with placeholders for EXPLAIN: %s. Query ID: %s", queryText, queryID)
 		return []utils.QueryPlanMetrics{}, nil
 	}
 
-	// Execute the EXPLAIN query
+	execPlanJSON, err := executeExplainQuery(ctx, db, queryText)
+	if err != nil {
+		return []utils.QueryPlanMetrics{}, err
+	}
+
+	escapedJSON, err := escapeAllStringsInJSON(execPlanJSON)
+	if err != nil {
+		log.Error("Error escaping strings in JSON for query '%s': %v", queryText, err)
+		return []utils.QueryPlanMetrics{}, err
+	}
+
+	dbPerformanceEvents, err := extractMetricsFromJSONString(escapedJSON, *query.EventID, *query.ThreadID)
+	if err != nil {
+		return []utils.QueryPlanMetrics{}, err
+	}
+
+	return dbPerformanceEvents, nil
+}
+
+// getQueryID extracts the query ID, returning an error if it is nil.
+func getQueryID(query utils.IndividualQueryMetrics) (string, error) {
+	if query.QueryID != nil {
+		return *query.QueryID, nil
+	}
+	return "", fmt.Errorf("%w", utils.ErrQueryIDNil)
+}
+
+// getQueryText extracts and validates the query text.
+func getQueryText(query utils.IndividualQueryMetrics, queryID string) (string, error) {
+	if query.QueryText == nil {
+		log.Warn("Query text is nil, skipping. Query ID: %s", queryID)
+		return "", fmt.Errorf("%w", utils.ErrQueryTextNil)
+	}
+
+	queryText := strings.TrimSpace(*query.QueryText)
+	if queryText == "" {
+		log.Warn("Query text is empty, skipping. Query ID: %s", queryID)
+		return "", fmt.Errorf("%w", utils.ErrQueryTextEmpty)
+	}
+
+	return queryText, nil
+}
+
+// executeExplainQuery executes the EXPLAIN query and returns the result as a JSON string.
+func executeExplainQuery(ctx context.Context, db utils.DataSource, queryText string) (string, error) {
 	execPlanQuery := fmt.Sprintf(constants.ExplainQueryFormat, queryText)
 	rows, err := db.QueryxContext(app, ctx, execPlanQuery)
 	if err != nil {
-		return []utils.QueryPlanMetrics{}, err
+		return "", err
 	}
 	defer rows.Close()
 
@@ -88,27 +135,15 @@ func processExecutionPlanMetrics(app *newrelic.Application, db utils.DataSource,
 	if rows.Next() {
 		err := rows.Scan(&execPlanJSON)
 		if err != nil {
-			return []utils.QueryPlanMetrics{}, err
+			return "", err
 		}
 	} else {
-		log.Error("No rows returned from EXPLAIN for query '%s'", queryText)
-		return []utils.QueryPlanMetrics{}, nil
+		err := fmt.Errorf("%w for query '%s'", utils.ErrNoRowsReturned, queryText)
+		log.Error(err.Error())
+		return "", err
 	}
 
-	// Escape backticks in the JSON string
-	escapedJSON, err := escapeAllStringsInJSON(execPlanJSON)
-	if err != nil {
-		log.Error("Error escaping strings in JSON for query '%s': %v", queryText, err)
-		return []utils.QueryPlanMetrics{}, err
-	}
-
-	// Extract metrics from the JSON string
-	dbPerformanceEvents, err := extractMetricsFromJSONString(escapedJSON, *query.EventID, *query.ThreadID)
-	if err != nil {
-		return []utils.QueryPlanMetrics{}, err
-	}
-
-	return dbPerformanceEvents, nil
+	return execPlanJSON, nil
 }
 
 // escapeAllStringsInJSON recursively escapes all string values in the JSON.

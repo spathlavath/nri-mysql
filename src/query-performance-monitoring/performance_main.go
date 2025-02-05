@@ -7,6 +7,8 @@ import (
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	arguments "github.com/newrelic/nri-mysql/src/args"
+	dbutils "github.com/newrelic/nri-mysql/src/dbutils"
+	infrautils "github.com/newrelic/nri-mysql/src/infrautils"
 	mysqlapm "github.com/newrelic/nri-mysql/src/query-performance-monitoring/mysql-apm"
 	performancemetricscollectors "github.com/newrelic/nri-mysql/src/query-performance-monitoring/performance-metrics-collectors"
 	utils "github.com/newrelic/nri-mysql/src/query-performance-monitoring/utils"
@@ -16,17 +18,17 @@ import (
 // PopulateQueryPerformanceMetrics serves as the entry point for retrieving and populating query performance metrics, including slow queries, detailed query information, query execution plans, wait events, and blocking sessions.
 func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration.Entity, i *integration.Integration) {
 	// Generate Data Source Name (DSN) for database connection
-	dsn := utils.GenerateDSN(args, "")
+	dsn := dbutils.GenerateDSN(args, "")
 
 	// Open database connection
 	db, err := utils.OpenSQLXDB(dsn)
-	utils.FatalIfErr(err)
+	infrautils.FatalIfErr(err)
 	defer db.Close()
 
 	// Validate preconditions before proceeding
 	preValidationErr := validator.ValidatePreconditions(db)
 	if preValidationErr != nil {
-		utils.FatalIfErr(fmt.Errorf("preconditions failed: %w", preValidationErr))
+		infrautils.FatalIfErr(fmt.Errorf("preconditions failed: %w", preValidationErr))
 	}
 
 	// Get the list of unique excluded databases
@@ -55,7 +57,10 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 		}
 		mysqlapm.Txn = individualTxn
 		log.Debug("Beginning to retrieve individual query metrics")
-		groupQueriesByDatabase := performancemetricscollectors.PopulateIndividualQueryDetails(&mysqlapm.NewrelicApp, db, queryIDList, i, args)
+		groupQueriesByDatabase, individualQueryDetailsErr := performancemetricscollectors.PopulateIndividualQueryDetails(&mysqlapm.NewrelicApp, db, queryIDList, i, args)
+		if individualQueryDetailsErr != nil {
+			log.Error("Error populating individual query details: %v", individualQueryDetailsErr)
+		}
 		log.Debug("Completed fetching individual query metrics in %v", time.Since(start))
 		defer individualTxn.End()
 
