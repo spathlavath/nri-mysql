@@ -4,29 +4,25 @@ import (
 	"context"
 	"fmt"
 
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
+	_ "github.com/newrelic/go-agent/v3/integrations/nrmysql"
+	"github.com/newrelic/go-agent/v3/newrelic"
 	constants "github.com/newrelic/nri-mysql/src/query-performance-monitoring/constants"
+	mysqlapm "github.com/newrelic/nri-mysql/src/query-performance-monitoring/mysql-apm"
 )
 
 type DataSource interface {
 	Close()
 	QueryX(string) (*sqlx.Rows, error)
-	QueryxContext(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error)
+	QueryxContext(app *newrelic.Application, ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error)
 }
 
 type Database struct {
 	source *sqlx.DB
 }
 
-/*
-OpenSQLXDB function creates and returns a connection using the sqlx package for advanced query execution
-and mapping capabilities. It offers methods like Queryx, QueryRowx, etc., that facilitate working
-with structs, slices, and named queries, making it well-suited for applications needing sophisticated
-data handling compared to the standard sql package.
-*/
 func OpenSQLXDB(dsn string) (DataSource, error) {
-	source, err := sqlx.Open("mysql", dsn)
+	source, err := sqlx.Open("nrmysql", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("error opening DSN: %w", err)
 	}
@@ -48,16 +44,25 @@ func (db *Database) QueryX(query string) (*sqlx.Rows, error) {
 }
 
 // QueryxContext method implementation
-func (db *Database) QueryxContext(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error) {
+func (db *Database) QueryxContext(app *newrelic.Application, ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error) {
+
+	ctx = newrelic.NewContext(ctx, mysqlapm.Txn)
+	s := newrelic.DatastoreSegment{
+		StartTime:          mysqlapm.Txn.StartSegmentNow(),
+		Product:            newrelic.DatastoreMySQL,
+		Operation:          "SELECT",
+		ParameterizedQuery: query,
+	}
+	defer s.End()
 	return db.source.QueryxContext(ctx, query, args...)
 }
 
 // collectMetrics collects metrics from the performance schema database
-func CollectMetrics[T any](db DataSource, preparedQuery string, preparedArgs ...interface{}) ([]T, error) {
+func CollectMetrics[T any](app *newrelic.Application, db DataSource, preparedQuery string, preparedArgs ...interface{}) ([]T, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), constants.TimeoutDuration)
 	defer cancel()
 
-	rows, err := db.QueryxContext(ctx, preparedQuery, preparedArgs...)
+	rows, err := db.QueryxContext(app, ctx, preparedQuery, preparedArgs...)
 	if err != nil {
 		return []T{}, err
 	}

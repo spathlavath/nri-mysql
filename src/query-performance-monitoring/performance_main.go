@@ -9,6 +9,7 @@ import (
 	arguments "github.com/newrelic/nri-mysql/src/args"
 	dbutils "github.com/newrelic/nri-mysql/src/dbutils"
 	infrautils "github.com/newrelic/nri-mysql/src/infrautils"
+	mysqlapm "github.com/newrelic/nri-mysql/src/query-performance-monitoring/mysql-apm"
 	performancemetricscollectors "github.com/newrelic/nri-mysql/src/query-performance-monitoring/performance-metrics-collectors"
 	utils "github.com/newrelic/nri-mysql/src/query-performance-monitoring/utils"
 	validator "github.com/newrelic/nri-mysql/src/query-performance-monitoring/validator"
@@ -35,41 +36,72 @@ func PopulateQueryPerformanceMetrics(args arguments.ArgumentList, e *integration
 
 	// Populate metrics for slow queries
 	start := time.Now()
+	slowQueriesTxn := mysqlapm.NewrelicApp.StartTransaction("MysqlSlowQueriesSample")
+	defer slowQueriesTxn.End()
+	if slowQueriesTxn == nil {
+		log.Error("Failed to start New Relic transaction for slow queries")
+		return
+	}
+	mysqlapm.Txn = slowQueriesTxn
 	log.Debug("Beginning to retrieve slow query metrics")
-	queryIDList := performancemetricscollectors.PopulateSlowQueryMetrics(i, db, args, excludedDatabases)
+	queryIDList := performancemetricscollectors.PopulateSlowQueryMetrics(&mysqlapm.NewrelicApp, i, db, args, excludedDatabases)
 	log.Debug("Completed fetching slow query metrics in %v", time.Since(start))
 
 	if len(queryIDList) > 0 {
 		// Populate metrics for individual queries
 		start = time.Now()
+		individualTxn := mysqlapm.NewrelicApp.StartTransaction("MysqlIndividualQueriesSample")
+		if individualTxn == nil {
+			log.Error("Failed to start New Relic transaction for individual queries")
+			return
+		}
+		mysqlapm.Txn = individualTxn
 		log.Debug("Beginning to retrieve individual query metrics")
-		groupQueriesByDatabase, individualQueryDetailsErr := performancemetricscollectors.PopulateIndividualQueryDetails(db, queryIDList, i, args)
+		groupQueriesByDatabase, individualQueryDetailsErr := performancemetricscollectors.PopulateIndividualQueryDetails(&mysqlapm.NewrelicApp, db, queryIDList, i, args)
 		if individualQueryDetailsErr != nil {
 			log.Error("Error populating individual query details: %v", individualQueryDetailsErr)
 		}
 		log.Debug("Completed fetching individual query metrics in %v", time.Since(start))
+		defer individualTxn.End()
 
-		if len(groupQueriesByDatabase) > 0 {
-			// Populate execution plan details
-			start = time.Now()
-			log.Debug("Beginning to retrieve query execution plan metrics")
-			performancemetricscollectors.PopulateExecutionPlans(db, groupQueriesByDatabase, i, args)
-			log.Debug("Completed fetching query execution plan metrics in %v", time.Since(start))
-		} else {
-			log.Debug("No individual query metrics to fetch.")
+		// Populate execution plan details
+		start = time.Now()
+		execPlanTxn := mysqlapm.NewrelicApp.StartTransaction("MysqlQueryExecutionSample")
+		if execPlanTxn == nil {
+			log.Error("Failed to start New Relic transaction for query execution plans")
+			return
 		}
+		mysqlapm.Txn = execPlanTxn
+		log.Debug("Beginning to retrieve query execution plan metrics")
+		performancemetricscollectors.PopulateExecutionPlans(&mysqlapm.NewrelicApp, db, groupQueriesByDatabase, i, args)
+		log.Debug("Completed fetching query execution plan metrics in %v", time.Since(start))
+		defer execPlanTxn.End()
 	}
 
 	// Populate wait event metrics
 	start = time.Now()
+	waitEventsTxn := mysqlapm.NewrelicApp.StartTransaction("MysqlWaitEventsSample")
+	if waitEventsTxn == nil {
+		log.Error("Failed to start New Relic transaction for wait events")
+		return
+	}
+	mysqlapm.Txn = waitEventsTxn
 	log.Debug("Beginning to retrieve wait event metrics")
-	performancemetricscollectors.PopulateWaitEventMetrics(db, i, args, excludedDatabases)
+	performancemetricscollectors.PopulateWaitEventMetrics(&mysqlapm.NewrelicApp, db, i, args, excludedDatabases)
 	log.Debug("Completed fetching wait event metrics in %v", time.Since(start))
+	defer waitEventsTxn.End()
 
 	// Populate blocking session metrics
 	start = time.Now()
+	blockingSessionsTxn := mysqlapm.NewrelicApp.StartTransaction("MysqlBlockingSessionSample")
+	if blockingSessionsTxn == nil {
+		log.Error("Failed to start New Relic transaction for blocking sessions")
+		return
+	}
+	mysqlapm.Txn = blockingSessionsTxn
 	log.Debug("Beginning to retrieve blocking session metrics")
-	performancemetricscollectors.PopulateBlockingSessionMetrics(db, i, args, excludedDatabases)
+	performancemetricscollectors.PopulateBlockingSessionMetrics(&mysqlapm.NewrelicApp, db, i, args, excludedDatabases)
 	log.Debug("Completed fetching blocking session metrics in %v", time.Since(start))
 	log.Debug("Query analysis completed.")
+	defer blockingSessionsTxn.End()
 }

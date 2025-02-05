@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/newrelic/infra-integrations-sdk/v3/data/inventory"
 	"github.com/newrelic/infra-integrations-sdk/v3/data/metric"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
@@ -82,25 +83,25 @@ func asValue(value string) interface{} {
 	return value
 }
 
-func getRawData(db dataSource) (map[string]interface{}, map[string]interface{}, string, error) {
-	dbVersion, err := collectDBVersion(db)
+func getRawData(app *newrelic.Application, db dataSource) (map[string]interface{}, map[string]interface{}, string, error) {
+	dbVersion, err := collectDBVersion(app, db)
 	if err != nil {
 		log.Warn(err.Error())
 		log.Warn("Assuming the mysql version to be less than 8.4 and proceeding further")
 		dbVersion = "5.7.0"
 	}
 
-	inventory, err := db.query(inventoryQuery)
+	inventory, err := db.query(app, inventoryQuery)
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("error querying inventory: %w", err)
 	}
-	metrics, err := db.query(metricsQuery)
+	metrics, err := db.query(app, metricsQuery)
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("error querying metrics: %w", err)
 	}
 
 	replicaQuery := getReplicaQuery(dbVersion)
-	switch replication, err := db.query(replicaQuery); {
+	switch replication, err := db.query(app, replicaQuery); {
 	case err != nil:
 		log.Warn("Can't get node type, not enough privileges (must grant REPLICATION CLIENT)")
 	case len(replication) == 0:
@@ -188,8 +189,8 @@ func populatePartialMetrics(ms *metric.Set, metrics map[string]interface{}, metr
 	}
 }
 
-func collectDBVersion(db dataSource) (string, error) {
-	versionQueryResult, err := db.query(dbVersionQuery)
+func collectDBVersion(app *newrelic.Application, db dataSource) (string, error) {
+	versionQueryResult, err := db.query(app, dbVersionQuery)
 	if err != nil {
 		return "", fmt.Errorf("error fetching dbVersion: %w", err)
 	}
