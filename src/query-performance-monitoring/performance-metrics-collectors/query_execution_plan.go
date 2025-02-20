@@ -36,6 +36,7 @@ func PopulateExecutionPlans(db utils.DataSource, queryGroups map[string][]utils.
 				log.Error("Error processing execution plan metrics: %v", err)
 				continue
 			}
+			log.Debug("Datalist: %v", tableIngestionDataList)
 			events = append(events, tableIngestionDataList...)
 		}
 	}
