@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/bitly/go-simplejson"
+	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	arguments "github.com/newrelic/nri-mysql/src/args"
@@ -17,7 +18,7 @@ import (
 )
 
 // PopulateExecutionPlans populates execution plans for the given queries.
-func PopulateExecutionPlans(db utils.DataSource, queryGroups map[string][]utils.IndividualQueryMetrics, i *integration.Integration, args arguments.ArgumentList) {
+func PopulateExecutionPlans(app *newrelic.Application, db utils.DataSource, queryGroups map[string][]utils.IndividualQueryMetrics, i *integration.Integration, args arguments.ArgumentList) {
 	var events []utils.QueryPlanMetrics
 
 	for dbName, queries := range queryGroups {
@@ -31,7 +32,7 @@ func PopulateExecutionPlans(db utils.DataSource, queryGroups map[string][]utils.
 		defer db.Close()
 
 		for _, query := range queries {
-			tableIngestionDataList, err := processExecutionPlanMetrics(db, query)
+			tableIngestionDataList, err := processExecutionPlanMetrics(app, db, query)
 			if err != nil {
 				log.Error("Error processing execution plan metrics: %v", err)
 				continue
@@ -54,7 +55,7 @@ func PopulateExecutionPlans(db utils.DataSource, queryGroups map[string][]utils.
 }
 
 // processExecutionPlanMetrics processes the execution plan metrics for a given query.
-func processExecutionPlanMetrics(db utils.DataSource, query utils.IndividualQueryMetrics) ([]utils.QueryPlanMetrics, error) {
+func processExecutionPlanMetrics(app *newrelic.Application, db utils.DataSource, query utils.IndividualQueryMetrics) ([]utils.QueryPlanMetrics, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), constants.QueryPlanTimeoutDuration)
 	defer cancel()
 
@@ -78,7 +79,7 @@ func processExecutionPlanMetrics(db utils.DataSource, query utils.IndividualQuer
 		return []utils.QueryPlanMetrics{}, nil
 	}
 
-	execPlanJSON, err := executeExplainQuery(ctx, db, queryText)
+	execPlanJSON, err := executeExplainQuery(app, ctx, db, queryText)
 	if err != nil {
 		return []utils.QueryPlanMetrics{}, err
 	}
@@ -122,9 +123,9 @@ func getQueryText(query utils.IndividualQueryMetrics, queryID string) (string, e
 }
 
 // executeExplainQuery executes the EXPLAIN query and returns the result as a JSON string.
-func executeExplainQuery(ctx context.Context, db utils.DataSource, queryText string) (string, error) {
+func executeExplainQuery(app *newrelic.Application, ctx context.Context, db utils.DataSource, queryText string) (string, error) {
 	execPlanQuery := fmt.Sprintf(constants.ExplainQueryFormat, queryText)
-	rows, err := db.QueryxContext(ctx, execPlanQuery)
+	rows, err := db.QueryxContext(app, ctx, execPlanQuery)
 	if err != nil {
 		return "", err
 	}
