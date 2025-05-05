@@ -99,7 +99,7 @@ func ValidatePreconditions(app *newrelic.Application, db utils.DataSource) error
 	}
 
 	// Check if essential consumers are enabled
-	errEssentialConsumers := checkAndEnableEssentialConsumers(db)
+	errEssentialConsumers := checkAndEnableEssentialConsumers(app, db)
 	if errEssentialConsumers != nil {
 		log.Warn("Essential consumer check failed: %v", errEssentialConsumers)
 	}
