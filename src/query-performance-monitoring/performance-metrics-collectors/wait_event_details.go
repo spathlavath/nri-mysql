@@ -2,6 +2,7 @@ package performancemetricscollectors
 
 import (
 	"github.com/jmoiron/sqlx"
+	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	arguments "github.com/newrelic/nri-mysql/src/args"
@@ -10,7 +11,7 @@ import (
 )
 
 // PopulateWaitEventMetrics retrieves wait event metrics from the database and sets them in the integration.
-func PopulateWaitEventMetrics(db utils.DataSource, i *integration.Integration, args arguments.ArgumentList, excludedDatabases []string) {
+func PopulateWaitEventMetrics(app *newrelic.Application, db utils.DataSource, i *integration.Integration, args arguments.ArgumentList, excludedDatabases []string) {
 	// Get the query count threshold
 	queryCountThreshold := validator.GetValidQueryCountThreshold(args.QueryMonitoringCountThreshold)
 
@@ -25,7 +26,7 @@ func PopulateWaitEventMetrics(db utils.DataSource, i *integration.Integration, a
 	}
 
 	// Collect the wait event metrics
-	metrics, err := utils.CollectMetrics[utils.WaitEventQueryMetrics](db, preparedQuery, preparedArgs...)
+	metrics, err := utils.CollectMetrics[utils.WaitEventQueryMetrics](app, db, preparedQuery, preparedArgs...)
 	if err != nil {
 		log.Error("Error collecting wait event metrics: %v", err)
 		return

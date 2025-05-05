@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	constants "github.com/newrelic/nri-mysql/src/query-performance-monitoring/constants"
 	utils "github.com/newrelic/nri-mysql/src/query-performance-monitoring/utils"
@@ -72,7 +73,7 @@ type ConsumerStatus struct {
 }
 
 // ValidatePreconditions checks if the necessary preconditions are met for performance monitoring.
-func ValidatePreconditions(db utils.DataSource) error {
+func ValidatePreconditions(app *newrelic.Application, db utils.DataSource) error {
 	// Get the MySQL version
 	version, err := getMySQLVersion(db)
 	if err != nil {
@@ -98,7 +99,7 @@ func ValidatePreconditions(db utils.DataSource) error {
 	}
 
 	// Check if essential consumers are enabled
-	errEssentialConsumers := checkAndEnableEssentialConsumers(db)
+	errEssentialConsumers := checkAndEnableEssentialConsumers(app, db)
 	if errEssentialConsumers != nil {
 		log.Warn("Essential consumer check failed: %v", errEssentialConsumers)
 	}
@@ -127,9 +128,9 @@ func isPerformanceSchemaEnabled(db utils.DataSource) (bool, error) {
 }
 
 // numberOfEssentialConsumersEnabledCheck executes a query to check if essential items are enabled.
-func numberOfEssentialConsumersEnabledCheck(db utils.DataSource, query string) (count int, essentialError error) {
+func numberOfEssentialConsumersEnabledCheck(app *newrelic.Application, db utils.DataSource, query string) (count int, essentialError error) {
 	// Use CollectMetrics to get the consumer statuses
-	consumerStatuses, err := utils.CollectMetrics[ConsumerStatus](db, query)
+	consumerStatuses, err := utils.CollectMetrics[ConsumerStatus](app, db, query)
 	if err != nil {
 		return 0, fmt.Errorf("failed to check essential status: %w", err)
 	}
@@ -163,9 +164,9 @@ func enableEssentialConsumersAndInstruments(db utils.DataSource) error {
 // checkAndEnableEssentialConsumers checks if the essential consumers are enabled in the Performance Schema.
 // If fewer than the required number of consumers are enabled, it attempts to enable them
 // via the newrelic.enable_essential_consumers_and_instruments stored procedure.
-func checkAndEnableEssentialConsumers(db utils.DataSource) error {
+func checkAndEnableEssentialConsumers(app *newrelic.Application, db utils.DataSource) error {
 	query := buildConsumerStatusQuery()
-	count, consumerErr := numberOfEssentialConsumersEnabledCheck(db, query)
+	count, consumerErr := numberOfEssentialConsumersEnabledCheck(app, db, query)
 	// If the count of enabled essential consumers is less than 5, call the stored procedure
 	if count < constants.EssentialConsumersCount {
 		if err := enableEssentialConsumersAndInstruments(db); err != nil {

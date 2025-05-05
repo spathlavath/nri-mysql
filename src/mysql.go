@@ -3,6 +3,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
@@ -19,6 +20,8 @@ import (
 	infrautils "github.com/newrelic/nri-mysql/src/infrautils"
 	queryperformancemonitoring "github.com/newrelic/nri-mysql/src/query-performance-monitoring"
 	constants "github.com/newrelic/nri-mysql/src/query-performance-monitoring/constants"
+
+	mysqlapm "github.com/newrelic/nri-mysql/src/query-performance-monitoring/mysql-apm"
 )
 
 var (
@@ -31,6 +34,14 @@ var (
 func main() {
 	i, err := integration.New(constants.IntegrationName, integrationVersion, integration.Args(&args))
 	infrautils.FatalIfErr(err)
+
+	mysqlapm.ArgsKey = args.LicenseKey
+	mysqlapm.ArgsAppName = args.AppName
+	mysqlapm.InitNewRelicApp()
+
+	if mysqlapm.ArgsAppName != "" {
+		defer mysqlapm.NewrelicApp.Shutdown(10 * time.Second)
+	}
 
 	if args.ShowVersion {
 		fmt.Printf(
@@ -46,6 +57,14 @@ func main() {
 
 	log.SetupLogging(args.Verbose)
 
+	txn := mysqlapm.NewrelicApp.StartTransaction("MysqlSampleOld")
+	if txn == nil {
+		log.Error("Failed to start New Relic transaction for mysql sample old")
+		return
+	}
+
+	mysqlapm.Txn = txn
+
 	e, err := infrautils.CreateNodeEntity(i, args.RemoteMonitoring, args.Hostname, args.Port)
 	infrautils.FatalIfErr(err)
 
@@ -54,7 +73,7 @@ func main() {
 		and exit the program without proceeding further.
 	*/
 	if args.QueryMonitoringOnly {
-		queryperformancemonitoring.PopulateQueryPerformanceMetrics(args, e, i)
+		queryperformancemonitoring.PopulateQueryPerformanceMetrics(&mysqlapm.NewrelicApp, args, e, i)
 		return
 	}
 
@@ -62,7 +81,7 @@ func main() {
 	infrautils.FatalIfErr(err)
 	defer db.close()
 
-	rawInventory, rawMetrics, dbVersion, err := getRawData(db)
+	rawInventory, rawMetrics, dbVersion, err := getRawData(&mysqlapm.NewrelicApp, db)
 	infrautils.FatalIfErr(err)
 
 	if args.HasInventory() {
@@ -72,7 +91,7 @@ func main() {
 	if args.HasMetrics() {
 		ms := infrautils.MetricSet(
 			e,
-			"MysqlSample",
+			"MysqlSampleOld",
 			args.Hostname,
 			args.Port,
 			args.RemoteMonitoring,
@@ -82,6 +101,7 @@ func main() {
 	infrautils.FatalIfErr(i.Publish())
 
 	if args.EnableQueryMonitoring {
-		queryperformancemonitoring.PopulateQueryPerformanceMetrics(args, e, i)
+		queryperformancemonitoring.PopulateQueryPerformanceMetrics(&mysqlapm.NewrelicApp, args, e, i)
 	}
+	defer txn.End()
 }
