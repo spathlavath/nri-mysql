@@ -48,7 +48,7 @@ To set up this stored procedure, the following SQL must be executed with appropr
 
 This procedure is automatically called when the integration detects that essential performance monitoring consumers are not properly enabled.
 */
-const enableEssentialConsumersAndInstrumentsProcedureQuery = "CALL newrelic.enable_essential_consumers_and_instruments();"
+//const enableEssentialConsumersAndInstrumentsProcedureQuery = "CALL newrelic.enable_essential_consumers_and_instruments();"
 
 /*
 SQL template for updating the status of essential consumers in the Performance Schema.
@@ -147,16 +147,39 @@ func numberOfEssentialConsumersEnabledCheck(db utils.DataSource, query string) (
 }
 
 /*
-enableEssentialConsumersAndInstruments calls a stored procedure to enable essential consumers and instruments.
-This procedure ensures that the required consumers and instruments in the Performance Schema are enabled.
+enableEssentialConsumersAndInstruments enables essential consumers and instruments directly
+by executing the required SQL commands instead of using a stored procedure.
 */
+func executeQueries(db utils.DataSource, queries []string) error {
+	for i, query := range queries {
+		log.Debug("Executing query %d: %s", i+1, query) // Log the query being executed
+		_, err := db.Exec(query)
+		if err != nil {
+			log.Error("Failed to execute query %d: %s. Error: %v", i+1, query, err)
+			return fmt.Errorf("failed to execute query '%s': %w", query, err)
+		}
+		log.Info("Successfully executed query %d: %s", i+1, query) // Log success
+	}
+	return nil
+}
+
+// Example usage of the dynamic function
 func enableEssentialConsumersAndInstruments(db utils.DataSource) error {
-	_, err := db.QueryX(enableEssentialConsumersAndInstrumentsProcedureQuery)
-	if err != nil {
-		return fmt.Errorf("failed to execute stored procedure to enable essential consumers and instruments: %w", err)
+	queries := []string{
+		`UPDATE performance_schema.setup_consumers 
+         SET enabled='YES' 
+         WHERE name LIKE 'events_statements_%' OR name LIKE 'events_waits_%';`,
+		`UPDATE performance_schema.setup_instruments 
+         SET ENABLED = 'YES', TIMED = 'YES' 
+         WHERE NAME LIKE 'wait/%' OR NAME LIKE 'statement/%' OR NAME LIKE '%lock%';`,
 	}
 
-	log.Debug("Stored procedure executed successfully.")
+	err := executeQueries(db, queries)
+	if err != nil {
+		return fmt.Errorf("failed to enable essential consumers and instruments: %w", err)
+	}
+
+	log.Debug("Consumers and instruments enabled successfully.")
 	return nil
 }
 

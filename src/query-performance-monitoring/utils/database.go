@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -13,6 +14,12 @@ type DataSource interface {
 	Close()
 	QueryX(string) (*sqlx.Rows, error)
 	QueryxContext(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error)
+	Exec(query string, args ...interface{}) (sql.Result, error)
+}
+
+// Exec method implementation
+func (db *Database) Exec(query string, args ...interface{}) (sql.Result, error) {
+	return db.source.Exec(query, args...)
 }
 
 type Database struct {
