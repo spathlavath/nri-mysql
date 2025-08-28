@@ -38,6 +38,7 @@ func PopulateQueryPerformanceMetrics(app *newrelic.Application, args arguments.A
 	// Populate metrics for slow queries
 	start := time.Now()
 	slowQueriesTxn := mysqlapm.NewrelicApp.StartTransaction("MysqlSlowQueriesSample")
+	defer slowQueriesTxn.End()
 	if slowQueriesTxn == nil {
 		log.Error("Failed to start New Relic transaction for slow queries")
 		return
@@ -46,7 +47,6 @@ func PopulateQueryPerformanceMetrics(app *newrelic.Application, args arguments.A
 	log.Debug("Beginning to retrieve slow query metrics")
 	queryIDList := performancemetricscollectors.PopulateSlowQueryMetrics(&mysqlapm.NewrelicApp, i, db, args, excludedDatabases)
 	log.Debug("Completed fetching slow query metrics in %v", time.Since(start))
-	defer slowQueriesTxn.End()
 
 	if len(queryIDList) > 0 {
 		// Populate metrics for individual queries
