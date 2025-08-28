@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/newrelic/infra-integrations-sdk/v3/data/inventory"
 	"github.com/newrelic/infra-integrations-sdk/v3/data/metric"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
@@ -82,21 +83,21 @@ func asValue(value string) interface{} {
 	return value
 }
 
-func getRawData(db dataSource) (map[string]interface{}, map[string]interface{}, string, error) {
+func getRawData(app *newrelic.Application, db dataSource) (map[string]interface{}, map[string]interface{}, string, error) {
 
-	dbVersion := checkDBServerAndGetDBVersion(db)
+	dbVersion := checkDBServerAndGetDBVersion(app, db)
 
-	inventory, err := db.query(inventoryQuery)
+	inventory, err := db.query(app, inventoryQuery)
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("error querying inventory: %w", err)
 	}
-	metrics, err := db.query(metricsQuery)
+	metrics, err := db.query(app, metricsQuery)
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("error querying metrics: %w", err)
 	}
 
 	replicaQuery := getReplicaQuery(dbVersion)
-	switch replication, err := db.query(replicaQuery); {
+	switch replication, err := db.query(app, replicaQuery); {
 	case err != nil:
 		log.Warn("Can't get node type, not enough privileges (must grant REPLICATION CLIENT)")
 	case len(replication) == 0:
@@ -188,8 +189,8 @@ func isMariaDBServer(version string) bool {
 	return strings.Contains(strings.ToLower(version), "maria")
 }
 
-func getRawDBVersion(db dataSource) (string, error) {
-	versionQueryResult, err := db.query(dbVersionQuery)
+func getRawDBVersion(app *newrelic.Application, db dataSource) (string, error) {
+	versionQueryResult, err := db.query(app, dbVersionQuery)
 	if err != nil {
 		return "", fmt.Errorf("error fetching dbVersion: %w", err)
 	}
@@ -206,13 +207,13 @@ func getRawDBVersion(db dataSource) (string, error) {
 // The func checks if the DB server is MariaDB
 // If true it returns DBVersion as 5.7.0
 // otherwise it returns the DB version by querying `SELECT VERSION()`
-func checkDBServerAndGetDBVersion(db dataSource) string {
+func checkDBServerAndGetDBVersion(app *newrelic.Application, db dataSource) string {
 	/*
 		Note: The default DB version is 5.7.0 as the earlier codebase was using
 			  replicaQueryBelowVersion8Point4 to populate the metrics irrespective of the version
 	*/
 	defaultDBVersion := "5.7.0"
-	rawDBversion, err := getRawDBVersion(db)
+	rawDBversion, err := getRawDBVersion(app, db)
 	if err != nil {
 		log.Warn(err.Error())
 		log.Warn("Assuming the mysql version to be less than 8.4")

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/newrelic/infra-integrations-sdk/v3/integration"
 	"github.com/newrelic/infra-integrations-sdk/v3/log"
 	arguments "github.com/newrelic/nri-mysql/src/args"
@@ -14,14 +15,14 @@ import (
 )
 
 // PopulateSlowQueryMetrics collects and sets slow query metrics and returns the list of query IDs
-func PopulateSlowQueryMetrics(i *integration.Integration, db utils.DataSource, args arguments.ArgumentList, excludedDatabases []string) []string {
+func PopulateSlowQueryMetrics(app *newrelic.Application, i *integration.Integration, db utils.DataSource, args arguments.ArgumentList, excludedDatabases []string) []string {
 	// Get the slow query fetch interval
 	slowQueryFetchInterval := validator.GetValidSlowQueryFetchIntervalThreshold(args.SlowQueryMonitoringFetchInterval)
 
 	// Get the query count threshold
 	queryCountThreshold := validator.GetValidQueryCountThreshold(args.QueryMonitoringCountThreshold)
 
-	rawMetrics, queryIDList, err := collectGroupedSlowQueryMetrics(db, slowQueryFetchInterval, queryCountThreshold, excludedDatabases)
+	rawMetrics, queryIDList, err := collectGroupedSlowQueryMetrics(app, db, slowQueryFetchInterval, queryCountThreshold, excludedDatabases)
 	if err != nil {
 		log.Error("Failed to collect slow query metrics: %v", err)
 		return []string{}
@@ -43,7 +44,7 @@ func PopulateSlowQueryMetrics(i *integration.Integration, db utils.DataSource, a
 }
 
 // collectGroupedSlowQueryMetrics collects metrics from the performance schema database for slow queries
-func collectGroupedSlowQueryMetrics(db utils.DataSource, slowQueryfetchInterval int, queryCountThreshold int, excludedDatabases []string) ([]utils.SlowQueryMetrics, []string, error) {
+func collectGroupedSlowQueryMetrics(app *newrelic.Application, db utils.DataSource, slowQueryfetchInterval int, queryCountThreshold int, excludedDatabases []string) ([]utils.SlowQueryMetrics, []string, error) {
 	// Prepare the SQL query with the provided parameters
 	query, args, err := sqlx.In(utils.SlowQueries, slowQueryfetchInterval, excludedDatabases, queryCountThreshold)
 	if err != nil {
@@ -52,7 +53,7 @@ func collectGroupedSlowQueryMetrics(db utils.DataSource, slowQueryfetchInterval 
 
 	ctx, cancel := context.WithTimeout(context.Background(), constants.TimeoutDuration)
 	defer cancel()
-	rows, err := db.QueryxContext(ctx, query, args...)
+	rows, err := db.QueryxContext(app, ctx, query, args...)
 	if err != nil {
 		return nil, []string{}, err
 	}
@@ -97,9 +98,9 @@ func setSlowQueryMetrics(i *integration.Integration, metrics []utils.SlowQueryMe
 }
 
 // PopulateIndividualQueryDetails collects and sets individual query details
-func PopulateIndividualQueryDetails(db utils.DataSource, queryIDList []string, i *integration.Integration, args arguments.ArgumentList) (map[string][]utils.IndividualQueryMetrics, error) {
+func PopulateIndividualQueryDetails(app *newrelic.Application, db utils.DataSource, queryIDList []string, i *integration.Integration, args arguments.ArgumentList) (map[string][]utils.IndividualQueryMetrics, error) {
 	// Retrieve the list of individual queries with combined metrics
-	queryList, err := getIndividualQueryList(db, queryIDList, args)
+	queryList, err := getIndividualQueryList(app, db, queryIDList, args)
 	if err != nil {
 		log.Error("Failed to collect query metrics: %v", err)
 		return nil, err
@@ -121,21 +122,21 @@ func PopulateIndividualQueryDetails(db utils.DataSource, queryIDList []string, i
 }
 
 // getIndividualQueryList fetches and combines current, recent, and extensive query metrics
-func getIndividualQueryList(db utils.DataSource, queryIDList []string, args arguments.ArgumentList) ([]utils.IndividualQueryMetrics, error) {
+func getIndividualQueryList(app *newrelic.Application, db utils.DataSource, queryIDList []string, args arguments.ArgumentList) ([]utils.IndividualQueryMetrics, error) {
 	// Collect current query metrics from the performance schema database for the given query IDs
-	currentQueryMetrics, err := collectIndividualQueryMetrics(db, queryIDList, utils.CurrentRunningQueriesSearch, args)
+	currentQueryMetrics, err := collectIndividualQueryMetrics(app, db, queryIDList, utils.CurrentRunningQueriesSearch, args)
 	if err != nil {
 		return nil, fmt.Errorf("failed to collect current query metrics: %w", err)
 	}
 
 	// Collect recent query metrics from the performance schema database for the given query IDs
-	recentQueryMetrics, err := collectIndividualQueryMetrics(db, queryIDList, utils.RecentQueriesSearch, args)
+	recentQueryMetrics, err := collectIndividualQueryMetrics(app, db, queryIDList, utils.RecentQueriesSearch, args)
 	if err != nil {
 		return nil, fmt.Errorf("failed to collect recent query metrics: %w", err)
 	}
 
 	// Collect extensive query metrics from the performance schema database for the given query IDs
-	extensiveQueryMetrics, err := collectIndividualQueryMetrics(db, queryIDList, utils.PastQueriesSearch, args)
+	extensiveQueryMetrics, err := collectIndividualQueryMetrics(app, db, queryIDList, utils.PastQueriesSearch, args)
 	if err != nil {
 		return nil, fmt.Errorf("failed to collect extensive query metrics: %w", err)
 	}
@@ -205,7 +206,7 @@ func groupQueriesByDatabase(filteredList []utils.IndividualQueryMetrics) map[str
 }
 
 // collectIndividualQueryMetrics collects current query metrics from the performance schema database for the given query IDs
-func collectIndividualQueryMetrics(db utils.DataSource, queryIDList []string, queryString string, args arguments.ArgumentList) ([]utils.IndividualQueryMetrics, error) {
+func collectIndividualQueryMetrics(app *newrelic.Application, db utils.DataSource, queryIDList []string, queryString string, args arguments.ArgumentList) ([]utils.IndividualQueryMetrics, error) {
 	// Early exit if queryIDList is empty
 	if len(queryIDList) == 0 {
 		log.Warn("queryIDList is empty. Skipping further processing as there are no query IDs to process. This might indicate an issue with the query generation or filtering logic.")
@@ -231,7 +232,7 @@ func collectIndividualQueryMetrics(db utils.DataSource, queryIDList []string, qu
 		}
 
 		// Collect the individual query metrics
-		metrics, err := utils.CollectMetrics[utils.IndividualQueryMetrics](db, query, args...)
+		metrics, err := utils.CollectMetrics[utils.IndividualQueryMetrics](app, db, query, args...)
 		if err != nil {
 			return []utils.IndividualQueryMetrics{}, err
 		}
