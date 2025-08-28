@@ -91,7 +91,6 @@ func PopulateQueryPerformanceMetrics(app *newrelic.Application, args arguments.A
 	log.Debug("Beginning to retrieve wait event metrics")
 	performancemetricscollectors.PopulateWaitEventMetrics(&mysqlapm.NewrelicApp, db, i, args, excludedDatabases)
 	log.Debug("Completed fetching wait event metrics in %v", time.Since(start))
-	defer waitEventsTxn.End()
 
 	// Populate blocking session metrics
 	start = time.Now()
